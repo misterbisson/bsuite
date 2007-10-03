@@ -146,7 +146,7 @@ class bSuite_Import {
 
 	function parse_tag( $tag ) {
 		$namespace = $taxonomy = $term = FALSE;
-		$taxonomy = 'tag';
+		$taxonomy = 'post_tag';
 
 		$temp_a = explode(':', $tag, 2);
 	
