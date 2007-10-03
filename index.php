@@ -284,10 +284,10 @@ class bsuite {
 	public function athooks_default($athooks){
 		// setup some default athooks
 		// $athooks[hook name][where to act (request or redirect)] = 'function name';
-/*
+
 		$athooks['related']['request'] = array(&$this, 'athook_get_related');
 		$athooks['related']['title'] = 'Related';
-*/
+
 		return($athooks);
 	}
 
@@ -355,36 +355,17 @@ class bsuite {
 		return $breadcrumb;
 	}
 
-/* moved to scriblio, it works better there
 	public function athook_get_related($search){
 		// get related items
 		global $wp_query, $wpdb;
 
 		$query_vars['p'] = $wp_query->athook['post'];
-		
-		if($query_vars['p']){
-			$rows = array();
-			$request = "SELECT tag_raw
-				FROM $this->meta_table
-				WHERE post_id = (". ereg_replace('[^0-9]', '', $query_vars['p']) .")
-				AND (tag_type = 'subject' OR tag_type = 'tag')
-				";
-			
-			$rows = $wpdb->get_col($request);
-			
-			if(count($rows) < 3){
-				$request = "SELECT tag_raw
-				FROM $this->meta_table
-				WHERE post_id = (". ereg_replace('[^0-9]', '', $query_vars['p']) .")
-				AND (tag_type = 'subject' OR tag_type = 'author' OR tag_type = 'title' OR tag_type = 'tag')
-				";
-			
-				$rows = $wpdb->get_col($request);
-			}
+
+		if(($query_vars['p']) && ($the_tags = $this->bsuggestive_tags($query_vars['p']))){
 
 			unset($wp_query->query_vars['attachment']);
-			$wp_query->query = 's='. implode('|', $rows);		
-			$wp_query->query_vars['s'] = implode('|', $rows);		
+			$wp_query->query = 's='. implode('|', $the_tags);		
+			$wp_query->query_vars['s'] = implode('|', $the_tags);		
 			$wp_query->is_404 = FALSE;
 			$wp_query->is_attachment = FALSE;
 			$wp_query->is_search = TRUE;
@@ -399,7 +380,6 @@ class bsuite {
 
 		return($search);
 	}
-*/
 	public function athook_get_post($thing){
 		// get related items
 		global $wp;
@@ -414,56 +394,11 @@ class bsuite {
 	//
 	// Searchsmart
 	//
-/*
-add_filter('posts_where', array(&$this, 'searchsmart_where'), 10);
-add_filter('posts_join', array(&$this, 'searchsmart_join'), 10);
-add_filter('posts_orderby', array(&$this, 'searchsmart_orderby'), 10);
-
-	public function searchsmart_where($query){
-		global $wp_query;
-		if (!empty($wp_query->query_vars['s'])) {
-			$query = " AND (MATCH (content, title) AGAINST ('{$wp_query->query_vars['s']}'))
- 				AND (post_type IN ('post', 'page') AND (post_status = 'publish' OR post_status = 'private'))
-			";
-//echo "<pre>$query</pre>";
-		}
-		return($query);
-	}
-
-	public function searchsmart_join($query){
-		global $wp_query;
-		if (!empty($wp_query->query_vars['s'])) {
-			$query = "LEFT JOIN $this->search_table ON ( post_id = ID ) ";
-//echo "<pre>$query</pre>";
-		}
-		return($query);
-	}
-
-	public function searchsmart_orderby($query){
-		global $wp_query;
-		if (!empty($wp_query->query_vars['s'])) {
-			$query = 'relevance DESC';
-//echo "<pre>$query</pre>";
-		}
-		return($query);
-	}
-
 	public function searchsmart_query($query){
-		global $wp_query, $wpdb;
-		if (!empty($wp_query->query_vars['s'])) {
-			$query = str_replace($wpdb->posts .'.*', $wpdb->posts .".*, MATCH (content, title) AGAINST ('{$wp_query->query_vars['s']}') AS relevance", $query);
-//echo "<pre>$query</pre>";
-		}
-		return($query);
-	}
-*/
-	public function searchsmart_query($query){
+	
 		global $wp_query, $wpdb;
 
 		if($wp_query->is_admin)
-			return($query);
-
-		if (!empty($wp_query->query_vars['s']) && strlen($wp_query->query_vars['s'] < 4))
 			return($query);
 
 		if (!empty($wp_query->query_vars['s'])) {
@@ -490,7 +425,7 @@ add_filter('posts_orderby', array(&$this, 'searchsmart_orderby'), 10);
 				LEFT JOIN $this->search_table ON ( post_id = ID )  
 				WHERE 1=1 
 				AND (MATCH (content, title) AGAINST ('{$wp_query->query_vars['s']}'))
-				AND (post_type IN ('post', 'page', 'scrib') AND (post_status IN ('publish', 'private')))
+				AND (post_type IN ('post', 'page') AND (post_status IN ('publish', 'private')))
 				ORDER BY relevance DESC LIMIT $limit[1]
 				";
 			
@@ -550,12 +485,9 @@ add_filter('posts_orderby', array(&$this, 'searchsmart_orderby'), 10);
 
 
 	// bSuggestive related functions
-	public function bsuggestive_getposts($id = 0) {
-		global $post, $wpdb;
-	
-		$id = (int) $id;
+	public function bsuggestive_tags($id = 0) {
 		if ( !$id )
-			$id = (int) $post->ID;
+			return FALSE;
 		
 		$tags = get_the_tags($id);
 		if($tags){
@@ -569,10 +501,14 @@ add_filter('posts_orderby', array(&$this, 'searchsmart_orderby'), 10);
 		if(empty($the_tags[0]))
 			return FALSE;
 
-		$the_tags = apply_filters('bsuite_suggestive_tags', $the_tags);
-
-		if($the_tags){
-			$the_query = apply_filters('bsuite_suggestive_query', 
+		return apply_filters('bsuite_suggestive_tags', $the_tags);
+	}
+	
+	public function bsuggestive_query($the_tags, $id) {
+		global $wpdb;
+		$id = (int) $id;
+		if($id && is_array($the_tags)){
+			return apply_filters('bsuite_suggestive_query', 
 				"SELECT post_id
 						FROM $this->search_table 
 						LEFT JOIN $wpdb->posts
@@ -582,6 +518,18 @@ add_filter('posts_orderby', array(&$this, 'searchsmart_orderby'), 10);
 						AND post_status = 'publish'
 						LIMIT 50
 						";
+		}
+		return FALSE;
+	}
+	
+	public function bsuggestive_getposts($id = 0) {
+		global $post, $wpdb;
+	
+		$id = (int) $id;
+		if ( !$id )
+			$id = (int) $post->ID;
+
+		if(($id) && ($the_tags = $this->bsuggestive_tags($id)) && ($the_query = $this->bsuggestive_query($the_tags, $id))){
 			$rows = $wpdb->get_col($the_query);
 			return($rows);
 		}
