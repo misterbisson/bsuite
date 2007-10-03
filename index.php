@@ -54,7 +54,7 @@ class bsuite {
 		add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
 		
 		//
-		add_action('activate_bsuite_core/core.php', array(&$this, 'createtables'));
+		add_action('activate_bsuite_core/index.php', array(&$this, 'createtables'));
 		add_action('admin_menu', array(&$this, 'addmenus'));
 		// end register WordPress hooks
 
@@ -833,12 +833,12 @@ add_filter('posts_orderby', array(&$this, 'searchsmart_orderby'), 10);
 			}
 			print "</ul>";
 			?>
-			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=bsuite_core/core.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=bsuite_core/index.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p>
 			<script language='javascript'>
 			<!--
 
 			function nextpage() {
-				location.href="?page=bsuite_core/core.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>";
+				location.href="?page=bsuite_core/index.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>";
 			}
 			setTimeout( "nextpage()", 250 );
 
