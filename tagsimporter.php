@@ -27,7 +27,7 @@ Author URI: http://maisonbisson.com/blog/
 // The importer 
 class bSuite_Import { 
 	var $importer_code = 'bsuiteimporter'; 
-	var $importer_name = 'bSuite Metadata Importer'; 
+	var $importer_name = 'bSuite Tag Importer'; 
 	var $importer_desc = 'Import bSuite tags and metadata to WordPress tags and taxonomy.'; 
 	 
 	// Function that will handle the wizard-like behaviour 
@@ -107,7 +107,7 @@ class bSuite_Import {
 
 	function header()  {
 		echo '<div class="wrap">';
-		echo '<h2>'.__('Import bSuite Meta').'</h2>';
+		echo '<h2>'.__('bSuite Tag Importer').'</h2>';
 	}
 
 	function footer() {
