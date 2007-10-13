@@ -9,9 +9,9 @@ Author URI: http://maisonbisson.com/blog/
 */
 
 
-class bsuite {
+class bSuite {
 
-	function __construct(){
+	function bSuite(){
 		$this->verso = 'a1';
 
 		global $wpdb;
@@ -34,6 +34,7 @@ class bsuite {
 		add_filter('the_excerpt', array(&$this, 'tokens'), 0);
 		add_filter('the_excerpt_rss', array(&$this, 'tokens'), 0);
 		add_filter('get_the_excerpt ', array(&$this, 'tokens'), 0);
+		add_filter('widget_text', array(&$this, 'tokens'), 0);
 		
 		//innerindex
 		add_filter('content_save_pre', array(&$this, 'innerindex_nametags'));
@@ -72,7 +73,7 @@ class bsuite {
 	// token functions
 	// tokens are [[token]] in the content of a post.
 	//
-	public function tokens_get(){
+	function tokens_get(){
 		// establish list of tokens
 		static $tokens = FALSE;	
 		if($tokens)
@@ -84,7 +85,7 @@ class bsuite {
 		return($tokens);
 	}
 
-	public function tokens_fill($thing) {
+	function tokens_fill($thing) {
 		// match tokens
 		$return = $thing[0];
 		$thing = explode('|', trim($thing[0], '[]'), 2);
@@ -96,7 +97,7 @@ class bsuite {
 		return($return);
 	}
 
-	public function tokens($content) {
+	function tokens($content) {
 		// find tokens in the page
 		$content = preg_replace_callback(
 			'/\[\[([^\]\]])*\]\]/',
@@ -105,7 +106,7 @@ class bsuite {
 		return($content);
 	}
 
-	public function tokens_default($tokens){
+	function tokens_default($tokens){
 		// setup some default tokens
 		$tokens['date'] = array(&$this, 'token_get_date');
 		$tokens['pagemenu'] = array(&$this, 'token_get_pagemenu');
@@ -116,12 +117,12 @@ class bsuite {
 		return($tokens);
 	}
 	
-	public function token_get_date($stuff = 'F j, Y, g:i a'){
+	function token_get_date($stuff = 'F j, Y, g:i a'){
 		// [[date|options]]
 		return(date($stuff));
 	}
 	
-	public function token_get_pagemenu($stuff = NULL){
+	function token_get_pagemenu($stuff = NULL){
 		// [[pagemenu|depth|extra]]
 		// [[pagemenu|1|sort_column=post_date&sort_order=DESC]]
 		global $id;
@@ -129,14 +130,14 @@ class bsuite {
 		return(wp_list_pages("child_of=$id&depth=1&echo=0&sort_column=menu_order&title_li=&$stuff[0]"));
 	}
 	
-	public function token_get_redirect($stuff){
+	function token_get_redirect($stuff){
 		// [[redirect|$url]]
 		if(!headers_sent())
 			header("Location: $stuff");
 		return('redirect: <a href="'. $stuff .'">'. $stuff .'</a>');
 	}
 
-	public function token_get_feed($stuff){
+	function token_get_feed($stuff){
 		// [[feed|feed_url|count]]
 		$stuff = explode('|', $stuff);
 		if(!$stuff[1])
@@ -150,7 +151,7 @@ class bsuite {
 
 
 	//innerindex
-	public function innerindex($title = 'Contents:'){
+	function innerindex($title = 'Contents:'){
 		// !!!
 		// need to look at expiring the innerindex cache when 
 		// the permalink structure changes
@@ -164,7 +165,7 @@ class bsuite {
 		}		
 	}
 	
-	public function innerindex_build($content){
+	function innerindex_build($content){
 		// find <h*> tags with IDs in the content and build an index of them
 		preg_match_all(
 			'|<h[^>]+>[^<]+</h[^>]+>|U',
@@ -204,7 +205,7 @@ class bsuite {
 		return($menu);
 	}
 
-	public function innerindex_nametags($content){
+	function innerindex_nametags($content){
 		// find <h*> tags in the content
 		$content = preg_replace_callback(
 			"/(\<h([0-9])?([^\>]*)?\>)(.*?)(\<\/h[0-9]\>)/",
@@ -214,7 +215,7 @@ class bsuite {
 		return($content);
 	}
 
-	public function innerindex_nametags_callback($content){
+	function innerindex_nametags_callback($content){
 		// receive <h*> tags and insert the ID
 		static $slugs;
 		$slugs[] = $slug = substr(sanitize_title_with_dashes($content[4]), 0, 20);
@@ -227,7 +228,7 @@ class bsuite {
 	//
 	// pagehook functions
 	//
-	public function pagehooks_get(){
+	function pagehooks_get(){
 		// establish list of pagehooks
 		static $pagehooks = FALSE;	
 		if($pagehooks)
@@ -239,13 +240,13 @@ class bsuite {
 		return($pagehooks);
 	}
 
-	public function pagehooks_default($pagehooks){
+	function pagehooks_default($pagehooks){
 		// setup some default pagehooks, but there are none
 		// $pagehooks['pagename'] = 'function_name';
 		return($pagehooks);
 	}
 
-	public function pagehooks(){
+	function pagehooks(){
 		// process pagehooks
 		// the context of this hook is here:
 		// http://wphooks.flatearth.org/hooks/template_redirect/
@@ -269,7 +270,7 @@ class bsuite {
 	//
 	// athook functions
 	//
-	public function athooks_get(){
+	function athooks_get(){
 		// establish list of athooks
 		static $athooks = FALSE;	
 		if($athooks)
@@ -281,7 +282,7 @@ class bsuite {
 		return($athooks);
 	}
 
-	public function athooks_default($athooks){
+	function athooks_default($athooks){
 		// setup some default athooks
 		// $athooks[hook name][where to act (request or redirect)] = 'function name';
 
@@ -291,7 +292,7 @@ class bsuite {
 		return($athooks);
 	}
 
-	public function athooks_onredirect(){
+	function athooks_onredirect(){
 		// process athooks
 		// the context of this hook is here:
 		// http://wphooks.flatearth.org/hooks/template_redirect/
@@ -311,7 +312,7 @@ class bsuite {
 		return;
 	}
 
-	public function athooks_onsearch($search){
+	function athooks_onsearch($search){
 		// process athooks
 		// the context of this hook is here:
 		// http://wphooks.flatearth.org/hooks/posts_request/
@@ -331,7 +332,7 @@ class bsuite {
 		return($search);
 	}
 
-	public function athooks_breadcrumbs($breadcrumb, $params){
+	function athooks_breadcrumbs($breadcrumb, $params){
 		// makes athooks play nice with Dan Peverill's breadcrumb plugin
 		global $wp_query;
 
@@ -355,7 +356,7 @@ class bsuite {
 		return $breadcrumb;
 	}
 
-	public function athook_get_related($search){
+	function athook_get_related($search){
 		// get related items
 		global $wp_query, $wpdb;
 
@@ -380,7 +381,7 @@ class bsuite {
 
 		return($search);
 	}
-	public function athook_get_post($thing){
+	function athook_get_post($thing){
 		// get related items
 		global $wp;
 
@@ -394,7 +395,7 @@ class bsuite {
 	//
 	// Searchsmart
 	//
-	public function searchsmart_query($query){
+	function searchsmart_query($query){
 	
 		global $wp_query, $wpdb;
 
@@ -434,7 +435,7 @@ class bsuite {
 		return($query);
 	}
 
-	public function searchsmart_onsingle(){
+	function searchsmart_onsingle(){
 		// redirects the search to the single page if the search returns only one item
 		global $wp_query;
 		if($wp_query->is_search && $wp_query->post_count == 1){
@@ -445,7 +446,7 @@ class bsuite {
 		return(TRUE);
 	}
 
-	public function searchsmart_upindex($post_id, $content, $title = ''){
+	function searchsmart_upindex($post_id, $content, $title = ''){
 		// put content in the keyword search index
 		global $wpdb;
 
@@ -475,7 +476,7 @@ class bsuite {
 		return(TRUE);
 	}
 
-	public function searchsmart_upindex_onedit($content){
+	function searchsmart_upindex_onedit($content){
 		// called when posts are saved
 		if($_POST['post_ID'])
 			$this->searchsmart_upindex(ereg_replace('[^0-9]', '', $_POST['post_ID']), $content);
@@ -485,7 +486,7 @@ class bsuite {
 
 
 	// bSuggestive related functions
-	public function bsuggestive_tags($id = 0) {
+	function bsuggestive_tags($id = 0) {
 		if ( !$id )
 			return FALSE;
 		
@@ -504,7 +505,7 @@ class bsuite {
 		return apply_filters('bsuite_suggestive_tags', $the_tags);
 	}
 	
-	public function bsuggestive_query($the_tags, $id) {
+	function bsuggestive_query($the_tags, $id) {
 		global $wpdb;
 		$id = (int) $id;
 		if($id && is_array($the_tags)){
@@ -522,7 +523,7 @@ class bsuite {
 		return FALSE;
 	}
 	
-	public function bsuggestive_getposts($id = 0) {
+	function bsuggestive_getposts($id = 0) {
 		global $post, $wpdb;
 	
 		$id = (int) $id;
@@ -536,7 +537,7 @@ class bsuite {
 		return FALSE;
 	}
 
-	public function bsuggestive_postlist($before = '<li>', $after = '</li>') {
+	function bsuggestive_postlist($before = '<li>', $after = '</li>') {
 		$report = FALSE;
 
 		$posts = array_slice($this->bsuggestive_getposts(), 0, 5);
@@ -553,7 +554,7 @@ class bsuite {
 	}
 	// end bSuggestive
 
-	public function parse_request($request){
+	function parse_request($request){
 		// parse the $request through the WP rewrite rules and returns query vars
 		// 
 		// code taken from inside parse_request() in /wp-includes/classes.php 
@@ -584,7 +585,7 @@ class bsuite {
 
 
 
-	public function pagetree(){
+	function pagetree(){
 		// identify the family tree of a page, return an array
 		global $wp_query;
 		$tree = NULL;
@@ -612,7 +613,7 @@ class bsuite {
 	//
 	// loadaverage related functions
 	//
-	public function get_loadavg(){
+	function get_loadavg(){
 		static $result = FALSE;	
 		if($result)
 			return($result);
@@ -626,7 +627,7 @@ class bsuite {
 		return($result);
 	}
 
-	public function sys_getloadavg(){
+	function sys_getloadavg(){
 		// the following code taken from tom pittlik's comment at
 		// http://php.net/manual/en/function.sys-getloadavg.php
 		$str = substr(strrchr(shell_exec('uptime'),':'),1);
@@ -640,7 +641,7 @@ class bsuite {
 	//
 	// speedcache related functions
 	//
-	public function cachefetch($obj, $minutes = 30, $return = FALSE, $lib = 'user') {
+	function cachefetch($obj, $minutes = 30, $return = FALSE, $lib = 'user') {
 		// fetch items from the cache
 		if($_REQUEST['bsuite_cachekill'] == 1)
 			return(FALSE);
@@ -672,7 +673,7 @@ class bsuite {
 		}
 	}
 
-	public function cacheput($obj, $content, $echo = TRUE, $lib = 'user') {
+	function cacheput($obj, $content, $echo = TRUE, $lib = 'user') {
 		// put objects into the cache
 		global $wpdb;
 	
@@ -689,7 +690,7 @@ class bsuite {
 
 
 	// set a cookie
-	public function cookie($name, $value = NULL) {
+	function cookie($name, $value = NULL) {
 		if($value === NULL){
 			if($_GET[$name]) return $_GET[$name];
 			elseif($_POST[$name]) return $_POST[$name];
@@ -706,7 +707,7 @@ class bsuite {
 
 
 	// get and display rss feeds
-	public function get_feed($feed, $count = 15, $template = '<li>%%title%%<br />%%content%%</li>', $return = FALSE){
+	function get_feed($feed, $count = 15, $template = '<li>%%title%%<br />%%content%%</li>', $return = FALSE){
 		if(!function_exists('fetch_rss'))
 			require_once (ABSPATH . WPINC . '/rss.php');
 		$rss = fetch_rss($feed);
@@ -738,28 +739,28 @@ class bsuite {
 
 
 
-	public function createtables() {
+	function createtables() {
 		require(ABSPATH . PLUGINDIR .'/bsuite_core/core_createtables.php');
 	}
 
-	public function addmenus() {
-		add_options_page('bsuite Settings', 'bsuite', 8, __FILE__, array(&$this, 'optionspage'));
+	function addmenus() {
+		add_options_page('bSuite Settings', 'bSuite', 8, __FILE__, array(&$this, 'optionspage'));
 	}
 
-	public function optionspage() {
+	function optionspage() {
 		global $wpdb;
 		require(ABSPATH . PLUGINDIR .'/bsuite_core/core_admin.php');
 	}
 
 
 
-	public function rebuildmetatables() {
+	function rebuildmetatables() {
 		// update search table with content from all posts
 		global $wpdb; 
 	
 		set_time_limit(0);
 		ignore_user_abort(TRUE);
-		$interval = 500;
+		$interval = 50;
 
 		if( isset( $_GET[ 'n' ] ) == false ) {
 			$n = 0;
@@ -797,17 +798,10 @@ class bsuite {
 			echo '<p><strong>'. __('bSuite metdata index rebuilt.', 'bsuite') .'</strong></p>';
 		}
 	}
-
-
-
-
-
-
-
 }
 
 // now instantiate this object
-$bsuite = & new bsuite;
+$bsuite = & new bSuite;
 
 function the_related(){
 	global $bsuite;

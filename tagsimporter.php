@@ -62,7 +62,7 @@ class bSuite_Import {
 	
 		set_time_limit(0);
 		ignore_user_abort(TRUE);
-		$interval = 500;
+		$interval = 50;
 
 		if( isset( $_GET[ 'n' ] ) == false ) {
 			$n = 0;
@@ -139,7 +139,7 @@ class bSuite_Import {
 			if($post['post_content'] <> $tags['content']){
 				$post['post_content'] = $tags['content'];
 				$post = add_magic_quotes( $post );
-//				wp_update_post($post);
+				wp_update_post($post);
 			}
 		}
 	}
