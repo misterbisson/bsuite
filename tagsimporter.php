@@ -2,7 +2,7 @@
 /*
 Plugin Name: bSuite Tag Importer
 Plugin URI: http://maisonbisson.com/blog/bsuite
-Description: Import bSuite tags and metadata to WordPress tags and taxonomy. <a href="http://maisonbisson.com/blog/bsuite/core/tag-importer">Documentation here</a>
+Description: Import bSuite tags and metadata to WordPress tags and taxonomy. <a href="http://maisonbisson.com/blog/bsuite/tag-importer">Documentation here</a>
 Version: 0.1
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
@@ -28,7 +28,7 @@ Author URI: http://maisonbisson.com/blog/
 class bSuite_Import { 
 	var $importer_code = 'bsuiteimporter'; 
 	var $importer_name = 'bSuite Tag Importer'; 
-	var $importer_desc = 'Import bSuite tags and metadata to WordPress tags and taxonomy.'; 
+	var $importer_desc = 'Import bSuite tags and metadata to WordPress tags and taxonomy. <a href="http://maisonbisson.com/blog/bsuite/tag-importer">Documentation here</a>.'; 
 	 
 	// Function that will handle the wizard-like behaviour 
 	function dispatch() { 
