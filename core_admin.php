@@ -21,7 +21,7 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-
+//echo 'wp-content/plugins/'.plugin_basename(dirname(__FILE__));
 //phpinfo();
 
 //  apply new settings if form submitted

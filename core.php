@@ -54,14 +54,14 @@ class bSuite {
 		add_filter('template_redirect', array(&$this, 'searchsmart_onsingle'), 8);
 		add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
 		
-		//
-		add_action('activate_bsuite_core/index.php', array(&$this, 'createtables'));
-		add_action('admin_menu', array(&$this, 'addmenus'));
-
 		// CMS goodies
 		add_action('dbx_page_advanced', array(&$this, 'insert_excerpt_form'));
 		add_action('edit_form_advanced', array(&$this, 'edit_post_form'));
 		add_action('edit_page_form', array(&$this, 'edit_page_form'));
+
+		// activation and menu hooks
+		register_activation_hook(__FILE__, array(&$this, 'createtables'));
+		add_action('admin_menu', array(&$this, 'addmenus'));
 		// end register WordPress hooks
 
 
@@ -822,7 +822,7 @@ class bSuite {
 
 
 	function createtables() {
-		require(ABSPATH . PLUGINDIR .'/bsuite_core/core_createtables.php');
+		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_createtables.php');
 	}
 
 	function addmenus() {
@@ -831,7 +831,7 @@ class bSuite {
 
 	function optionspage() {
 		global $wpdb;
-		require(ABSPATH . PLUGINDIR .'/bsuite_core/core_admin.php');
+		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_admin.php');
 	}
 
 
@@ -864,12 +864,12 @@ class bSuite {
 			}
 			print "</ul>";
 			?>
-			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=bsuite_core/index.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p>
 			<script language='javascript'>
 			<!--
 
 			function nextpage() {
-				location.href="?page=bsuite_core/index.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>";
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>";
 			}
 			setTimeout( "nextpage()", 250 );
 
