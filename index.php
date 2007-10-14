@@ -57,7 +57,13 @@ class bSuite {
 		//
 		add_action('activate_bsuite_core/index.php', array(&$this, 'createtables'));
 		add_action('admin_menu', array(&$this, 'addmenus'));
+
+		// CMS goodies
+		add_action('dbx_page_advanced', array(&$this, 'insert_excerpt_form'));
+		add_action('edit_form_advanced', array(&$this, 'edit_post_form'));
+		add_action('edit_page_form', array(&$this, 'edit_page_form'));
 		// end register WordPress hooks
+
 
 		// set things up so authors can edit their own pages
 		$role = get_role('author');
@@ -736,6 +742,82 @@ class bSuite {
 		echo $list;
 	}
 	// end function get_rss
+
+
+
+	// add tools to edit screens
+	function edit_page_form() {
+		$this->edit_insert_tag_form();
+		$this->edit_insert_tools();
+		$this->edit_insert_machinetag_form();
+	}
+	
+	function edit_post_form() {
+		$this->edit_insert_tools();
+		$this->edit_insert_machinetag_form();
+	}
+
+	function edit_comment_form() {
+		$this->edit_insert_tag_form();
+		$this->edit_insert_tools();
+		$this->edit_insert_machinetag_form();
+	}
+	
+	function edit_insert_tag_form() {
+		global $post_ID;
+		?>
+		<fieldset id="tagdiv">
+			<legend>Tags (separate multiple tags with commas: cats, pet food, dogs)</legend>
+			<div><input type="text" name="tags_input" class="tags-input" id="tags-input" size="30" tabindex="3" value="<?php echo get_tags_to_edit( $post_ID ); ?>" /></div>
+		</fieldset>
+		<?php
+	}
+
+	function edit_insert_tools() {
+		global $post_ID;
+		?>
+		<fieldset id="bsuite_tools">
+			<legend>bSuite Tools: <a id="bsuite_auto_tag_button">Auto Tag</a> <a id="bsuite_auto_excerpt_button">Auto Excerpt</a> (<a href="http://maisonbisson.com/blog/bsuite/auto-tag-excerpt">about these tools</a>) (NOT WORKING, for now)</legend>
+		</fieldset>
+		<?php
+	}
+
+	function edit_insert_machinetag_form() {
+		global $post_ID;
+
+		$tags = wp_get_object_terms($post_ID, get_object_taxonomies('post'));
+		
+		$tags_to_edit = array();
+		foreach($tags as $tag){
+			if($tag->taxonomy == 'post_tag' || $tag->taxonomy == 'category')
+				continue;
+			$tags_to_edit[] = $tag->taxonomy .'='. $tag->name;
+		}
+		natcasesort($tags_to_edit);
+		?>
+		<fieldset id="bsuite_machinetags">
+			<legend>bSuite Machine Tags (separate multiple tags with newlines, <a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">about machine tags</a>) (READ-ONLY, for now)</legend>
+			<div><textarea name="bsuite-machine-tags-input" id="bsuite-machine-tags-input" class="bsuite-machine-tags-input tags-input" style="width: 98%; height: 7em;"><?php echo implode($tags_to_edit, "\n"); ?></textarea></div>
+		</fieldset>
+		<?php
+	}
+
+	function edit_insert_excerpt_form() {
+		global $post_ID, $post;
+		?>
+		<div class="dbx-b-ox-wrapper">
+		<fieldset id="postexcerpt" class="dbx-box">
+		<div class="dbx-h-andle-wrapper">
+		<h3 class="dbx-handle">Optional Excerpt</h3>
+		</div>
+		<div class="dbx-c-ontent-wrapper">
+		<div class="dbx-content"><textarea rows="1" cols="40" name="excerpt" tabindex="6" id="excerpt"><?php echo $post->post_excerpt ?></textarea></div>
+		</div>
+		</fieldset>
+		</div>
+		<?php
+	}
+	// end adding tools to edit screens
 
 
 
