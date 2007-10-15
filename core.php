@@ -848,6 +848,8 @@ class bSuite {
 	}
 
 	function widget_recently_commented_posts($args) {
+		// this code pretty much directly rips off WordPress' native recent comments widget,
+		// the difference here is that I'm displaying recently commented posts, not recent comments.
 		global $wpdb, $commented_posts;
 		extract($args, EXTR_SKIP);
 		$options = get_option('bsuite_recently_commented_posts');
@@ -912,7 +914,7 @@ class bSuite {
 		}
 	}
 
-	public function widgets_register(){
+	function widgets_register(){
 		$this->widget_recently_commented_posts_register();
 
 		wp_register_sidebar_widget('bsuite-related-posts', __('bSuite Related Posts'), array(&$this, 'widget_related_posts'), 'bsuite_related_posts');
