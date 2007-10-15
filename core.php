@@ -16,9 +16,6 @@ class bSuite {
 
 		global $wpdb;
 		$this->search_table = $wpdb->prefix . 'bsuite3_search';
-		
-		if(!$wpdb->blogid)
-			$wpdb->blogid = 1;
 
 		$this->options = unserialize(get_option('bsuite3'));
 
@@ -502,7 +499,10 @@ class bSuite {
 
 
 	// bSuggestive related functions
-	function bsuggestive_tags($id = 0) {
+	function bsuggestive_tags($id = FALSE) {
+		$id = (int) $id;
+		if ( !$id )
+			$id = (int) $post->ID;
 		if ( !$id )
 			return FALSE;
 		
@@ -523,7 +523,13 @@ class bSuite {
 	
 	function bsuggestive_query($the_tags, $id) {
 		global $wpdb;
+
 		$id = (int) $id;
+		if ( !$id )
+			$id = (int) $post->ID;
+		if ( !$id )
+			return FALSE;
+
 		if($id && is_array($the_tags)){
 			return apply_filters('bsuite_suggestive_query', 
 				"SELECT post_id
@@ -539,13 +545,14 @@ class bSuite {
 		return FALSE;
 	}
 	
-	function bsuggestive_getposts($id = 0) {
+	function bsuggestive_getposts($id = FALSE) {
 		global $post, $wpdb;
-	
+
 		$id = (int) $id;
 		if ( !$id )
 			$id = (int) $post->ID;
-
+		if ( !$id )
+			return FALSE;
 
 		if ( !$related_posts = wp_cache_get( 'bsuite_related_posts_'. $id, 'default' ) ) {
 			if(($the_tags = $this->bsuggestive_tags($id)) && ($the_query = $this->bsuggestive_query($the_tags, $id))){
@@ -560,13 +567,20 @@ class bSuite {
 
 	function bsuggestive_delete_cache($id) {
 		$id = (int) $id;
+		if ( !$id )
+			return FALSE;
+
 		wp_cache_delete( 'bsuite_related_posts_'. $id, 'default' );
 	}
 
-	function bsuggestive_postlist($before = '<li>', $after = '</li>') {
+	function bsuggestive_the_related($before = '<li>', $after = '</li>') {
 		$report = FALSE;
 
-		$posts = array_slice($this->bsuggestive_getposts(), 0, 5);
+		$id = (int) $post->ID;
+		if ( !$id )
+			return FALSE;
+
+		$posts = array_slice($this->bsuggestive_getposts($id), 0, 5);
 		if($posts){
 			$report = '';
 			foreach($posts as $post_id){
@@ -926,7 +940,17 @@ class bSuite {
 
 	// administrivia
 	function createtables() {
-		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_createtables.php');
+		global $wpdb;
+		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
+		dbDelta("
+			CREATE TABLE $this->search_table (
+				post_id bigint(20) NOT NULL,
+				content text,
+				title text,
+				PRIMARY KEY  (post_id),
+				FULLTEXT KEY search (content, title)
+			)
+			");
 	}
 
 	function addmenus() {
@@ -991,7 +1015,7 @@ $bsuite = & new bSuite;
 
 function the_related(){
 	global $bsuite;
-	echo $bsuite->bsuggestive_postlist();
+	echo $bsuite->bsuggestive_the_related();
 }
 
 ?>
