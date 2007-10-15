@@ -15,7 +15,6 @@ class bSuite {
 		$this->verso = 'a1';
 
 		global $wpdb;
-		$this->cache_table = $wpdb->prefix . 'bsuite3_speedcache';
 		$this->search_table = $wpdb->prefix . 'bsuite3_search';
 		
 		if(!$wpdb->blogid)
@@ -38,6 +37,14 @@ class bSuite {
 		
 		//innerindex
 		add_filter('content_save_pre', array(&$this, 'innerindex_nametags'));
+		add_filter('save_post', array(&$this, 'innerindex_delete_cache'));
+		add_filter('publish_post', array(&$this, 'innerindex_delete_cache'));
+		add_filter('publish_page', array(&$this, 'innerindex_delete_cache'));
+
+		// bsuggestive
+		add_filter('save_post', array(&$this, 'bsuggestive_delete_cache'));
+		add_filter('publish_post', array(&$this, 'bsuggestive_delete_cache'));
+		add_filter('publish_page', array(&$this, 'bsuggestive_delete_cache'));
 		
 		// pagehooks
 		add_filter('bsuite_pagehooks', array(&$this, 'pagehooks_default'));
@@ -58,6 +65,7 @@ class bSuite {
 		add_action('dbx_page_advanced', array(&$this, 'insert_excerpt_form'));
 		add_action('edit_form_advanced', array(&$this, 'edit_post_form'));
 		add_action('edit_page_form', array(&$this, 'edit_page_form'));
+		add_action('widgets_init', array(&$this, 'widgets_register'));
 
 		// activation and menu hooks
 		register_activation_hook(__FILE__, array(&$this, 'createtables'));
@@ -158,17 +166,14 @@ class bSuite {
 
 	//innerindex
 	function innerindex($title = 'Contents:'){
-		// !!!
-		// need to look at expiring the innerindex cache when 
-		// the permalink structure changes
-		//
 		global $id, $post_cache;
-		$menu = &$this->cachefetch($id, 99999, TRUE, 'innerindex');
-		if($menu){
-			return('<div class="innerindex"><h1>'. $title .'</h1>'. $menu .'</div>');
-		}else{
-			return('<div class="innerindex"><h1>'. $title .'</h1>'. $this->cacheput($id, $this->innerindex_build($post_cache[1][$id]->post_content), FALSE, 'innerindex') .'</div>');
-		}		
+
+		if ( !$menu = wp_cache_get( 'bsuite_innerindex_'. $id, 'default' ) ) {
+			$menu = $commented_posts = $this->innerindex_build($post_cache[1][$id]->post_content);
+			wp_cache_add( 'bsuite_innerindex_'. $id, $menu, 'default', 864000 );
+		}
+
+		return('<div class="innerindex"><h1>'. $title .'</h1>'. $menu .'</div>');
 	}
 	
 	function innerindex_build($content){
@@ -209,6 +214,11 @@ class bSuite {
 		}
 		$menu .= '</li>'. str_repeat('</ol></li>', $closers) . '</ol>';
 		return($menu);
+	}
+
+	function innerindex_delete_cache($id) {
+		$id = (int) $id;
+		wp_cache_delete( 'bsuite_innerindex_'. $id, 'default' );
 	}
 
 	function innerindex_nametags($content){
@@ -536,11 +546,21 @@ class bSuite {
 		if ( !$id )
 			$id = (int) $post->ID;
 
-		if(($id) && ($the_tags = $this->bsuggestive_tags($id)) && ($the_query = $this->bsuggestive_query($the_tags, $id))){
-			$rows = $wpdb->get_col($the_query);
-			return($rows);
+
+		if ( !$related_posts = wp_cache_get( 'bsuite_related_posts_'. $id, 'default' ) ) {
+			if(($the_tags = $this->bsuggestive_tags($id)) && ($the_query = $this->bsuggestive_query($the_tags, $id))){
+				$related_posts = $wpdb->get_col($the_query);
+				wp_cache_add( 'bsuite_related_posts_'. $id, $related_posts, 'default', 864000 );
+				return($related_posts); // if we have to go to the DB to get the posts, then this will get returned
+			}
+			return FALSE; // if there's nothing in the cache and we've got no tags, then we return false
 		}
-		return FALSE;
+		return($related_posts); // if the cache is still warm, then we return this
+	}
+
+	function bsuggestive_delete_cache($id) {
+		$id = (int) $id;
+		wp_cache_delete( 'bsuite_related_posts_'. $id, 'default' );
 	}
 
 	function bsuggestive_postlist($before = '<li>', $after = '</li>') {
@@ -641,57 +661,6 @@ class bSuite {
 		return $avs;
 	}
 	// end load average related functions
-
-	
-	
-	//
-	// speedcache related functions
-	//
-	function cachefetch($obj, $minutes = 30, $return = FALSE, $lib = 'user') {
-		// fetch items from the cache
-		if($_REQUEST['bsuite_cachekill'] == 1)
-			return(FALSE);
-	
-		global $wpdb;
-		
-		$date  = date("Y-m-d H:i:s", mktime( date("H"), date("i") - $minutes, date("s"), date("m"), date("d"), date("Y")));
-
-		$rows = $wpdb->get_results("SELECT * FROM $this->cache_table
-			WHERE cache_item = '". addslashes($obj) ."'
-			AND cache_bank = '". addslashes($lib) ."'
-			LIMIT 1");
-		
-		if(count($rows)){
-			if(strtotime('+ '. $minutes .' minutes') > strtotime($rows[0]->cache_date)){
-				$cachedata = '<!-- start bsuite_speedcache object ' . $rows[0] -> cache_bank . '/'. $rows[0] -> cache_item . ' on ' . $rows[0] -> cache_date . '-->' . $rows[0] -> cache_content . '<!-- end bsuite_speedcache object -->';
-			}else{
-				return(FALSE);	
-			}
-	
-			if($return){
-				return($cachedata);
-			}else{
-				echo $cachedata;
-				return(TRUE);
-			}
-		}else{
-			return(FALSE);
-		}
-	}
-
-	function cacheput($obj, $content, $echo = TRUE, $lib = 'user') {
-		// put objects into the cache
-		global $wpdb;
-	
-		$wpdb->query("REPLACE INTO $this->cache_table
-			(cache_date, cache_bank, cache_item, cache_content) VALUES ('". date("Y-m-d H:i:s") ."', '". addslashes($lib) ."', '". addslashes($obj) ."', '". addslashes($content) ."')");
-		if($echo){
-			echo '<!-- start bsuite_speedcache object ' . $lib . '/'. $obj . ' refreshed -->' . $content . '<!-- end bsuite_speedcache object -->';
-		}else{
-			return($content);
-		}
-	}
-	// end speedcache related functions
 
 
 
@@ -821,6 +790,139 @@ class bSuite {
 
 
 
+
+	// widgets
+	function widget_related_posts($args) {
+		global $post, $wpdb;
+		
+		if(!is_singular()) // can only run on single pages/posts
+			return(NULL);
+		
+		$id = (int) $post->ID; // needs an ID of that page/post
+		if(!id)
+			return(NULL);
+		
+		extract($args, EXTR_SKIP);
+		$options = get_option('bsuite_related_posts');
+		$title = empty($options['title']) ? __('Recently Commented Posts') : $options['title'];
+		if ( !$number = (int) $options['number'] )
+			$number = 5;
+		else if ( $number < 1 )
+			$number = 1;
+		else if ( $number > 15 )
+			$number = 15;
+
+		if ( $related_posts = array_slice($this->bsuggestive_getposts(), 0, $number) ) {
+?>
+	
+			<?php echo $before_widget; ?>
+				<?php echo $before_title . $title . $after_title; ?>
+				<ul id="relatedposts"><?php
+				if ( $related_posts ) : foreach ($related_posts as $post_id) :
+				echo  '<li class="relatedposts"><a href="'. get_permalink($post_id) . '">' . get_the_title($post_id) . '</a></li>';
+				endforeach; endif;?></ul>
+			<?php echo $after_widget; ?>
+<?php
+		}
+	}
+	
+	function widget_related_posts_control() {
+		$options = $newoptions = get_option('bsuite_related_posts');
+		if ( $_POST['bsuite-related-posts-submit'] ) {
+			$newoptions['title'] = strip_tags(stripslashes($_POST['bsuite-related-posts-title']));
+			$newoptions['number'] = (int) $_POST['bsuite-related-posts-number'];
+		}
+		if ( $options != $newoptions ) {
+			$options = $newoptions;
+			update_option('bsuite_related_posts', $options);
+			delete_recent_comments_cache();
+		}
+		$title = attribute_escape($options['title']);
+		if ( !$number = (int) $options['number'] )
+			$number = 5;
+	?>
+				<p><label for="bsuite-related-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bsuite-related-posts-title" name="bsuite-related-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
+				<p><label for="bsuite-related-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-related-posts-number" name="bsuite-related-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
+				<input type="hidden" id="bsuite-related-posts-submit" name="bsuite-related-posts-submit" value="1" />
+	<?php
+	}
+
+	function widget_recently_commented_posts($args) {
+		global $wpdb, $commented_posts;
+		extract($args, EXTR_SKIP);
+		$options = get_option('bsuite_recently_commented_posts');
+		$title = empty($options['title']) ? __('Recently Commented Posts') : $options['title'];
+		if ( !$number = (int) $options['number'] )
+			$number = 5;
+		else if ( $number < 1 )
+			$number = 1;
+		else if ( $number > 15 )
+			$number = 15;
+	
+		if ( !$commented_posts = wp_cache_get( 'recently_commented_posts', 'widget' ) ) {
+			$commented_posts = $wpdb->get_results("SELECT comment_ID, comment_post_ID, COUNT(comment_post_ID) as comment_count FROM $wpdb->comments WHERE comment_approved = '1' GROUP BY comment_post_ID ORDER BY comment_date_gmt DESC LIMIT $number");
+			wp_cache_add( 'recently_commented_posts', $commented_posts, 'widget' );
+		}
+	?>
+	
+			<?php echo $before_widget; ?>
+				<?php echo $before_title . $title . $after_title; ?>
+				<ul id="recentcomments"><?php
+				if ( $commented_posts ) : foreach ($commented_posts as $comment) :
+				echo  '<li class="recentcomments"><a href="'. get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>&nbsp;('. $comment->comment_count .')</li>';
+				endforeach; endif;?></ul>
+			<?php echo $after_widget; ?>
+	<?php
+	}
+	
+	function widget_recently_commented_posts_delete_cache() {
+		wp_cache_delete( 'recently_commented_posts', 'widget' );
+	}
+
+	function widget_recently_commented_posts_control() {
+		$options = $newoptions = get_option('bsuite_recently_commented_posts');
+		if ( $_POST['bsuite-recently-commented-posts-submit'] ) {
+			$newoptions['title'] = strip_tags(stripslashes($_POST['bsuite-recently-commented-posts-title']));
+			$newoptions['number'] = (int) $_POST['bsuite-recently-commented-posts-number'];
+		}
+		if ( $options != $newoptions ) {
+			$options = $newoptions;
+			update_option('bsuite_recently_commented_posts', $options);
+			delete_recent_comments_cache();
+		}
+		$title = attribute_escape($options['title']);
+		if ( !$number = (int) $options['number'] )
+			$number = 5;
+	?>
+				<p><label for="bsuite-recently-commented-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bsuite-recently-commented-posts-title" name="bsuite-recently-commented-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
+				<p><label for="bsuite-recently-commented-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-recently-commented-posts-number" name="bsuite-recently-commented-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
+				<input type="hidden" id="bsuite-recently-commented-posts-submit" name="bsuite-recently-commented-posts-submit" value="1" />
+	<?php
+	}
+	
+	function widget_recently_commented_posts_register() {
+		$class = array('classname' => 'bsuite_recently_commented_posts');
+		wp_register_sidebar_widget('bsuite-recently-commented-posts', __('bSuite Recently Commented'), array($this, 'widget_recently_commented_posts'), $class);
+		wp_register_widget_control('bsuite-recently-commented-posts', __('bSuite Recently Commented'), array($this, 'widget_recently_commented_posts_control'), $class, 'width=320&height=90');
+	
+		if ( is_active_widget('widget_recently_commented_posts') ){
+			add_action('wp_head', 'wp_widget_recent_comments_style');
+			add_action( 'comment_post', array(&$this, 'widget_recently_commented_posts_delete_cache' ));
+			add_action( 'wp_set_comment_status', array(&$this, 'widget_recently_commented_posts_delete_cache' ));
+		}
+	}
+
+	public function widgets_register(){
+		$this->widget_recently_commented_posts_register();
+
+		wp_register_sidebar_widget('bsuite-related-posts', __('bSuite Related Posts'), array(&$this, 'widget_related_posts'), 'bsuite_related_posts');
+		wp_register_widget_control('bsuite-related-posts', __('bSuite Related Posts'), array(&$this, 'widget_related_posts_control'), 'width=320&height=90');
+	}
+	// end widgets
+
+
+
+	// administrivia
 	function createtables() {
 		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_createtables.php');
 	}
