@@ -34,7 +34,7 @@ if($_POST['Options'] == __('Re-initialize Tables', 'bsuite')){
 
 }else if($_REQUEST['Options'] == __('Rebuild bsuite metadata index', 'bsuite')){		
 	echo '<div class="updated"><p><strong>' . __('Rebuilding bsuite metadata index.', 'bsuite') . '</strong></p>';
-	self::rebuildmetatables();
+	$this->rebuildmetatables();
 	echo '</div>';
 }
 

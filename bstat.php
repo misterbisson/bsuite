@@ -1,0 +1,497 @@
+<?php
+/*
+Plugin Name: bSuite bStat
+Plugin URI: http://maisonbisson.com/blog/bsuite/bstat
+Description: Stats tracking, part of the bSuite collection of blog tools
+Version: 3.0
+Author: Casey Bisson
+Author URI: http://maisonbisson.com/blog/
+*/
+
+/*  Copyright 2005 - 2007  Casey Bisson
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
+class bStat {
+
+	function bStat(){
+	
+		// define the tables
+		global $wpdb;
+		$this->hits_table = $wpdb->prefix . 'bsuite3_hits';
+		$this->refs_table = $wpdb->prefix . 'bsuite3_refs';
+
+		// get the options
+//		$this->options = unserialize(get_option('bStat3'));
+		$this->ktnxbye = FALSE;
+
+		// register hooks
+		add_filter('the_content', array(&$this, 'hitit'));
+
+		// activation and menu hooks
+		register_activation_hook(__FILE__, array(&$this, 'createtables'));
+		add_action('widgets_init', array(&$this, 'widgets_register'));
+//		add_action('admin_menu', array(&$this, 'addmenus'));
+		// end register WordPress hooks
+
+		// register the taxonomy for search terms
+		register_taxonomy( 'bsuite_search' , 'post' );
+	}
+
+	function hitit(&$content){
+
+		// nonce this
+		if($this->ktnxbye)
+			return($content);
+		
+		global $wp_query;
+
+		$id = 1; // if this hit can't be pinned on something else, we give it to post #1
+		if(is_singular())
+			$id = $wp_query->posts[0]->ID;
+		
+		$this->hit_post($id);
+		$this->hit_ref($id);
+		
+		$this->ktnxbye = TRUE;
+
+		// we're using the the_content hook because wp_head is theme dependent,
+		// and template_redirect and loop_start could execute repeatedly 
+		// and defied my nonce-ing attempts 
+		return($content);		
+	}
+
+
+	function hit_post($post_id) {	
+		global $wpdb;
+	
+		if($post_id = (int) $post_id){
+			$request = "INSERT INTO $this->hits_table
+						(post_id, hit_count, hit_date) 
+						VALUES ($post_id, 1, NOW())
+						ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;";
+			$wpdb->query($request);
+			return(TRUE);
+		}
+		return(FALSE);
+	}
+
+	function hit_ref($post_id) {
+		global $wpdb, $bsuite;
+		$search = $this->get_search_terms($this->get_search_engine());
+
+		if(empty($search))
+			return(FALSE);
+		
+		// if we've got the full bsuite, then 
+		// set the object var so everybody can use this data
+		if(!empty($bsuite)){
+			$bsuite->the_search_array = $search;
+			$bsuite->the_search_terms = implode($search, ' ');
+		}
+
+		// check if this search is already in the terms table
+		if(!is_term(implode($search, ' ')))
+			wp_insert_term(implode($search, ' '), 'bsuite_search');
+
+		// it's in the terms table, what's the id?
+		$term_id = is_term(implode($search, ' '));
+
+		// write it to the bsuite3_refs table with date
+		if(!empty($term_id) && $post_id = (int) $post_id){
+			$request = "INSERT INTO $this->refs_table
+						(post_id, term_id, hit_count, hit_date) 
+						VALUES ($post_id, $term_id, 1, NOW())
+						ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;";
+			$wpdb->query($request);
+		}
+
+		// add it to the post's terms
+		if(is_singular())
+			wp_set_object_terms($post_id, implode($search, ' '), 'bsuite_search', TRUE);
+		
+		return(TRUE);
+	}
+
+	function get_search_engine() {
+		// a lot of inspiration and code for this function was taken from
+		// Search Hilite by Ryan Boren and Matt Mullenweg
+		global $wp_query;
+		if( empty($_SERVER['HTTP_REFERER']) && empty($wp_query->query_vars['s']))
+			return false;
+
+		if ( is_search() )
+			return('internal');
+
+		$referer = urldecode($_SERVER['HTTP_REFERER']);
+		if (preg_match('|^http://(www)?\.?google.*|i', $referer))
+			return('google');
+	
+		if (preg_match('|^http://search\.yahoo.*|i', $referer))
+			return('yahoo');
+
+		if (preg_match('|^http://search\.lycos.*|i', $referer))
+			return('lycos');
+	
+		$siteurl = get_option('home');
+		if (preg_match("#^$siteurl#i", $referer))
+			return('internal');
+	
+		return(FALSE);
+	}
+
+	function get_search_terms($engine = 'google') {
+		// a lot of inspiration and code for this function was taken from
+		// Search Hilite by Ryan Boren and Matt Mullenweg
+		if(empty($engine))
+			return(FALSE);
+
+		$referer = urldecode($_SERVER['HTTP_REFERER']);
+		$query_array = array();
+		switch ($engine) {
+		case 'google':
+			// Google query parsing code adapted from Dean Allen's
+			// Google Hilite 0.3. http://textism.com
+			$query_terms = preg_replace('/^.*q=([^&]+)&?.*$/i','$1', $referer);
+			$query_terms = preg_replace('/\'|"/', '', $query_terms);
+			$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
+			break;
+	
+		case 'lycos':
+			$query_terms = preg_replace('/^.*query=([^&]+)&?.*$/i','$1', $referer);
+			$query_terms = preg_replace('/\'|"/', '', $query_terms);
+			$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
+			break;
+	
+		case 'yahoo':
+			$query_terms = preg_replace('/^.*p=([^&]+)&?.*$/i','$1', $referer);
+			$query_terms = preg_replace('/\'|"/', '', $query_terms);
+			$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
+			break;
+			
+		case 'internal':
+			$search = get_query_var('s');
+			$search_terms = get_query_var('search_terms');
+	
+			if (!empty($search_terms)) {
+				$query_array = $search_terms;
+			} else if (!empty($search)) {
+				$query_array = array($search);
+			} else {
+				$query_terms = preg_replace('/^.*s=([^&]+)&?.*$/i','$1', $referer);
+				if(preg_match('|^http://|i', $query_terms))
+					return(FALSE);
+				$query_terms = preg_replace('/\'|"/', '', $query_terms);
+				$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
+			}
+		}
+		
+		return $query_array;
+	}
+
+	function pop_posts( $args = '' ) {
+		global $wpdb;
+
+		$defaults = array(
+			'count' => 15,
+			'return' => 'formatted',
+			'template' => '<li><a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)</li>'
+		);
+		$args = wp_parse_args( $args, $defaults );
+	
+		$date = 'AND hit_date = NOW()';
+		if($args['days'] > 1)
+			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
+	
+		$limit = 'LIMIT '. (0 + $args['count']);
+	
+	
+		$request = "SELECT post_id, SUM(hit_count) AS hit_count
+			FROM $this->hits_table
+			WHERE 1=1
+			$date
+			GROUP BY post_id
+			ORDER BY hit_count DESC
+			$limit";
+		$result = $wpdb->get_results($request, ARRAY_A);
+
+		if(empty($result))
+			return(NULL);
+
+		if($args['return'] == 'array')
+			return($result);
+
+		if($args['return'] == 'formatted'){
+			$list = '';
+			foreach($result as $post){
+				$list .= str_replace(array('%%title%%','%%hits%%','%%link%%'), array(get_the_title($post['post_id']), $post['hit_count'], get_permalink($post['post_id'])), $args['template']);
+			}
+			return($list);
+		}
+	}
+
+	function pop_refs( $args = '' ) {
+		global $wpdb;
+
+		$defaults = array(
+			'count' => 15,
+			'return' => 'formatted',
+			'template' => '<li>%%title%%&nbsp;(%%hits%%)</li>'
+		);
+		$args = wp_parse_args( $args, $defaults );
+	
+		$date = 'AND hit_date = NOW()';
+		if($args['days'] > 1)
+			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
+	
+		$limit = 'LIMIT '. (0 + $args['count']);
+	
+	
+		$request = "SELECT term_id, SUM(hit_count) AS hit_count
+			FROM $this->refs_table
+			WHERE 1=1
+			$date
+			GROUP BY term_id
+			ORDER BY hit_count DESC
+			$limit";
+
+		$result = $wpdb->get_results($request, ARRAY_A);
+		
+		if(empty($result))
+			return(NULL);
+
+		if($args['return'] == 'array')
+			return($result);
+
+		if($args['return'] == 'formatted'){
+			$list = '';
+			foreach($result as $row){
+				$term = get_term($row['term_id'], 'bsuite_search');
+				$list .= str_replace(array('%%title%%','%%hits%%'), array($term->name, $row['hit_count']), $args['template']);
+			}		
+			return($list);
+		}
+	}
+
+
+	// widgets
+	function widget_popular_posts($args) {
+		global $post, $wpdb;
+
+		extract($args, EXTR_SKIP);
+		$options = get_option('bstat_pop_posts');
+		$title = empty($options['title']) ? __('Popular Posts') : $options['title'];
+		if ( !$number = (int) $options['number'] )
+			$number = 5;
+		else if ( $number < 1 )
+			$number = 1;
+		else if ( $number > 15 )
+			$number = 15;
+
+		if ( !$days = (int) $options['days'] )
+			$days = 7;
+		else if ( $days < 1 )
+			$days = 1;
+		else if ( $days > 30 )
+			$days = 30;
+
+		if ( !$pop_posts = wp_cache_get( 'bstat_pop_posts', 'widget' ) ) {
+			$pop_posts = $this->pop_posts("limit=$number&days=$days");
+			wp_cache_add( 'bstat_pop_posts', $pop_posts, 'widget', 300 );
+		}
+
+		if ( !empty($pop_posts) ) {
+?>
+			<?php echo $before_widget; ?>
+				<?php echo $before_title . $title . $after_title; ?>
+				<ul id="bstat-pop-posts"><?php
+				echo $pop_posts;
+				?></ul>
+			<?php echo $after_widget; ?>
+<?php
+		}
+	}
+
+	function widget_popular_posts_delete_cache() {
+		wp_cache_delete( 'bstat_pop_posts', 'widget' );
+	}
+
+	function widget_popular_posts_control() {
+		$options = $newoptions = get_option('bstat_pop_posts');
+		if ( $_POST['bstat-pop-posts-submit'] ) {
+			$newoptions['title'] = strip_tags(stripslashes($_POST['bstat-pop-posts-title']));
+			$newoptions['number'] = (int) $_POST['bstat-pop-posts-number'];
+			$newoptions['days'] = (int) $_POST['bstat-pop-posts-days'];
+		}
+		if ( $options != $newoptions ) {
+			$options = $newoptions;
+			update_option('bstat_pop_posts', $options);
+			$this->widget_popular_posts_delete_cache();
+		}
+		$title = attribute_escape($options['title']);
+		if ( !$number = (int) $options['number'] )
+			$number = 5;
+		if ( !$days = (int) $options['days'] )
+			$days = 7;
+	?>
+				<p><label for="bstat-pop-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bstat-pop-posts-title" name="bstat-pop-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
+				<p><label for="bstat-pop-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-number" name="bstat-pop-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
+				<p><label for="bstat-pop-posts-days"><?php _e('In past x days (1 = today only):'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-days" name="bstat-pop-posts-days" type="text" value="<?php echo $days; ?>" /></label> <?php _e('(at most 30)'); ?></p>
+				<input type="hidden" id="bstat-pop-posts-submit" name="bstat-pop-posts-submit" value="1" />
+	<?php
+	}
+
+	function widget_popular_refs($args) {
+		global $post, $wpdb;
+
+		extract($args, EXTR_SKIP);
+		$options = get_option('bstat_pop_refs');
+		$title = empty($options['title']) ? __('Recent Search Terms') : $options['title'];
+		if ( !$number = (int) $options['number'] )
+			$number = 5;
+		else if ( $number < 1 )
+			$number = 1;
+		else if ( $number > 15 )
+			$number = 15;
+
+		if ( !$days = (int) $options['days'] )
+			$days = 7;
+		else if ( $days < 1 )
+			$days = 1;
+		else if ( $days > 30 )
+			$days = 30;
+
+		if ( !$pop_refs = wp_cache_get( 'bstat_pop_refs', 'widget' ) ) {
+			$pop_refs = $this->pop_refs("limit=$number&days=$days");
+			wp_cache_add( 'bstat_pop_refs', $pop_refs, 'widget', 300 );
+		}
+
+		if ( !empty($pop_refs) ) {
+?>
+			<?php echo $before_widget; ?>
+				<?php echo $before_title . $title . $after_title; ?>
+				<ul id="bstat-pop-refs"><?php
+				echo $pop_refs;
+				?></ul>
+			<?php echo $after_widget; ?>
+<?php
+		}
+	}
+
+	function widget_popular_refs_delete_cache() {
+		wp_cache_delete( 'bstat_pop_refs', 'widget' );
+	}
+
+	function widget_popular_refs_control() {
+		$options = $newoptions = get_option('bstat_pop_refs');
+		if ( $_POST['bstat-pop-refs-submit'] ) {
+			$newoptions['title'] = strip_tags(stripslashes($_POST['bstat-pop-refs-title']));
+			$newoptions['number'] = (int) $_POST['bstat-pop-refs-number'];
+			$newoptions['days'] = (int) $_POST['bstat-pop-refs-days'];
+		}
+		if ( $options != $newoptions ) {
+			$options = $newoptions;
+			update_option('bstat_pop_refs', $options);
+			$this->widget_popular_refs_delete_cache();
+		}
+		$title = attribute_escape($options['title']);
+		if ( !$number = (int) $options['number'] )
+			$number = 5;
+		if ( !$days = (int) $options['days'] )
+			$days = 7;
+	?>
+				<p><label for="bstat-pop-refs-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bstat-pop-refs-title" name="bstat-pop-refs-title" type="text" value="<?php echo $title; ?>" /></label></p>
+				<p><label for="bstat-pop-refs-number"><?php _e('Number of refs to show:'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-refs-number" name="bstat-pop-refs-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
+				<p><label for="bstat-pop-refs-days"><?php _e('In past x days (1 = today only):'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-refs-days" name="bstat-pop-refs-days" type="text" value="<?php echo $days; ?>" /></label> <?php _e('(at most 30)'); ?></p>
+				<input type="hidden" id="bstat-pop-refs-submit" name="bstat-pop-refs-submit" value="1" />
+	<?php
+	}
+
+	function widgets_register(){
+		wp_register_sidebar_widget('bstat-pop-posts', __('bStat Posts'), array(&$this, 'widget_popular_posts'), 'bstat-pop-posts');
+		wp_register_widget_control('bstat-pop-posts', __('bStat Posts'), array(&$this, 'widget_popular_posts_control'), 'width=320&height=90');
+
+		wp_register_sidebar_widget('bstat-pop-refs', __('bStat Refs'), array(&$this, 'widget_popular_refs'), 'bstat-pop-refs');
+		wp_register_widget_control('bstat-pop-refs', __('bStat Refs'), array(&$this, 'widget_popular_refs_control'), 'width=320&height=90');
+	}
+	// end widgets
+
+	function createtables() {
+		global $wpdb;
+		
+		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
+
+		dbDelta("
+			CREATE TABLE $this->hits_table (
+			  post_id bigint(20) unsigned NOT NULL default '0',
+			  hit_count smallint(6) unsigned NOT NULL default '0',
+			  hit_date date NOT NULL default '0000-00-00',
+			  PRIMARY KEY  (post_id,hit_date)
+			)
+			");
+
+		dbDelta("
+			CREATE TABLE $this->refs_table (
+			  post_id bigint(20) unsigned NOT NULL default '0',
+			  term_id bigint(20) unsigned NOT NULL default '0',
+			  hit_count smallint(6) unsigned NOT NULL default '0',
+			  hit_date date NOT NULL default '0000-00-00',
+			  PRIMARY KEY  (hit_date,term_id,post_id)
+			)
+			");
+	}
+}
+
+// now instantiate this object
+$bstat = & new bStat;
+
+/*
+// deprecated functions
+function bstat_todaypop($limit, $before, $after, $return = 0) {
+	if(!empty($return))
+		return($bstat->pop_posts("limit=$limit&days=0&template=$before<a href=\"%%link%%\">%%title%%</a>&nbsp;(%%hits%%)$after"));
+	echo $bstat->pop_posts("limit=$limit&days=0&template=$before<a href=\"%%link%%\">%%title%%</a>&nbsp;(%%hits%%)$after");
+}
+
+function bstat_recentpop($limit, $days, $before, $after, $return = 0) {
+	if(!empty($return))
+		return($bstat->pop_posts("limit=$limit&days=$days&template=$before<a href=\"%%link%%\">%%title%%</a>&nbsp;(%%hits%%)$after"));
+	echo $bstat->pop_posts("limit=$limit&days=$days&template=$before<a href=\"%%link%%\">%%title%%</a>&nbsp;(%%hits%%)$after");
+}
+
+function bstat_todayrefs($maxresults, $before, $after, $return = 0) {
+	if(!empty($return))
+		return($bstat->pop_refs("limit=$limit&days=0&template=$before%%title%%&nbsp;(%%hits%%)$after"));
+	echo $bstat->pop_refs("limit=$limit&days=0&template=$before%%title%%&nbsp;(%%hits%%)$after");
+}
+
+function bstat_recentrefs($maxresults, $days, $before, $after, $return = 0) {
+	if(!empty($return))
+		return($bstat->pop_refs("limit=$limit&days=$days&template=$before%%title%%&nbsp;(%%hits%%)$after"));
+	echo $bstat->pop_refs("limit=$limit&days=$days&template=$before%%title%%&nbsp;(%%hits%%)$after");
+}
+
+
+function bstat_hits($template = '%%hits%% hits, about %%avg%% daily', $post_id = NULL, $todayonly = 0, $return = NULL) {
+}
+// end function bstat_hits
+
+
+function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit = 1, $accurate = 4) {
+}
+*/
+
+?>

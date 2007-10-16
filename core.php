@@ -547,7 +547,7 @@ class bSuite {
 	
 	function bsuggestive_getposts($id = FALSE) {
 		global $post, $wpdb;
-
+		
 		$id = (int) $id;
 		if ( !$id )
 			$id = (int) $post->ID;
@@ -574,6 +574,7 @@ class bSuite {
 	}
 
 	function bsuggestive_the_related($before = '<li>', $after = '</li>') {
+		global $post;
 		$report = FALSE;
 
 		$id = (int) $post->ID;
@@ -904,7 +905,7 @@ class bSuite {
 		if ( $options != $newoptions ) {
 			$options = $newoptions;
 			update_option('bsuite_recently_commented_posts', $options);
-			delete_recent_comments_cache();
+			$this->widget_recently_commented_posts_delete_cache();
 		}
 		$title = attribute_escape($options['title']);
 		if ( !$number = (int) $options['number'] )
@@ -977,7 +978,6 @@ class bSuite {
 		} else {
 			$n = intval( $_GET[ 'n' ] );
 		}
-	
 		$posts = $wpdb->get_results("SELECT ID, post_content, post_title
 			FROM $wpdb->posts
 			ORDER BY ID
@@ -1017,5 +1017,13 @@ function the_related(){
 	global $bsuite;
 	echo $bsuite->bsuggestive_the_related();
 }
+
+// php4 compatibility, argh
+if(!function_exists('str_ireplace')){
+function str_ireplace($a, $b, $c){
+	return str_replace($a, $b, $c);
+}
+}
+
 
 ?>
