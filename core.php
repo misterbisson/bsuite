@@ -961,7 +961,39 @@ class bSuite {
 
 	function optionspage() {
 		global $wpdb;
-		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_admin.php');
+		//require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_admin.php');
+
+		//  apply new settings if form submitted
+		if($_REQUEST['Options'] == __('Rebuild bsuite metadata index', 'bsuite')){		
+			$this->rebuildmetatables();
+		}else if($_REQUEST['Options'] == __('Flush WP object cache', 'bsuite')){
+			wp_cache_flush();
+			echo '<div class="updated"><p><strong>' . __('WordPress object cache flushed.', 'bsuite') . '</strong></p></div>';
+		}else if($_REQUEST['Options'] == __('PHP Info', 'bsuite')){
+			phpinfo();
+		}
+
+
+		//  output settings/configuration form
+?>
+<div class="wrap">
+<h2><?php _e('Commands') ?></h2>
+<form method="post">
+
+<fieldset name="bsuite_general" class="options">
+	<table width="100%" cellspacing="2" cellpadding="5" class="editform">
+		<tr valign="top">
+			<div class="submit"><input type="submit" name="Options" value="<?php _e('Rebuild bsuite metadata index', 'bsuite') ?>" /> &nbsp; 
+			<input type="submit" name="Options" value="<?php _e('Flush WP object cache', 'bsuite') ?>" /> &nbsp; 
+			<input type="submit" name="Options" value="<?php _e('PHP Info', 'bsuite') ?>" /> &nbsp; 
+			</div>
+		</tr>
+	</table>
+</fieldset>
+
+</form>
+</div>
+<?php
 	}
 
 	function kses_allowedposttags() {
@@ -990,10 +1022,12 @@ class bSuite {
 		ignore_user_abort(TRUE);
 		$interval = 50;
 
-		if( isset( $_GET[ 'n' ] ) == false ) {
+
+		if( !isset( $_GET[ 'n' ] ) ) {
 			$n = 0;
+			$this->createtables();		
 		} else {
-			$n = intval( $_GET[ 'n' ] );
+			$n = (int) $_GET[ 'n' ] ;
 		}
 		$posts = $wpdb->get_results("SELECT ID, post_content, post_title
 			FROM $wpdb->posts
@@ -1001,6 +1035,7 @@ class bSuite {
 			LIMIT $n, $interval
 			", ARRAY_A);
 		if( is_array( $posts ) ) {
+			echo '<div class="updated"><p><strong>' . __('Rebuilding bsuite metadata index. Please be patient.', 'bsuite') . '</strong></p></div><div class="narrow">';
 			print "<ul>";
 			foreach( $posts as $post ) {
 				$this->searchsmart_upindex($post['ID'], $post['post_content'],  $post['post_title']);
@@ -1009,7 +1044,7 @@ class bSuite {
 			}
 			print "</ul>";
 			?>
-			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
 			<script language='javascript'>
 			<!--
 
@@ -1022,7 +1057,19 @@ class bSuite {
 			</script>
 			<?php
 		} else {
-			echo '<p><strong>'. __('bSuite metdata index rebuilt.', 'bsuite') .'</strong></p>';
+			echo '<div class="updated"><p><strong>'. __('bSuite metdata index rebuilt.', 'bsuite') .'</strong></p></div>';
+			?>
+			<script language='javascript'>
+			<!--
+
+			function nextpage() {
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php";
+			}
+			setTimeout( "nextpage()", 3000 );
+
+			//-->
+			</script>
+			<?php
 		}
 	}
 }
