@@ -37,6 +37,7 @@ class bSuite {
 		add_filter('save_post', array(&$this, 'innerindex_delete_cache'));
 		add_filter('publish_post', array(&$this, 'innerindex_delete_cache'));
 		add_filter('publish_page', array(&$this, 'innerindex_delete_cache'));
+		$this->kses_allowedposttags(); // allow IDs on H1-6 tags
 
 		// bsuggestive
 		add_filter('save_post', array(&$this, 'bsuggestive_delete_cache'));
@@ -963,6 +964,22 @@ class bSuite {
 		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_admin.php');
 	}
 
+	function kses_allowedposttags() {
+		global $allowedposttags;
+		$allowedposttags['h1']['id'] = array();
+		$allowedposttags['h1']['class'] = array();
+		$allowedposttags['h2']['id'] = array();
+		$allowedposttags['h2']['class'] = array();
+		$allowedposttags['h3']['id'] = array();
+		$allowedposttags['h3']['class'] = array();
+		$allowedposttags['h4']['id'] = array();
+		$allowedposttags['h4']['class'] = array();
+		$allowedposttags['h5']['id'] = array();
+		$allowedposttags['h5']['class'] = array();
+		$allowedposttags['h6']['id'] = array();
+		$allowedposttags['h6']['class'] = array();
+		return(TRUE);
+	}
 
 
 	function rebuildmetatables() {

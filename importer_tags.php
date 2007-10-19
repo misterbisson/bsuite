@@ -273,9 +273,9 @@ if(function_exists('register_importer')) {
 	register_importer($bsuite_import->importer_code, $bsuite_import->importer_name, $bsuite_import->importer_desc, array ($bsuite_import, 'dispatch')); 
 } 
 
-add_action('activate_'.plugin_basename(__FILE__), 'importerplugin_activate'); 
+add_action('activate_'.plugin_basename(__FILE__), 'bsuite_importer_tags_activate'); 
 
-function importerplugin_activate() { 
+function bsuite_importer_tags_activate() { 
 	global $wp_db_version; 
 	 
 	// Deactivate on pre 2.3 blogs 
