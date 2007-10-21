@@ -476,6 +476,8 @@ class bSuite {
 			'',
 			$content));
 
+		$content = apply_filters('bsuite_searchsmart_content', $content);
+
 		$title = preg_replace(
 			'/([[:punct:]])*/',
 			'',
@@ -483,7 +485,7 @@ class bSuite {
 
 		$request = "REPLACE INTO $this->search_table
 					(post_id, content, title) 
-					VALUES ($post_id, '". $content ."', '$title')";
+					VALUES ($post_id, '$content', '$title')";
 		
 		$wpdb->get_results($request);
 
@@ -519,7 +521,7 @@ class bSuite {
 		if(empty($the_tags[0]))
 			return FALSE;
 
-		return apply_filters('bsuite_suggestive_tags', $the_tags);
+		return apply_filters('bsuite_suggestive_tags', $the_tags, $id);
 	}
 	
 	function bsuggestive_query($the_tags, $id) {
@@ -538,10 +540,10 @@ class bSuite {
 						LEFT JOIN $wpdb->posts
 						ON post_id = ID
 						WHERE MATCH (content, title)
-						AGAINST ('". ereg_replace('[^a-z|A-Z|0-9| ]', ' ', implode(' ', $the_tags))) ."') AND post_id <> $id
+						AGAINST ('". ereg_replace('[^a-z|A-Z|0-9| ]', ' ', implode(' ', $the_tags)) ."') AND post_id <> $id
 						AND post_status = 'publish'
 						LIMIT 50
-						";
+						", $post_id);
 		}
 		return FALSE;
 	}
