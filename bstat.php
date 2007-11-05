@@ -32,7 +32,7 @@ class bStat {
 		// define the tables
 		global $wpdb;
 		$this->hits_table = $wpdb->prefix . 'bsuite3_hits';
-		$this->refs_table = $wpdb->prefix . 'bsuite3_refs';
+		$this->rterms_table = $wpdb->prefix . 'bsuite3_refs_terms';
 
 		// get the options
 //		$this->options = unserialize(get_option('bStat3'));
@@ -59,7 +59,7 @@ class bStat {
 		
 		global $wp_query;
 
-		$id = 1; // if this hit can't be pinned on something else, we give it to post #1
+		$id = 0; // if this hit can't be pinned on something else, we give it to post #0
 		if(is_singular())
 			$id = $wp_query->posts[0]->ID;
 		
@@ -91,6 +91,7 @@ class bStat {
 
 	function hit_ref($post_id) {
 		global $wpdb, $bsuite;
+
 		$search = $this->get_search_terms($this->get_search_engine());
 
 		if(empty($search))
@@ -112,7 +113,7 @@ class bStat {
 
 		// write it to the bsuite3_refs table with date
 		if(!empty($term_id) && $post_id = (int) $post_id){
-			$request = "INSERT INTO $this->refs_table
+			$request = "INSERT INTO $this->rterms_table
 						(post_id, term_id, hit_count, hit_date) 
 						VALUES ($post_id, $term_id, 1, NOW())
 						ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;";
@@ -122,7 +123,7 @@ class bStat {
 		// add it to the post's terms
 		if(is_singular())
 			wp_set_object_terms($post_id, implode($search, ' '), 'bsuite_search', TRUE);
-		
+
 		return(TRUE);
 	}
 
@@ -261,7 +262,7 @@ class bStat {
 	
 	
 		$request = "SELECT term_id, SUM(hit_count) AS hit_count
-			FROM $this->refs_table
+			FROM $this->rterms_table
 			WHERE 1=1
 			$date
 			GROUP BY term_id
@@ -444,7 +445,7 @@ class bStat {
 			");
 
 		dbDelta("
-			CREATE TABLE $this->refs_table (
+			CREATE TABLE $this->rterms_table (
 			  post_id bigint(20) unsigned NOT NULL default '0',
 			  term_id bigint(20) unsigned NOT NULL default '0',
 			  hit_count smallint(6) unsigned NOT NULL default '0',

@@ -12,7 +12,6 @@ Author URI: http://maisonbisson.com/blog/
 class bSuite {
 
 	function bSuite(){
-		$this->verso = 'a1';
 
 		global $wpdb;
 		$this->search_table = $wpdb->prefix . 'bsuite3_search';
@@ -61,6 +60,7 @@ class bSuite {
 		
 		// CMS goodies
 		add_action('dbx_page_advanced', array(&$this, 'insert_excerpt_form'));
+		add_action('dbx_page_sidebar', array(&$this, 'insert_category_form'));
 		add_action('edit_form_advanced', array(&$this, 'edit_post_form'));
 		add_action('edit_page_form', array(&$this, 'edit_page_form'));
 		add_action('widgets_init', array(&$this, 'widgets_register'));
@@ -804,6 +804,17 @@ class bSuite {
 		</div>
 		<?php
 	}
+
+	function edit_insert_category_form() {
+		?>
+		<fieldset id="categorydiv" class="dbx-box">
+		<h3 class="dbx-handle"><?php _e('Categories') ?></h3>
+		<div class="dbx-content">
+		<p id="jaxcat"></p>
+		<ul id="categorychecklist"><?php dropdown_categories(); ?></ul></div>
+		</fieldset>
+		<?php
+	}
 	// end adding tools to edit screens
 
 
@@ -1027,7 +1038,9 @@ class bSuite {
 
 		if( !isset( $_GET[ 'n' ] ) ) {
 			$n = 0;
+			$wpdb->hide_errors();
 			$this->createtables();		
+			$wpdb->show_errors();
 		} else {
 			$n = (int) $_GET[ 'n' ] ;
 		}
