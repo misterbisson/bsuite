@@ -134,6 +134,7 @@ class bSuite_Import {
 			wp_set_object_terms($object_id, $tag['term'], $tag['taxonomy'], TRUE);
 //			wp_set_object_terms($object_id, $tag['term'], 'post_tag', TRUE);
 		}//end foreach
+/*
 		if( $object_type = 'post' ){
 			$post = wp_get_single_post($object_id, ARRAY_A);
 			if($post['post_content'] <> $tags['content']){
@@ -142,6 +143,7 @@ class bSuite_Import {
 				wp_update_post($post);
 			}
 		}
+*/
 	}
 
 	function parse_tag( $tag ) {
