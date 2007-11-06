@@ -42,7 +42,7 @@ class bStat {
 		add_filter('the_content', array(&$this, 'hitit'));
 
 		// activation and menu hooks
-		register_activation_hook(__FILE__, array(&$this, 'createtables'));
+		register_activation_hook(__FILE__, array(&$this, 'activate'));
 		add_action('widgets_init', array(&$this, 'widgets_register'));
 //		add_action('admin_menu', array(&$this, 'addmenus'));
 		// end register WordPress hooks
@@ -121,8 +121,9 @@ class bStat {
 		}
 
 		// add it to the post's terms
-		if(is_singular())
-			wp_set_object_terms($post_id, implode($search, ' '), 'bsuite_search', TRUE);
+		// disabled now because of memory problems it causes
+		//if(is_singular())
+		//	wp_set_object_terms($post_id, implode($search, ' '), 'bsuite_search', TRUE);
 
 		return(TRUE);
 	}
@@ -201,6 +202,52 @@ class bStat {
 		}
 		
 		return $query_array;
+	}
+
+	function post_hits( $args = '' ) {
+		global $wpdb;
+
+		$defaults = array(
+			'return' => 'formatted',
+			'days' => 0,
+			'template' => '<li><a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)</li>'
+		);
+		$args = wp_parse_args( $args, $defaults );
+
+		$post_id = (int) $args['post_id'] > 1 ? 'post_id = '. (int) $args['post_id'] : '';
+	
+		$date = '';
+		if($args['days'] > 1)
+			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
+	
+		// here's the query, but let's try to get the data from cache first
+		$request = "SELECT
+			FORMAT(SUM(hits), 0) AS hits, 
+			FORMAT(AVG(hits), 0) AS average
+			FROM $this->hits_table
+			WHERE 1=1
+			$post_id
+			$date
+			";
+
+		if ( !$result = wp_cache_get( 'bstat_post_hits_'. (int) $args['post_id'] .'_'. (int) $args['days'], 'default' ) ) {
+			$result = $wpdb->get_results($request, ARRAY_A);
+			wp_cache_add( 'bstat_post_hits_'. (int) $args['post_id'] .'_'. (int) $args['days'], $result, 'default', 300 );
+		}
+
+		if(empty($result))
+			return(NULL);
+
+		if($args['return'] == 'array')
+			return($result);
+
+		if($args['return'] == 'formatted'){
+			$list = '';
+			foreach($result as $post){
+				$list .= str_replace(array('%%avg%%','%%hits%%'), array($rows[0]->average, $rows[0]->hits)), $args['template']);
+			}
+			return($list);
+		}
 	}
 
 	function pop_posts( $args = '' ) {
@@ -430,6 +477,17 @@ class bStat {
 	}
 	// end widgets
 
+	function activate() {
+		$this->createtables();
+
+		// set some defaults for the widgets
+		if(!get_option('bstat_pop_posts'))
+			update_option('bstat_pop_posts', array('title' => 'Popular Posts', 'number' => 5, 'days' => 7));
+
+		if(!get_option('bstat_pop_refs'))
+			update_option('bstat_pop_refs', array('title' => 'Popular Searches', 'number' => 5, 'days' => 7));
+	}
+
 	function createtables() {
 		global $wpdb;
 		
@@ -459,40 +517,121 @@ class bStat {
 // now instantiate this object
 $bstat = & new bStat;
 
-/*
 // deprecated functions
 function bstat_todaypop($limit, $before, $after, $return = 0) {
 	if(!empty($return))
-		return($bstat->pop_posts("limit=$limit&days=0&template=$before<a href=\"%%link%%\">%%title%%</a>&nbsp;(%%hits%%)$after"));
-	echo $bstat->pop_posts("limit=$limit&days=0&template=$before<a href=\"%%link%%\">%%title%%</a>&nbsp;(%%hits%%)$after");
+		return($bstat->pop_posts(array('limit' => $limit, 'days' => 0, 'template' => $before .'<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)'. $after )));
+	echo $bstat->pop_posts(array('limit' => $limit, 'days' => 0, 'template' => $before .'<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)'. $after ));
 }
 
 function bstat_recentpop($limit, $days, $before, $after, $return = 0) {
 	if(!empty($return))
-		return($bstat->pop_posts("limit=$limit&days=$days&template=$before<a href=\"%%link%%\">%%title%%</a>&nbsp;(%%hits%%)$after"));
-	echo $bstat->pop_posts("limit=$limit&days=$days&template=$before<a href=\"%%link%%\">%%title%%</a>&nbsp;(%%hits%%)$after");
+		return($bstat->pop_posts(array('limit' => $limit, 'days' => $days, 'template' => $before .'<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)'. $after )));
+	echo $bstat->pop_posts(array('limit' => $limit, 'days' => $days, 'template' => $before .'<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)'. $after ));
 }
 
 function bstat_todayrefs($maxresults, $before, $after, $return = 0) {
 	if(!empty($return))
-		return($bstat->pop_refs("limit=$limit&days=0&template=$before%%title%%&nbsp;(%%hits%%)$after"));
-	echo $bstat->pop_refs("limit=$limit&days=0&template=$before%%title%%&nbsp;(%%hits%%)$after");
+		return($bstat->pop_refs(array('limit' => $limit, 'days' => 0, 'template' => $before .'%%title%%&nbsp;(%%hits%%)'. $after )));
+	echo $bstat->pop_refs(array('limit' => $limit, 'days' => 0, 'template' => $before .'%%title%%&nbsp;(%%hits%%)'. $after ));
 }
 
 function bstat_recentrefs($maxresults, $days, $before, $after, $return = 0) {
 	if(!empty($return))
-		return($bstat->pop_refs("limit=$limit&days=$days&template=$before%%title%%&nbsp;(%%hits%%)$after"));
-	echo $bstat->pop_refs("limit=$limit&days=$days&template=$before%%title%%&nbsp;(%%hits%%)$after");
+		return($bstat->pop_refs(array('limit' => $limit, 'days' => $days, 'template' => $before .'%%title%%&nbsp;(%%hits%%)'. $after )));
+	echo $bstat->pop_refs(array('limit' => $limit, 'days' => $days, 'template' => $before .'%%title%%&nbsp;(%%hits%%)'. $after ));
 }
-
 
 function bstat_hits($template = '%%hits%% hits, about %%avg%% daily', $post_id = NULL, $todayonly = 0, $return = NULL) {
+	if(!empty($return))
+		return($bstat->post_hits(array('post_id' => $post_id,'days' => $todayonly, 'template' => $template )));
+	echo $bstat->post_hits(array('post_id' => $post_id,'days' => $todayonly, 'template' => $template ));
 }
-// end function bstat_hits
-
 
 function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit = 1, $accurate = 4) {
+	global $wpdb, $bstat;
+
+	$post_id = (int) $post_id;
+
+	$for_post_id = $post_id > 1 ? 'post_id = '. $post_id : '';
+	
+	// here's the query, but let's try to get the data from cache first
+	$request = "SELECT
+		SUM(hits) AS hits, 
+		hit_date
+		FROM $bstat->hits_table
+		WHERE 1=1
+		$for_post_id
+		";
+
+	if ( !$result = wp_cache_get( 'bstat_post_pulse_'. $post_id, 'default' ) ) {
+		$result = $wpdb->get_results($request, ARRAY_A);
+		wp_cache_add( 'bstat_post_pulse_'. $post_id, $result, 'default', 300 );
+	}
+
+	if(empty($result))
+		return(NULL);
+
+	$tot = count($result);
+	
+	if(count($result)>0){
+		$point = null;
+		$point[] = 0;
+		foreach($result as $row){
+			$point[] = $row->hits;
+		}
+		$sum = array_sum($point);
+		$max = max($point);
+		$avg = round($sum / $tot);
+
+		if($accurate == 4){
+			$graphaccurate = get_option('bstat_graphaccurate');
+		}else{
+			$graphaccurate = $accurate;
+		}
+		
+		$minwidth = ($maxwidth / 8.1);
+		if($graphaccurate) $minwidth = ($maxwidth / 4.1);
+		
+		while(count($point) <= $minwidth){
+			$newpoint = null;
+			for ($i = 0; $i < count($point); $i++) {
+				if($i > 0){
+					if(!$graphaccurate) $newpoint[] = ((($point[$i-1] * 2) + $point[$i]) / 3);
+					$newpoint[] = (($point[$i-1] + $point[$i]) / 2);
+					if(!$graphaccurate) $newpoint[] = (($point[$i-1] + ($point[$i-1] * 2)) / 3);
+				}
+				$newpoint[] = $point[$i];
+			}
+			$point = $newpoint;
+		}
+
+
+		$tot = count($point);
+		$width = round($maxwidth / $tot);
+		if($width > 3)
+			$width = 4;
+
+		if(($width  * $tot) > $maxwidth)
+			$skipstart = (($width  * $tot) - $maxwidth) / $width;
+
+		$i = 1;
+		$hit_chart = "";
+		foreach($point as $row){
+			if((!$skipstart) || ($i > $skipstart)){
+				$hit_chart .= "<img src='" . get_settings('siteurl') . "/wp-content/spacer.gif' width='$width' height='" . round((($row) / $max) * 100) . "' alt='graph element.' />";
+				}
+			$i++;
+		}
+			
+		$pre = "<div id=\"bstat_pulse\">";
+		$post = "</div>";
+		$disptext = ($disptext == 1) ? (number_format($sum) .' total reads, averaging '. number_format($avg) .' daily') : ("");
+		$dispcredit = ($dispcredit == 1) ? ("<small><a href='http://maisonbisson.com/blog/search/bsuite' title='a pretty good WordPress plugin'>stats powered by bsuite</a></small>") : ("");
+		$disptext = (($disptext) || ($dispcredit)) ? ("\n<p>$disptext\n<br />$dispcredit</p>") : ("");
+		
+		echo($pre . $hit_chart . "\n" . $disptext . $post);
+	}
 }
-*/
 
 ?>

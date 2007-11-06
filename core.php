@@ -66,7 +66,7 @@ class bSuite {
 		add_action('widgets_init', array(&$this, 'widgets_register'));
 
 		// activation and menu hooks
-		register_activation_hook(__FILE__, array(&$this, 'createtables'));
+		register_activation_hook(__FILE__, array(&$this, 'activate'));
 		add_action('admin_menu', array(&$this, 'addmenus'));
 		// end register WordPress hooks
 
@@ -833,7 +833,7 @@ class bSuite {
 		
 		extract($args, EXTR_SKIP);
 		$options = get_option('bsuite_related_posts');
-		$title = empty($options['title']) ? __('Recently Commented Posts') : $options['title'];
+		$title = empty($options['title']) ? __('Related Posts') : $options['title'];
 		if ( !$number = (int) $options['number'] )
 			$number = 5;
 		else if ( $number < 1 )
@@ -954,6 +954,17 @@ class bSuite {
 
 
 	// administrivia
+	function activate() {
+		$this->createtables();
+
+		// set some defaults for the widgets
+		if(!get_option('bsuite_related_posts'))
+			update_option('bsuite_related_posts', array('title' => 'Related Posts', 'number' => 7));
+
+		if(!get_option('bsuite_recently_commented_posts'))
+			update_option('bsuite_recently_commented_posts', array('title' => 'Recently Commented Posts', 'number' => 7));
+	}
+
 	function createtables() {
 		global $wpdb;
 		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');

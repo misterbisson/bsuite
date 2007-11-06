@@ -59,7 +59,7 @@ class bStat_Import {
 
 	function header()  {
 		echo '<div class="wrap">';
-		echo '<h2>'.__('bSuite Tag Importer').'</h2>';
+		echo '<h2>'.__('bStat Upgrader').'</h2>';
 	}
 
 	function footer() {
@@ -68,7 +68,7 @@ class bStat_Import {
 
 	function greet() {
 		echo '<div class="narrow">';
-		echo '<p>'.__('Yeah baby! This imports hit counts and search engine terms from over versions of bSuite or bStat into the new bSuite bStat.').'</p>';
+		echo '<p>'.__('Yeah baby! This imports hit counts and search engine terms from older versions of bSuite or bStat into the new bSuite bStat.').'</p>';
 		echo '<p>'.__('This has not been tested much. Mileage may vary.').'</p>';
 		
 		if(!bstat){
@@ -165,7 +165,8 @@ class bStat_Import {
 							VALUES ({$ref['post_id']}, $term_id, {$ref['hits']}, '$date_ref')
 							ON DUPLICATE KEY UPDATE hit_count = hit_count + {$ref['hits']};
 						");
-					wp_set_object_terms($post_id, urldecode($ref['ref']), 'bsuite_search', TRUE);
+					// the following is disabled now because it causes memory problems
+					//wp_set_object_terms($ref['post_id'], urldecode($ref['ref']), 'bsuite_search', TRUE);
 				}
 				echo '. ';
 			}
