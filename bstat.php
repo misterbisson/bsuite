@@ -655,6 +655,7 @@ function bstat_discussionbycomment($limit, $before, $after, $return = 0) {
 		wp_cache_add( 'recent_comments', $comments, 'widget' );
 	}
 
+	$comments = ''; 
 	if( $commented_posts ) {
 		foreach( $commented_posts as $comment ) {
 			$comments .= $before . sprintf(__('%1$s on %2$s'), get_comment_author_link(), '<a href="'. get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>'). $after;
@@ -677,9 +678,10 @@ function bstat_discussionbypost($limit, $before, $after, $return = 0) {
 		wp_cache_add( 'recently_commented_posts', $commented_posts, 'widget' );
 	}
 
+	$comments = ''; 
 	if( $commented_posts ) {
 		foreach( $commented_posts as $comment ) {
-			$comments .= $before . get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>&nbsp;('. $comment->comment_count .')'. $after;
+			$comments .= $before .'<a href="'. get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>&nbsp;('. $comment->comment_count .')'. $after;
 		}
 	}
 
