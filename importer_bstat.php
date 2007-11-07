@@ -151,7 +151,7 @@ class bStat_Import {
 
 			foreach( $refs as $ref ) {
 				// check if this search is already in the terms table
-				if(!is_term(urldecode($ref['ref']), ' '))
+				if(!is_term(urldecode($ref['ref']), 'bsuite_search'))
 					wp_insert_term(urldecode($ref['ref']), 'bsuite_search');
 		
 				// it's in the terms table, what's the id?

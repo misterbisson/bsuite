@@ -105,7 +105,7 @@ class bStat {
 		}
 
 		// check if this search is already in the terms table
-		if(!is_term(implode($search, ' ')))
+		if(!is_term(implode($search, ' '), 'bsuite_search'))
 			wp_insert_term(implode($search, ' '), 'bsuite_search');
 
 		// it's in the terms table, what's the id?
@@ -214,7 +214,7 @@ class bStat {
 		);
 		$args = wp_parse_args( $args, $defaults );
 
-		$post_id = (int) $args['post_id'] > 1 ? 'post_id = '. (int) $args['post_id'] : '';
+		$post_id = (int) $args['post_id'] > 1 ? 'AND post_id = '. (int) $args['post_id'] : '';
 	
 		$date = '';
 		if($args['days'] > 1)
@@ -222,8 +222,8 @@ class bStat {
 	
 		// here's the query, but let's try to get the data from cache first
 		$request = "SELECT
-			FORMAT(SUM(hits), 0) AS hits, 
-			FORMAT(AVG(hits), 0) AS average
+			FORMAT(SUM(hit_count), 0) AS hits, 
+			FORMAT(AVG(hit_count), 0) AS average
 			FROM $this->hits_table
 			WHERE 1=1
 			$post_id
@@ -242,10 +242,7 @@ class bStat {
 			return($result);
 
 		if($args['return'] == 'formatted'){
-			$list = '';
-			foreach($result as $post){
-				$list .= str_replace(array('%%avg%%','%%hits%%'), array($rows[0]->average, $rows[0]->hits)), $args['template']);
-			}
+			$list = str_replace(array('%%avg%%','%%hits%%'), array($result[0]['average'], $result[0]['hits']), $args['template']);
 			return($list);
 		}
 	}
@@ -519,30 +516,35 @@ $bstat = & new bStat;
 
 // deprecated functions
 function bstat_todaypop($limit, $before, $after, $return = 0) {
+	global $bstat;
 	if(!empty($return))
 		return($bstat->pop_posts(array('limit' => $limit, 'days' => 0, 'template' => $before .'<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)'. $after )));
 	echo $bstat->pop_posts(array('limit' => $limit, 'days' => 0, 'template' => $before .'<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)'. $after ));
 }
 
 function bstat_recentpop($limit, $days, $before, $after, $return = 0) {
+	global $bstat;
 	if(!empty($return))
 		return($bstat->pop_posts(array('limit' => $limit, 'days' => $days, 'template' => $before .'<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)'. $after )));
 	echo $bstat->pop_posts(array('limit' => $limit, 'days' => $days, 'template' => $before .'<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)'. $after ));
 }
 
 function bstat_todayrefs($maxresults, $before, $after, $return = 0) {
+	global $bstat;
 	if(!empty($return))
 		return($bstat->pop_refs(array('limit' => $limit, 'days' => 0, 'template' => $before .'%%title%%&nbsp;(%%hits%%)'. $after )));
 	echo $bstat->pop_refs(array('limit' => $limit, 'days' => 0, 'template' => $before .'%%title%%&nbsp;(%%hits%%)'. $after ));
 }
 
 function bstat_recentrefs($maxresults, $days, $before, $after, $return = 0) {
+	global $bstat;
 	if(!empty($return))
 		return($bstat->pop_refs(array('limit' => $limit, 'days' => $days, 'template' => $before .'%%title%%&nbsp;(%%hits%%)'. $after )));
 	echo $bstat->pop_refs(array('limit' => $limit, 'days' => $days, 'template' => $before .'%%title%%&nbsp;(%%hits%%)'. $after ));
 }
 
 function bstat_hits($template = '%%hits%% hits, about %%avg%% daily', $post_id = NULL, $todayonly = 0, $return = NULL) {
+	global $bstat;
 	if(!empty($return))
 		return($bstat->post_hits(array('post_id' => $post_id,'days' => $todayonly, 'template' => $template )));
 	echo $bstat->post_hits(array('post_id' => $post_id,'days' => $todayonly, 'template' => $template ));
@@ -553,15 +555,16 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 
 	$post_id = (int) $post_id;
 
-	$for_post_id = $post_id > 1 ? 'post_id = '. $post_id : '';
+	$for_post_id = $post_id > 1 ? 'AND post_id = '. $post_id : '';
 	
 	// here's the query, but let's try to get the data from cache first
 	$request = "SELECT
-		SUM(hits) AS hits, 
+		SUM(hit_count) AS hits, 
 		hit_date
 		FROM $bstat->hits_table
 		WHERE 1=1
 		$for_post_id
+		GROUP BY hit_date
 		";
 
 	if ( !$result = wp_cache_get( 'bstat_post_pulse_'. $post_id, 'default' ) ) {
@@ -578,7 +581,7 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 		$point = null;
 		$point[] = 0;
 		foreach($result as $row){
-			$point[] = $row->hits;
+			$point[] = $row['hits'];
 		}
 		$sum = array_sum($point);
 		$max = max($point);
@@ -612,6 +615,9 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 		if($width > 3)
 			$width = 4;
 
+		if($width < 1)
+			$width = 1;
+
 		if(($width  * $tot) > $maxwidth)
 			$skipstart = (($width  * $tot) - $maxwidth) / $width;
 
@@ -619,7 +625,7 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 		$hit_chart = "";
 		foreach($point as $row){
 			if((!$skipstart) || ($i > $skipstart)){
-				$hit_chart .= "<img src='" . get_settings('siteurl') . "/wp-content/spacer.gif' width='$width' height='" . round((($row) / $max) * 100) . "' alt='graph element.' />";
+				$hit_chart .= "<img src='" . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . "/spacer.gif' width='$width' height='" . round((($row) / $max) * 100) . "' alt='graph element.' />";
 				}
 			$i++;
 		}
@@ -627,7 +633,7 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 		$pre = "<div id=\"bstat_pulse\">";
 		$post = "</div>";
 		$disptext = ($disptext == 1) ? (number_format($sum) .' total reads, averaging '. number_format($avg) .' daily') : ("");
-		$dispcredit = ($dispcredit == 1) ? ("<small><a href='http://maisonbisson.com/blog/search/bsuite' title='a pretty good WordPress plugin'>stats powered by bsuite</a></small>") : ("");
+		$dispcredit = ($dispcredit == 1) ? ("<small><a href='http://maisonbisson.com/blog/search/bsuite' title='a pretty good WordPress plugin'>stats powered by bSuite bStat</a></small>") : ("");
 		$disptext = (($disptext) || ($dispcredit)) ? ("\n<p>$disptext\n<br />$dispcredit</p>") : ("");
 		
 		echo($pre . $hit_chart . "\n" . $disptext . $post);
