@@ -551,6 +551,9 @@ function bstat_hits($template = '%%hits%% hits, about %%avg%% daily', $post_id =
 }
 
 function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit = 1, $accurate = 4) {
+	// this one isn't so much deprecated as, well, 
+	// the code sucks and I haven't re-written it yet
+
 	global $wpdb, $bstat;
 
 	$post_id = (int) $post_id;
@@ -638,6 +641,51 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 		
 		echo($pre . $hit_chart . "\n" . $disptext . $post);
 	}
+}
+
+function bstat_discussionbycomment($limit, $before, $after, $return = 0) {
+	// this function (like the one below) is here only for people who refuse
+	// to use widgets. If you do use widgets _and_ this function, you'll get
+	// cache collisions, as these use the same cache name as the widgets.
+	global $wpdb;
+	$limit = (int) $limit;
+
+	if ( !$comments = wp_cache_get( 'recent_comments', 'widget' ) ) {
+		$comments = $wpdb->get_results("SELECT comment_author, comment_author_url, comment_ID, comment_post_ID FROM $wpdb->comments WHERE comment_approved = '1' ORDER BY comment_date_gmt DESC LIMIT $limit");
+		wp_cache_add( 'recent_comments', $comments, 'widget' );
+	}
+
+	if( $commented_posts ) {
+		foreach( $commented_posts as $comment ) {
+			$comments .= $before . sprintf(__('%1$s on %2$s'), get_comment_author_link(), '<a href="'. get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>'). $after;
+		}
+	}
+
+	if(!empty($return))
+		return($comments);
+	echo $comments;
+}
+
+function bstat_discussionbypost($limit, $before, $after, $return = 0) {
+	// this one brought back from the dead specifically for cliffy.
+	// please use the widgets instead.
+	global $wpdb;
+	$limit = (int) $limit;
+
+	if ( !$commented_posts = wp_cache_get( 'recently_commented_posts', 'widget' ) ) {
+		$commented_posts = $wpdb->get_results("SELECT comment_ID, comment_post_ID, COUNT(comment_post_ID) as comment_count FROM $wpdb->comments WHERE comment_approved = '1' GROUP BY comment_post_ID ORDER BY comment_date_gmt DESC LIMIT $limit");
+		wp_cache_add( 'recently_commented_posts', $commented_posts, 'widget' );
+	}
+
+	if( $commented_posts ) {
+		foreach( $commented_posts as $comment ) {
+			$comments .= $before . get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>&nbsp;('. $comment->comment_count .')'. $after;
+		}
+	}
+
+	if(!empty($return))
+		return($comments);
+	echo $comments;
 }
 
 ?>

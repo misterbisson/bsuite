@@ -167,7 +167,7 @@ class bSuite {
 		global $id, $post_cache;
 
 		if ( !$menu = wp_cache_get( 'bsuite_innerindex_'. $id, 'default' ) ) {
-			$menu = $commented_posts = $this->innerindex_build($post_cache[1][$id]->post_content);
+			$menu = $this->innerindex_build($post_cache[1][$id]->post_content);
 			wp_cache_add( 'bsuite_innerindex_'. $id, $menu, 'default', 864000 );
 		}
 
@@ -864,7 +864,6 @@ class bSuite {
 		if ( $options != $newoptions ) {
 			$options = $newoptions;
 			update_option('bsuite_related_posts', $options);
-			delete_recent_comments_cache();
 		}
 		$title = attribute_escape($options['title']);
 		if ( !$number = (int) $options['number'] )
