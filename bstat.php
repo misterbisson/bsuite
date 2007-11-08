@@ -44,11 +44,31 @@ class bStat {
 		// activation and menu hooks
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
 		add_action('widgets_init', array(&$this, 'widgets_register'));
-//		add_action('admin_menu', array(&$this, 'addmenus'));
+		add_action('admin_menu', array(&$this, 'addmenus'));
 		// end register WordPress hooks
 
 		// register the taxonomy for search terms
 		register_taxonomy( 'bsuite_search' , 'post' );
+	}
+
+	function addmenus() {
+		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 2, __FILE__, array(&$this, 'reports'));
+	}
+
+	function reports() {
+		global $wpdb, $bsuite;
+		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/bstat_reports.php');
+	}
+	
+	function activate() {
+		$this->createtables();
+
+		// set some defaults for the widgets
+		if(!get_option('bstat_pop_posts'))
+			update_option('bstat_pop_posts', array('title' => 'Popular Posts', 'number' => 5, 'days' => 7));
+
+		if(!get_option('bstat_pop_refs'))
+			update_option('bstat_pop_refs', array('title' => 'Popular Searches', 'number' => 5, 'days' => 7));
 	}
 
 	function hitit(&$content){
@@ -267,6 +287,7 @@ class bStat {
 		$request = "SELECT post_id, SUM(hit_count) AS hit_count
 			FROM $this->hits_table
 			WHERE 1=1
+			AND post_id <> 0
 			$date
 			GROUP BY post_id
 			ORDER BY hit_count DESC
@@ -473,17 +494,6 @@ class bStat {
 		wp_register_widget_control('bstat-pop-refs', __('bStat Refs'), array(&$this, 'widget_popular_refs_control'), 'width=320&height=90');
 	}
 	// end widgets
-
-	function activate() {
-		$this->createtables();
-
-		// set some defaults for the widgets
-		if(!get_option('bstat_pop_posts'))
-			update_option('bstat_pop_posts', array('title' => 'Popular Posts', 'number' => 5, 'days' => 7));
-
-		if(!get_option('bstat_pop_refs'))
-			update_option('bstat_pop_refs', array('title' => 'Popular Searches', 'number' => 5, 'days' => 7));
-	}
 
 	function createtables() {
 		global $wpdb;
