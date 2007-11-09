@@ -3,7 +3,7 @@
 Plugin Name: bSuite bStat
 Plugin URI: http://maisonbisson.com/blog/bsuite/bstat
 Description: Stats tracking, part of the bSuite collection of blog tools
-Version: 3.0
+Version: 3.01
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -497,6 +497,14 @@ class bStat {
 
 	function createtables() {
 		global $wpdb;
+
+		$charset_collate = '';
+		if ( version_compare(mysql_get_server_info(), '4.1.0', '>=') ) {
+			if ( ! empty($wpdb->charset) )
+				$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
+			if ( ! empty($wpdb->collate) )
+				$charset_collate .= " COLLATE $wpdb->collate";
+		}
 		
 		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
 
@@ -506,7 +514,7 @@ class bStat {
 			  hit_count smallint(6) unsigned NOT NULL default '0',
 			  hit_date date NOT NULL default '0000-00-00',
 			  PRIMARY KEY  (post_id,hit_date)
-			)
+			) $charset_collate
 			");
 
 		dbDelta("
@@ -516,7 +524,7 @@ class bStat {
 			  hit_count smallint(6) unsigned NOT NULL default '0',
 			  hit_date date NOT NULL default '0000-00-00',
 			  PRIMARY KEY  (hit_date,term_id,post_id)
-			)
+			) $charset_collate
 			");
 	}
 }

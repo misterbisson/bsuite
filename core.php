@@ -1,9 +1,9 @@
 <?php
 /*
 Plugin Name: bSuite
-Plugin URI: http://maisonbisson.com/blog/bsuite
+Plugin URI: http://maisonbisson.com/blog/bsuite/
 Description: It's okay for a few things, but you could probably do better. <a href="http://maisonbisson.com/blog/bsuite/core">Documentation here</a>.
-Version: 3.00 
+Version: 3.01 
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -966,6 +966,15 @@ class bSuite {
 
 	function createtables() {
 		global $wpdb;
+
+		$charset_collate = '';
+		if ( version_compare(mysql_get_server_info(), '4.1.0', '>=') ) {
+			if ( ! empty($wpdb->charset) )
+				$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
+			if ( ! empty($wpdb->collate) )
+				$charset_collate .= " COLLATE $wpdb->collate";
+		}
+
 		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
 		dbDelta("
 			CREATE TABLE $this->search_table (
@@ -974,7 +983,7 @@ class bSuite {
 				title text,
 				PRIMARY KEY  (post_id),
 				FULLTEXT KEY search (content, title)
-			)
+			) ENGINE=MyISAM $charset_collate
 			");
 	}
 
