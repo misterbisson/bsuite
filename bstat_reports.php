@@ -28,35 +28,29 @@
 
 <?php
 
-$before = "<li>";
-$after = "</li>\n";
-//$date  = date("Y-m-d");
-$bstat_period = get_settings('bstat_period');
-if(!$bstat_period)
-	$bstat_period = 8;
-$date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, date("Y")));
-
 $best_num = 10;
 $detail_lines = 25;
+$bstat_period = 90;
+$date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, date("Y")));
 
 ?>
-<table><tr valign='top'><td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_table WHERE hit_date = NOW()"); ?></ul>
+<table><tr valign='top'><td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_table WHERE hit_date = CURDATE()"); ?></ul>
 
 <h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_table"); ?></ul>
 
-<h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(NOW()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $this->hits_table WHERE hit_date > '$date'"); ?></ul>
+<h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $this->hits_table WHERE hit_date > '$date'"); ?></ul>
 
-<h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $this->hits_table WHERE hit_date = NOW()"); ?></ul></td>
+<h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $this->hits_table WHERE hit_date = CURDATE()"); ?></ul></td>
 
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, hit_date FROM $this->hits_table WHERE hit_date < NOW() GROUP BY hit_date ORDER BY hit_date DESC LIMIT $best_num"); ?>
+<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, hit_date FROM $this->hits_table WHERE hit_date < CURDATE() GROUP BY hit_date ORDER BY hit_date DESC LIMIT $best_num"); ?>
 
 <td><h4>Previous <?php echo $best_num; ?> Days</h4><ul><?php foreach($rows as $row){ echo '<li>'. $row->hit_count .' ('. $row->hit_date .')</li>'; } ?></ul></td>
 
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, SUM(hit_count) AS sort_order, hit_date FROM $this->hits_table WHERE hit_date < NOW() GROUP BY hit_date ORDER BY sort_order DESC LIMIT $best_num"); ?>
+<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, SUM(hit_count) AS sort_order, hit_date FROM $this->hits_table WHERE hit_date < CURDATE() GROUP BY hit_date ORDER BY sort_order DESC LIMIT $best_num"); ?>
 
 <td><h4>Best <?php echo $best_num; ?> Days</h4><ul><?php foreach($rows as $row){ echo '<li>'. $row->hit_count .' ('. $row->hit_date .')</li>'; } ?></ul></td>
 

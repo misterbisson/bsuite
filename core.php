@@ -890,7 +890,7 @@ class bSuite {
 			$number = 15;
 	
 		if ( !$commented_posts = wp_cache_get( 'recently_commented_posts', 'widget' ) ) {
-			$commented_posts = $wpdb->get_results("SELECT comment_ID, comment_post_ID, COUNT(comment_post_ID) as comment_count FROM $wpdb->comments WHERE comment_approved = '1' GROUP BY comment_post_ID ORDER BY comment_date_gmt DESC LIMIT $number");
+			$commented_posts = $wpdb->get_results("SELECT comment_ID, comment_post_ID, COUNT(comment_post_ID) as comment_count, MAX(comment_date_gmt) AS sort_order FROM $wpdb->comments WHERE comment_approved = '1' GROUP BY comment_post_ID ORDER BY sort_order DESC LIMIT $number");
 			wp_cache_add( 'recently_commented_posts', $commented_posts, 'widget' );
 		}
 	?>
