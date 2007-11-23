@@ -3,10 +3,127 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/blog/bsuite/
 Description: It's okay for a few things, but you could probably do better. <a href="http://maisonbisson.com/blog/bsuite/core">Documentation here</a>.
-Version: 3.01 
+Version: 3.02 
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
+
+$services_feed = array(
+	'bloglines' => array(
+		'name' => 'Bloglines'
+		, 'url' => 'http://www.bloglines.com/sub/{url_raw}'
+	)
+	, 'google' => array(
+		'name' => 'Google'
+		, 'url' => 'http://fusion.google.com/add?feedurl={url}'
+	)
+	, 'rssfwd' => array(
+		'name' => 'RSS:FWD Email'
+		, 'url' => 'http://www.rssfwd.com/rssfwd/preview?url={url}'
+	)
+);
+
+$services_translate = array(
+	'french' => array(
+		'name' => 'French'
+		, 'url' => 'http://translate.google.com/translate?u={url}&langpair=en%7Cfr'
+	)
+	, 'spanish' => array(
+		'name' => 'Spanish'
+		, 'url' => 'http://translate.google.com/translate?u={url}&langpair=en%7Ces'
+	)
+	, 'german' => array(
+		'name' => 'German'
+		, 'url' => 'http://translate.google.com/translate?u={url}&langpair=en%7Cde'
+	)
+	, 'japanese' => array(
+		'name' => 'Japanese'
+		, 'url' => 'http://translate.google.com/translate?u={url}&langpair=en%7Cja'
+	)
+	, 'korean' => array(
+		'name' => 'Korean'
+		, 'url' => 'http://translate.google.com/translate?u={url}&langpair=en%7Cko'
+	)
+	, 'chineses' => array(
+		'name' => 'Chinese (simplified)'
+		, 'url' => 'http://translate.google.com/translate?u={url}&langpair=en%7Czh-CN'
+	)
+	, 'chineset' => array(
+		'name' => 'Chinese (traditional)'
+		, 'url' => 'http://translate.google.com/translate?u={url}&langpair=en%7Czh-TW'
+	)
+	, 'russian' => array(
+		'name' => 'Russian'
+		, 'url' => 'http://translate.google.com/translate?u={url}&langpair=en%7Cru'
+	)
+);
+
+$services_bookmark = array(
+	'delicious' => array(
+		'name' => 'del.icio.us'
+		, 'url' => 'http://del.icio.us/post?url={url}&title={title}'
+	)
+	, 'facebook' => array(
+		'name' => 'Facebook'
+		, 'url' => 'http://www.facebook.com/share.php?u={url}'
+	)
+	, 'digg' => array(
+		'name' => 'Digg'
+		, 'url' => 'http://digg.com/submit?phase=2&url={url}&title={title}'
+	)
+	, 'stumbleupon' => array(
+		'name' => 'StumbleUpon'
+		, 'url' => 'http://www.stumbleupon.com/submit?url={url}&title={title}'
+	)
+	, 'reddit' => array(
+		'name' => 'reddit'
+		, 'url' => 'http://reddit.com/submit?url={url}&title={title}'
+	)
+	, 'blinklist' => array(
+		'name' => 'BlinkList'
+		, 'url' => 'http://blinklist.com/index.php?Action=Blink/addblink.php&Url={url}&Title={title}'
+	)
+	, 'newsvine' => array(
+		'name' => 'Newsvine'
+		, 'url' => 'http://www.newsvine.com/_tools/seed&save?popoff=0&u={url}&h={title}'
+	)
+	, 'furl' => array(
+		'name' => 'Furl'
+		, 'url' => 'http://furl.net/storeIt.jsp?u={url}&t={title}'
+	)
+	, 'tailrank' => array(
+		'name' => 'Tailrank'
+		, 'url' => 'http://tailrank.com/share/?link_href={url}&title={title}'
+	)
+	, 'magnolia' => array(
+		'name' => 'Ma.gnolia'
+		, 'url' => 'http://ma.gnolia.com/bookmarklet/add?url={url}&title={title}'
+	)
+	, 'netscape' => array(
+		'name' => 'Netscape'
+		, 'url' => ' http://www.netscape.com/submit/?U={url}&T={title}'
+	)
+	, 'yahoo_myweb' => array(
+		'name' => 'Yahoo! My Web'
+		, 'url' => 'http://myweb2.search.yahoo.com/myresults/bookmarklet?u={url}&t={title}'
+	)
+	, 'google_bmarks' => array(
+		'name' => 'Google Bookmarks'
+		, 'url' => '  http://www.google.com/bookmarks/mark?op=edit&bkmk={url}&title={title}'
+	)
+	, 'technorati' => array(
+		'name' => 'Technorati'
+		, 'url' => 'http://www.technorati.com/faves?add={url}'
+	)
+	, 'blinklist' => array(
+		'name' => 'BlinkList'
+		, 'url' => 'http://blinklist.com/index.php?Action=Blink/addblink.php&Url={url}&Title={title}'
+	)
+	, 'windows_live' => array(
+		'name' => 'Windows Live'
+		, 'url' => 'https://favorites.live.com/quickadd.aspx?marklet=1&mkt=en-us&url={url}&title={title}&top=1'
+	)
+);
 
 
 class bSuite {
@@ -16,7 +133,7 @@ class bSuite {
 		global $wpdb;
 		$this->search_table = $wpdb->prefix . 'bsuite3_search';
 
-		$this->options = unserialize(get_option('bsuite3'));
+//		$this->options = get_option('bsuite3');
 
 		//
 		// register hooks
@@ -53,6 +170,9 @@ class bSuite {
 		add_filter('posts_request', array(&$this, 'athooks_onsearch'), 8);
 		add_filter('get_breadcrumb', array(&$this, 'athooks_breadcrumbs'), 5, 2);
 		
+		// sharelinks
+		add_filter('template_redirect', array(&$this, 'sharelinks_redirect'), 8);
+
 		// searchsmart
 		add_filter('posts_request', array(&$this, 'searchsmart_query'), 10);
 		add_filter('template_redirect', array(&$this, 'searchsmart_onsingle'), 8);
@@ -64,6 +184,8 @@ class bSuite {
 		add_action('edit_form_advanced', array(&$this, 'edit_post_form'));
 		add_action('edit_page_form', array(&$this, 'edit_page_form'));
 		add_action('widgets_init', array(&$this, 'widgets_register'));
+
+		add_action('query_vars', array(&$this, 'set_query_vars'));
 
 		// activation and menu hooks
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
@@ -80,6 +202,10 @@ class bSuite {
 	}
 
 
+
+	function set_query_vars($vars){
+		return(array_unique(array_merge(array('bsuite_share'), $vars)));
+	}
 
 	//
 	// token functions
@@ -237,7 +363,10 @@ class bSuite {
 		return($content);
 	}
 	// end innerindex-related
-	
+
+	function feedlink(){
+		return(strtolower(substr($_SERVER['SERVER_PROTOCOL'], 0, strpos($_SERVER['SERVER_PROTOCOL'], '/'))) . '://' . $_SERVER['HTTP_HOST'] . add_query_arg('feed', 'rss', add_query_arg('bsuite_share')));
+	}
 	
 	//
 	// pagehook functions
@@ -301,7 +430,10 @@ class bSuite {
 		// $athooks[hook name][where to act (request or redirect)] = 'function name';
 
 		$athooks['related']['request'] = array(&$this, 'athook_get_related');
-		$athooks['related']['title'] = 'Related';
+		$athooks['related']['title'] = __('Related', 'bsuite');
+
+		$athooks['share']['redirect'] = array(&$this, 'athook_sharelinks');
+		$athooks['share']['title'] = __('Share This', 'bsuite');
 
 		return($athooks);
 	}
@@ -378,23 +510,41 @@ class bSuite {
 
 		if(($query_vars['p']) && ($the_tags = $this->bsuggestive_tags($query_vars['p']))){
 
+			status_header(200);
 			unset($wp_query->query_vars['attachment']);
-			$wp_query->query = 's='. implode('|', $the_tags);		
+			$wp_query->query['s'] =  implode('|', $the_tags);		
 			$wp_query->query_vars['s'] = implode('|', $the_tags);		
 			$wp_query->is_404 = FALSE;
 			$wp_query->is_attachment = FALSE;
 			$wp_query->is_search = TRUE;
 			$wp_query->is_page = FALSE;
 			$wp_query->is_single = FALSE;
-			$wp_query->is_404 = FALSE;
-			$wp_query->is_attachment = FALSE;
+			$wp_query->is_singular = FALSE;
 			$wp_query->is_archive = FALSE;
 			$wp_query->is_category = FALSE;
 
+			// re-add the searchsmart posts request filter to work around Scriblio
+			add_filter('posts_request', array(&$this, 'searchsmart_query'), 20);
 		}
 
 		return($search);
 	}
+
+	function athook_sharelinks(){
+		global $wp_query;
+	
+		$query_vars['p'] = $wp_query->athook['post'];
+		if($query_vars['p']){
+			$athook = $wp_query->athook;
+			query_posts("p={$query_vars['p']}&bsuite_share=1");
+			$wp_query->is_athook = TRUE;
+			$wp_query->athook = $athook;
+			status_header(200);
+			$this->sharelinks_redirect();
+		}
+		return(TRUE);
+	}
+
 	function athook_get_post($thing){
 		// get related items
 		global $wp;
@@ -404,6 +554,126 @@ class bSuite {
 	}
 	// end athook-related functions
 
+
+
+	//
+	// sharelinks
+	//
+	function sharelinks(){
+		global $wp_query;
+
+		$this->sharelinks_nonce = TRUE;
+	
+		// exit if 404
+		if($wp_query->is_404)
+			return(FALSE);
+	
+		// identify the based post ID, if any, and establish some basics
+		$post_id = FALSE;
+		if(!empty($wp_query->is_singular) && !empty($wp_query->query_vars['p']))
+			$post_id = $wp_query->query_vars['p'];
+		else if(!empty($wp_query->is_singular) && !empty($wp_query->queried_object_id))
+			$post_id = $wp_query->queried_object_id;
+	
+		if($post_id){
+			$the_permalink = urlencode(get_permalink($post_id));
+			$the_title = urlencode(get_the_title($post_id));
+			$the_excerpt = apply_filters('the_excerpt', get_the_excerpt());
+		}else{
+			$the_permalink = strtolower(substr($_SERVER['SERVER_PROTOCOL'], 0, strpos($_SERVER['SERVER_PROTOCOL'], '/'))) . '://' . $_SERVER['HTTP_HOST'] . add_query_arg('bsuite_share');
+	
+			unset($wp_query->query['bsuite_share']);
+			unset($wp_query->query['attachment']);
+			if(count($wp_query->query))
+				$the_title = get_bloginfo('name') .' ('. implode(array_unique(explode('|', strtolower(implode(array_values($wp_query->query), '|')))), ', ') .')';
+			else
+				$the_title = get_bloginfo('name');
+	
+			$the_excerpt = '';
+		}
+		$content = '';
+	
+		// the bookmark links 
+		$content .= '<h3 id="bsuite_share_bookmark">Bookmark this at</h3><ul>';
+		global $services_bookmark;
+		foreach ($services_bookmark as $key => $data) {
+			$content .= '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/'. $key .'.gif" width="16" height="16" alt="'. attribute_escape($data['name']) .' sharing icon">&nbsp;<a href="'. str_replace(array('{title}', '{url}'), array($the_title, $the_permalink), $data['url']) .'">'. $data['name'] .'</a></li>';
+		}
+		$content .= '</ul>';
+	
+		// the email links
+		$content .= '<h3 id="bsuite_share_email">Email this page</h3><ul><li><a href="mailto:?MIME-Version=1.0&Content-Type=text/html;&subject='. attribute_escape(urldecode($the_title)) .'&body=%0D%0AI found this at '.  attribute_escape(get_bloginfo('name')) .'%0D%0A'. attribute_escape(urldecode($the_permalink)) .'%0D%0A">Send this page using your computer&#039;s emailer</a></li></ul>';
+	
+		// the feed links
+		$content .= '<h3 id="bsuite_share_feed">Stay up to date</h3><ul>';
+		$feeds = array();
+		if($wp_query->is_singular)
+			$feeds[] = array('title' => 'Comments on this post', 'url' => get_post_comments_feed_link($post_id));
+		if($wp_query->is_search)
+			$feeds[] = array('title' => 'This Search', 'url' => $this->feedlink());
+		$feeds[] = array('title' => 'All Posts', 'url' => get_bloginfo('atom_url'));
+		$feeds[] = array('title' => 'All Comments', 'url' => get_bloginfo('comments_atom_url'));
+	
+		global $services_feed;
+		foreach ($feeds as $feed) {
+			$subscribe_links = array();
+			foreach ($services_feed as $key => $data) {
+				$subscribe_links[] = '<a href="'. str_replace(array('{url}', '{url_raw}'), array(urlencode($feed['url']), $feed['url']), $data['url']) .'">'. $data['name'] .'</a>';
+			}
+	
+			$content .= '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-feed-16x16.png" width="16" height="16" alt="'. attribute_escape($feed['title']) .' feed icon">&nbsp;<a href="'. $feed['url'] .'">'. $feed['title'] .'</a>. Subscribe via '.  implode($subscribe_links, ', ') .'.</li>';
+		}
+		$content .= '</ul>';
+	
+		// the translation links
+		$content .= '<h3 id="bsuite_share_translate">Automatically translate this to</h3><ul>';
+		global $services_translate;
+		foreach ($services_translate as $key => $data) {
+			$content .= '<li><a href="'. str_replace('{url}', $the_permalink, $data['url']) .'">'. $data['name'] .'</a></li>';
+		}
+		$content .= '</ul>';
+	
+		// powered by
+		$content .= '<p>Powered by <a href="http://maisonbisson.com/blog/bsuite">bSuite</a>.</p>';
+	
+		return(array('the_id' => $post_id, 'the_title' => urldecode($the_title), 'the_permalink' => urldecode($the_permalink), 'the_content' => $content, ));
+	}
+
+	function sharelinks_url(){
+		global $post, $wp_query;
+		if(($wp_query->in_the_loop && $post->post_type == 'post') || $wp_query->is_single && $post->post_type == 'post')
+			return(get_permalink($post->ID). '/share');
+		return(strtolower(substr($_SERVER['SERVER_PROTOCOL'], 0, strpos($_SERVER['SERVER_PROTOCOL'], '/'))) . '://' . $_SERVER['HTTP_HOST'] . add_query_arg('bsuite_share', 1));
+	}
+
+	function sharelinks_link($title = 'bookmark, share, and feed links'){
+		if($this->sharelinks_nonce)
+			return(FALSE);
+
+		return('<img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-share-16x16.gif" width="16" height="16" alt="bookmark, share, feed, and translate icon" />&nbsp;<a href="'. $this->sharelinks_url() .'" title="bookmark, share, feed, and translate links">'. $title .'</a>');
+	}
+
+	function sharelinks_redirect(){
+		global $wp_query, $post_cache;
+		if(!empty($wp_query->query_vars['bsuite_share'])){
+			if(!$share = $this->sharelinks())
+				return(FALSE);
+	
+			if(!$post_id = $share['the_id']){
+				$GLOBALS['wp_query'] = unserialize('O:8:"WP_Query":39:{s:10:"query_vars";a:40:{s:1:"p";i:0;s:5:"error";s:0:"";s:1:"m";i:0;s:7:"subpost";s:0:"";s:10:"subpost_id";s:0:"";s:10:"attachment";s:0:"";s:13:"attachment_id";i:0;s:4:"name";s:0:"";s:4:"hour";s:0:"";s:6:"static";s:0:"";s:8:"pagename";s:0:"";s:7:"page_id";i:0;s:6:"second";s:0:"";s:6:"minute";s:0:"";s:3:"day";i:0;s:8:"monthnum";i:0;s:4:"year";i:0;s:1:"w";i:0;s:13:"category_name";s:0:"";s:3:"tag";s:0:"";s:6:"tag_id";s:0:"";s:11:"author_name";s:0:"";s:4:"feed";s:0:"";s:2:"tb";s:0:"";s:5:"paged";s:0:"";s:14:"comments_popup";s:0:"";s:7:"preview";s:0:"";s:12:"category__in";a:0:{}s:16:"category__not_in";a:0:{}s:13:"category__and";a:0:{}s:7:"tag__in";a:0:{}s:11:"tag__not_in";a:0:{}s:8:"tag__and";a:0:{}s:12:"tag_slug__in";a:0:{}s:13:"tag_slug__and";a:0:{}s:9:"post_type";s:4:"post";s:14:"posts_per_page";i:10;s:8:"nopaging";b:0;s:5:"order";s:4:"DESC";s:7:"orderby";s:14:"post_date DESC";}s:7:"request";s:116:" SELECT   test23_posts.* FROM test23_posts  WHERE 1=1  AND ID = 938 AND post_type = "post"  ORDER BY post_date DESC ";s:10:"post_count";i:1;s:12:"current_post";i:-1;s:11:"in_the_loop";b:0;s:4:"post";O:8:"stdClass":24:{s:2:"ID";i:0;s:11:"post_author";s:1:"1";s:9:"post_date";s:0:"";s:13:"post_date_gmt";s:0:"";s:12:"post_content";s:0:"";s:10:"post_title";s:10:"Share This";s:13:"post_category";s:1:"0";s:12:"post_excerpt";s:0:"";s:11:"post_status";s:7:"publish";s:14:"comment_status";s:4:"open";s:11:"ping_status";s:4:"open";s:13:"post_password";s:0:"";s:9:"post_name";s:10:"share-this";s:7:"to_ping";s:0:"";s:6:"pinged";s:0:"";s:13:"post_modified";s:0:"";s:17:"post_modified_gmt";s:0:"";s:21:"post_content_filtered";s:0:"";s:11:"post_parent";s:1:"0";s:4:"guid";s:0:"";s:10:"menu_order";s:1:"0";s:9:"post_type";s:4:"post";s:14:"post_mime_type";s:0:"";s:13:"comment_count";s:1:"0";}s:8:"comments";N;s:13:"comment_count";i:0;s:15:"current_comment";i:-1;s:7:"comment";N;s:11:"found_posts";i:0;s:13:"max_num_pages";i:0;s:9:"is_single";b:1;s:10:"is_preview";b:0;s:7:"is_page";b:0;s:10:"is_archive";b:0;s:7:"is_date";b:0;s:7:"is_year";b:0;s:8:"is_month";b:0;s:6:"is_day";b:0;s:7:"is_time";b:0;s:9:"is_author";b:0;s:11:"is_category";b:0;s:6:"is_tag";b:0;s:9:"is_search";b:0;s:7:"is_feed";b:0;s:15:"is_comment_feed";b:0;s:12:"is_trackback";b:0;s:7:"is_home";b:0;s:6:"is_404";b:0;s:17:"is_comments_popup";b:0;s:8:"is_admin";b:0;s:13:"is_attachment";b:0;s:11:"is_singular";b:1;s:9:"is_robots";b:0;s:13:"is_posts_page";b:0;s:8:"is_paged";b:0;s:5:"query";s:5:"p=938";s:5:"posts";a:1:{i:0;R:47;}}');
+				$GLOBALS['wp_query']->post->post_date = $GLOBALS['wp_query']->post->post_date_gmt = $GLOBALS['wp_query']->post->post_modified = $GLOBALS['wp_query']->post->post_modified_gmt = date('Y-m-d H-i-s');
+				$GLOBALS['wp_query']->post->post_title = $share['the_title'];
+				update_post_caches($GLOBALS['wp_query']->posts);
+			}
+				
+			if(!ereg('^'.__('Share This', 'bsuite'), $post_cache[1][$post_id]->post_title))
+				$post_cache[1][$post_id]->post_title = __('Share This', 'bsuite') .': '. $post_cache[1][$post_id]->post_title;
+			$post_cache[1][$post_id]->post_content = $share['the_content'];
+			$post_cache[1][$post_id]->comment_status = 'closed';
+			$posts = $wp_query->posts;
+		}
+	}
+	// end sharelinks related functions
 
 
 	//
@@ -443,6 +713,7 @@ class bSuite {
 				AND (post_type IN ('post', 'page') AND (post_status IN ('publish', 'private')))
 				ORDER BY relevance DESC LIMIT $limit[1]
 				";
+
 			
 //echo "<pre>$query</pre>";
 		}
@@ -805,7 +1076,7 @@ class bSuite {
 		<?php
 	}
 
-	function edit_insert_category_form() {
+	function insert_category_form() {
 		?>
 		<fieldset id="categorydiv" class="dbx-box">
 		<h3 class="dbx-handle"><?php _e('Categories') ?></h3>
@@ -875,6 +1146,26 @@ class bSuite {
 	<?php
 	}
 
+	function widget_sharelinks($args) {
+		global $post, $wpdb;
+
+		if(is_404() || $this->sharelinks_nonce) // no reason to run if it's a 404
+			return(FALSE);
+
+		extract($args, EXTR_SKIP);
+		$options = get_option('bsuite_sharelinks');
+		$title = empty($options['title']) ? __('Bookmark &amp; Feeds') : $options['title'];
+
+		echo $before_widget;
+		echo $before_title . $title . $after_title;
+		echo '<ul id="sharelinks">';
+		echo '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-share-16x16.gif" width="16" height="16" alt="bookmark and share icon" />&nbsp;<a href="'. $this->sharelinks_url() .'#bsuite_share_bookmark" title="bookmark and share links">Bookmark and Share</a></li>';
+		echo '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-feed-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="'. $this->sharelinks_url() .'#bsuite_share_feed" title="RSS and feed links">RSS Feeds</a></li>';
+		echo '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-translate-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="'. $this->sharelinks_url() .'#bsuite_share_translate" title="RSS and feed links">Translate</a></li>';
+		echo '</ul>';
+		echo $after_widget;
+	}
+	
 	function widget_recently_commented_posts($args) {
 		// this code pretty much directly rips off WordPress' native recent comments widget,
 		// the difference here is that I'm displaying recently commented posts, not recent comments.
@@ -947,6 +1238,8 @@ class bSuite {
 
 		wp_register_sidebar_widget('bsuite-related-posts', __('bSuite Related Posts'), array(&$this, 'widget_related_posts'), 'bsuite_related_posts');
 		wp_register_widget_control('bsuite-related-posts', __('bSuite Related Posts'), array(&$this, 'widget_related_posts_control'), 'width=320&height=90');
+
+		wp_register_sidebar_widget('bsuite-sharelinks', __('bSuite Share Links'), array(&$this, 'widget_sharelinks'), 'bsuite_sharelinks');
 	}
 	// end widgets
 

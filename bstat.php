@@ -3,7 +3,7 @@
 Plugin Name: bSuite bStat
 Plugin URI: http://maisonbisson.com/blog/bsuite/bstat
 Description: Stats tracking, part of the bSuite collection of blog tools
-Version: 3.01
+Version: 3.02
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */

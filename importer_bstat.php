@@ -174,7 +174,7 @@ class bStat_Import {
 
 		if(count($dates_hits) == 0 && count($dates_refs) == 0){
 			echo '<p><strong>Yep. We&#039;re done.</strong></p>';
-			echo '<p>Now, go deactivate this plugin. You don&#039;t need it anymore. (Running it again will inflate your stats, but thats cheating.)</p>';
+			echo '<p>Now, go deactivate this plugin. You don&#039;t need it anymore. (Running it again will inflate your stats, but that&#039;s cheating.)</p>';
 		} else {
 			?>
 			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="<?php echo get_option('siteurl'); ?>/wp-admin/admin.php?import=<?php echo $this->importer_code; ?>&step=2"><?php _e("Next Page"); ?></a> </p>

@@ -20,7 +20,7 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
-
+require_once (ABSPATH . WPINC . '/rss.php');
 ?>
 
 <div class="wrap">
@@ -146,6 +146,70 @@ if(!empty($sort)){
 
 <p><strong>Note on climbers and losers:</strong> values for "today" are predicted totals for the day based on current data. They should not be mistaken to represent the actual number of page loads in a day, as they will fluctuate throughout the day.</p>
 
+</div>
+
+<div class="wrap">
+<h2><?php _e('Referrers') ?></h2>
+
+<table><tr valign='top'><td><h4>Incoming Search Terms</h4><ol>
+<?php
+//
+// Incoming Search Terms
+//
+
+$refs = $this->pop_refs("limit=$detail_lines&days=$bstat_period");
+if(!empty($refs))
+	echo $refs;
+else
+	echo '<li>No Data Yet.</li>';
+?>
+</ol></td>
+
+<?php
+//
+// Referrers from Google Blog Search
+//
+$rss_feed = 'http://blogsearch.google.com/blogsearch_feeds?hl=en&scoring=d&ie=utf-8&num='. $detail_lines .'&output=rss&partner=bsuite&q=link:' . trailingslashit( get_option('home') );
+$more_link = apply_filters( 'dashboard_incoming_links_link', 'http://blogsearch.google.com/blogsearch?hl=en&scoring=d&partner=bsuite&q=link:' . trailingslashit( get_option('home') ) );
+
+echo '<td><h4>Referrers from <a href="'. htmlspecialchars( $more_link ) .'">Google Blog Search</a></h4><ol>';
+
+$rss = @fetch_rss( $rss_feed );
+if ( isset($rss->items) && 1 < count($rss->items) ) {
+	$rss->items = array_slice($rss->items, 0, $detail_lines);
+	foreach ($rss->items as $item ) {
+?>
+		<li><a href="<?php echo wp_filter_kses($item['link']); ?>"><?php echo wptexturize(wp_specialchars($item['title'])); ?></a></li>
+<?php
+	}
+}else{
+	echo '<li>No Data Yet.</li>';
+}
+?>
+</ol></td>
+
+<?php
+//
+// Referrers from Technorati
+//
+$rss_feed = 'http://feeds.technorati.com/cosmos/rss/?url='. trailingslashit(get_option('home')) .'&partner=bsuite';
+$more_link = 'http://www.technorati.com/cosmos/search.html?url=' . urlencode(trailingslashit( get_option('home') ) ) .'&partner=bsuite';
+
+echo '<td><h4>Referrers from <a href="'. htmlspecialchars( $more_link ) .'">Technorati</a></h4><ol>';
+
+$rss = @fetch_rss( $rss_feed );
+if ( isset($rss->items) && 1 < count($rss->items) ) {
+	$rss->items = array_slice($rss->items, 0, $detail_lines);
+	foreach ($rss->items as $item ) {
+?>
+		<li><a href="<?php echo wp_filter_kses($item['link']); ?>"><?php echo wptexturize(wp_specialchars($item['title'])); ?></a></li>
+<?php
+	}
+}else{
+	echo '<li>No Data Yet.</li>';
+}
+?>
+</ol></td></tr></table>
 </div>
 
 <div class="wrap">
