@@ -46,10 +46,11 @@ Full documentation and usage examples are available at <a href="http://maisonbis
 
 == Screenshots ==
 
-1. <a href="http://borkweb.com/">Matt Batchelder</a>'s <a href="http://borkweb.com/story/ajax-templating-and-the-separation-of-layout-and-logic">use of</a> the `[[innerindex]]` token. <a href="http://maisonbisson.com/blog/bsuite/core#11903_innerindex_1">Innerindex</a> automatically generates a list of headings in the page, with links to jump to them.
-2. <a href="http://www.plymouth.edu/library/">Lamson Library</a>'s <a href="http://www.plymouth.edu/library/by-subject/art-history">use of</a> the `[[pagemenu]]` token. <a href="http://maisonbisson.com/blog/bsuite/core#11903_pagemenu_1">Pagemenu</a> automatically generates a list of child pages for a given page. (<a href="http://maisonbisson.com/blog/bsuite/core#11903_using-tokens_1">The included tokens</a> are just a start, extend them with <a href="http://maisonbisson.com/blog/bsuite/slideshow">your own plugin</a>.)
-3. <a href="http://spiralbound.net/">Cliff Pearson</a>'s Quickstats report, part of bStat.
-4. <a href="http://spiralbound.net/">Cliff Pearson</a>'s page loads report, part of bStat.
-5. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bStat Posts widget, part of bStat that reports popular posts.
-6. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bSuite Recently Commented widget. This widget differs from the built in Recent Comments widget in that it only shows posts, not individual comments.
+1. The bSuite Share Links widget, which leads to <a href="http://maisonbisson.com/blog/post/11971/how-expensive-does-commercial-software-need-to-get-before-we-consider-open-source/share">a page of bookmark, feed, and translate links for for each post and page</a>.
+2. <a href="http://borkweb.com/">Matt Batchelder</a>'s <a href="http://borkweb.com/story/ajax-templating-and-the-separation-of-layout-and-logic">use of</a> the `[[innerindex]]` token. <a href="http://maisonbisson.com/blog/bsuite/core#11903_innerindex_1">Innerindex</a> automatically generates a list of headings in the page, with links to jump to them.
+3. <a href="http://www.plymouth.edu/library/">Lamson Library</a>'s <a href="http://www.plymouth.edu/library/by-subject/art-history">use of</a> the `[[pagemenu]]` token. <a href="http://maisonbisson.com/blog/bsuite/core#11903_pagemenu_1">Pagemenu</a> automatically generates a list of child pages for a given page. (<a href="http://maisonbisson.com/blog/bsuite/core#11903_using-tokens_1">The included tokens</a> are just a start, extend them with <a href="http://maisonbisson.com/blog/bsuite/slideshow">your own plugin</a>.)
+4. <a href="http://spiralbound.net/">Cliff Pearson</a>'s Quickstats report, part of bStat.
+5. <a href="http://spiralbound.net/">Cliff Pearson</a>'s page loads report, part of bStat.
+6. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bStat Posts widget, part of bStat that reports popular posts.
+7. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bSuite Recently Commented widget. This widget differs from the built in Recent Comments widget in that it only shows posts, not individual comments.
 
