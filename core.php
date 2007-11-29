@@ -1429,6 +1429,12 @@ function paginated_links(){
 		echo "<p class='pagenav'>$page_links</p>";
 }
 
+function bsuite_feedlink() {
+	global $bsuite;
+	return( $bsuite->feedlink() );
+}
+
+
 // php4 compatibility, argh
 if(!function_exists('str_ireplace')){
 function str_ireplace($a, $b, $c){
