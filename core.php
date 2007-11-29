@@ -297,7 +297,7 @@ class bSuite {
 			wp_cache_add( 'bsuite_innerindex_'. $id, $menu, 'default', 864000 );
 		}
 
-		return('<div class="innerindex"><h1>'. $title .'</h1>'. $menu .'</div>');
+		return('<div class="innerindex"><h3>'. $title .'</h3>'. $menu .'</div>');
 	}
 	
 	function innerindex_build($content){
@@ -512,7 +512,7 @@ class bSuite {
 
 			status_header(200);
 			unset($wp_query->query_vars['attachment']);
-			$wp_query->query['s'] =  implode('|', $the_tags);		
+			$wp_query->query['s'] =  implode(' ', $the_tags);		
 			$wp_query->query_vars['s'] = implode('|', $the_tags);		
 			$wp_query->is_404 = FALSE;
 			$wp_query->is_attachment = FALSE;
@@ -1407,6 +1407,26 @@ $bsuite = & new bSuite;
 function the_related(){
 	global $bsuite;
 	echo $bsuite->bsuggestive_the_related();
+}
+
+function paginated_links(){
+	GLOBAL $wp_query;
+
+
+	$page = 1;
+	if( (int) $wp_query->query_vars['paged'] )
+		$page = (int) $wp_query->query_vars['paged'];
+	$total = (int) $wp_query->max_num_pages;
+	
+	$page_links = paginate_links( array(
+		'base' => add_query_arg( 'paged', '%#%' ),
+		'format' => '',
+		'total' => $total,
+		'current' => $page
+	));
+	
+	if ( $page_links )
+		echo "<p class='pagenav'>$page_links</p>";
 }
 
 // php4 compatibility, argh
