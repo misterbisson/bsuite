@@ -53,4 +53,5 @@ Full documentation and usage examples are available at <a href="http://maisonbis
 5. <a href="http://spiralbound.net/">Cliff Pearson</a>'s page loads report, part of bStat.
 6. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bStat Posts widget, part of bStat that reports popular posts.
 7. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bSuite Recently Commented widget. This widget differs from the built in Recent Comments widget in that it only shows posts, not individual comments.
+8. The machine tag input field in the edit post and edit page screen. 
 
