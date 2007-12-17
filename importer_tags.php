@@ -162,8 +162,8 @@ class bSuite_Import {
 				$term = $temp_b[1];
 			}else{
 				// has just fieldname & value
-				$taxonomy = $temp_b[0];
-				$term = $temp_b[1];
+				$taxonomy = $temp_a[0];
+				$term = $temp_b[0];
 			}
 		}else{
 			$temp_b = explode('=', $temp_a[0], 2);

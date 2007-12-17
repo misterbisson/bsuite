@@ -250,9 +250,9 @@ class bStat {
 			$date
 			";
 
-		if ( !$result = wp_cache_get( 'bstat_post_hits_'. (int) $args['post_id'] .'_'. (int) $args['days'], 'default' ) ) {
+		if ( !$result = wp_cache_get( (int) $args['post_id'] .'_'. (int) $args['days'], 'bstat_post_hits' ) ) {
 			$result = $wpdb->get_results($request, ARRAY_A);
-			wp_cache_add( 'bstat_post_hits_'. (int) $args['post_id'] .'_'. (int) $args['days'], $result, 'default', 300 );
+			wp_cache_add( (int) $args['post_id'] .'_'. (int) $args['days'], $result, 'bstat_post_hits', 300 );
 		}
 
 		if(empty($result))
@@ -588,9 +588,9 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 		GROUP BY hit_date
 		";
 
-	if ( !$result = wp_cache_get( 'bstat_post_pulse_'. $post_id, 'default' ) ) {
+	if ( !$result = wp_cache_get( $post_id, 'bstat_post_pulse' ) ) {
 		$result = $wpdb->get_results($request, ARRAY_A);
-		wp_cache_add( 'bstat_post_pulse_'. $post_id, $result, 'default', 300 );
+		wp_cache_add( $post_id, $result, 'bstat_post_pulse', 300 );
 	}
 
 	if(empty($result))

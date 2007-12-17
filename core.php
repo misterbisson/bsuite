@@ -138,6 +138,9 @@ class bSuite {
 		//
 		// register hooks
 		//
+
+		// machine tags
+		add_action('save_post', array(&$this, 'machtag_save_post'), 2, 2);		
 		
 		// tokens
 		add_filter('bsuite_tokens', array(&$this, 'tokens_default'));
@@ -292,9 +295,9 @@ class bSuite {
 	function innerindex($title = 'Contents:'){
 		global $id, $post_cache;
 
-		if ( !$menu = wp_cache_get( 'bsuite_innerindex_'. $id, 'default' ) ) {
+		if ( !$menu = wp_cache_get( $id, 'bsuite_innerindex' ) ) {
 			$menu = $this->innerindex_build($post_cache[1][$id]->post_content);
-			wp_cache_add( 'bsuite_innerindex_'. $id, $menu, 'default', 864000 );
+			wp_cache_add( $id, $menu, 'bsuite_innerindex', 864000 );
 		}
 
 		return('<div class="innerindex"><h3>'. $title .'</h3>'. $menu .'</div>');
@@ -342,7 +345,7 @@ class bSuite {
 
 	function innerindex_delete_cache($id) {
 		$id = (int) $id;
-		wp_cache_delete( 'bsuite_innerindex_'. $id, 'default' );
+		wp_cache_delete( $id, 'bsuite_innerindex' );
 	}
 
 	function innerindex_nametags($content){
@@ -828,10 +831,10 @@ class bSuite {
 		if ( !$id )
 			return FALSE;
 
-		if ( !$related_posts = wp_cache_get( 'bsuite_related_posts_'. $id, 'default' ) ) {
+		if ( !$related_posts = wp_cache_get( $id, 'bsuite_related_posts' ) ) {
 			if(($the_tags = $this->bsuggestive_tags($id)) && ($the_query = $this->bsuggestive_query($the_tags, $id))){
 				$related_posts = $wpdb->get_col($the_query);
-				wp_cache_add( 'bsuite_related_posts_'. $id, $related_posts, 'default', 864000 );
+				wp_cache_add( $id, $related_posts, 'bsuite_related_posts', 864000 );
 				return($related_posts); // if we have to go to the DB to get the posts, then this will get returned
 			}
 			return FALSE; // if there's nothing in the cache and we've got no tags, then we return false
@@ -844,7 +847,7 @@ class bSuite {
 		if ( !$id )
 			return FALSE;
 
-		wp_cache_delete( 'bsuite_related_posts_'. $id, 'default' );
+		wp_cache_delete( $id, 'bsuite_related_posts' );
 	}
 
 	function bsuggestive_the_related($before = '<li>', $after = '</li>') {
@@ -1002,20 +1005,85 @@ class bSuite {
 	// end function get_rss
 
 
+	// machine tags
+	function machtag_save_post($post_id, $post) {
+		// Passed machine tags overwrite existing if not empty
+		if ( isset( $_REQUEST['bsuite-machine-tags-input'] ))
+
+			foreach( $this->machtag_parse_tags( $_REQUEST['bsuite-machine-tags-input'] ) as $taxonomy => $tags ){
+
+				if( 'post_tag' == $taxonomy ){
+					wp_set_post_tags($post_id, $tags, true);
+					continue;
+				}
+	
+				if(!is_taxonomy( $taxonomy ))
+					register_taxonomy($taxonomy, 'post');
+				wp_set_object_terms($post_id, $tags, $taxonomy);
+			}
+	}
+
+	function machtag_parse_tags( $tags_input ) {
+		$tags = $tags_parsed = array();
+		$tag_lines = explode( "\n", $tags_input );
+		foreach($tag_lines as $tag_line)
+			$tags_parsed[] = $this->machtag_parse_tag( $tag_line );
+
+		foreach( $tags_parsed as $tag_parsed )
+			$tags[$tag_parsed['taxonomy']][] = $tag_parsed['term'];
+
+		return( $tags );
+	}
+
+	function machtag_parse_tag( $tag ) {
+		$namespace = $taxonomy = $term = FALSE;
+		$taxonomy = 'post_tag';
+
+		$temp_a = explode(':', $tag, 2);
+
+		if($temp_a[1]){
+			$temp_b = explode('=', $temp_a[1], 2);
+
+			if($temp_b[1]){
+				// has namespace, fieldname, & value
+				$namespace = $temp_a[0];
+				$taxonomy = $temp_b[0];
+				$term = $temp_b[1];
+			}else{
+				// has just fieldname & value
+				$taxonomy = $temp_a[0];
+				$term = $temp_b[0];
+			}
+		}else{
+			$temp_b = explode('=', $temp_a[0], 2);
+
+			if($temp_b[1]){
+				// has just fieldname & value
+				$taxonomy = $temp_b[0];
+				$term = $temp_b[1];
+			}else{
+				// has just value
+				$term = $temp_b[0];
+			}
+		}
+
+		return(array('taxonomy' => $taxonomy, 'term' => $term));
+	}
 
 	// add tools to edit screens
 	function edit_page_form() {
 		$this->edit_insert_tag_form();
-		$this->edit_insert_tools();
+//		$this->edit_insert_tools();
 		$this->edit_insert_machinetag_form();
 	}
 	
 	function edit_post_form() {
-		$this->edit_insert_tools();
+//		$this->edit_insert_tools();
 		$this->edit_insert_machinetag_form();
 	}
 
 	function edit_comment_form() {
+		// there's no edit_comment_form hook!!!
 		$this->edit_insert_tag_form();
 		$this->edit_insert_tools();
 		$this->edit_insert_machinetag_form();
@@ -1054,7 +1122,7 @@ class bSuite {
 		natcasesort($tags_to_edit);
 		?>
 		<fieldset id="bsuite_machinetags">
-			<legend>bSuite Machine Tags (separate multiple tags with newlines, <a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">about machine tags</a>) (READ-ONLY, for now)</legend>
+			<legend>bSuite Machine Tags (separate multiple tags with newlines, <a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">about machine tags</a>)</legend>
 			<div><textarea name="bsuite-machine-tags-input" id="bsuite-machine-tags-input" class="bsuite-machine-tags-input tags-input" style="width: 98%; height: 7em;"><?php echo implode($tags_to_edit, "\n"); ?></textarea></div>
 		</fieldset>
 		<?php
