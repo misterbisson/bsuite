@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/blog/bsuite/
 Description: It's okay for a few things, but you could probably do better. <a href="http://maisonbisson.com/blog/bsuite/core">Documentation here</a>.
-Version: 3.02 
+Version: 3.03 
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -515,8 +515,8 @@ class bSuite {
 
 			status_header(200);
 			unset($wp_query->query_vars['attachment']);
-			$wp_query->query['s'] =  implode(' ', $the_tags);		
-			$wp_query->query_vars['s'] = implode('|', $the_tags);		
+			$wp_query->query['s'] =  implode( ' ', $the_tags );
+			$wp_query->query_vars['s'] = implode( ' ', $the_tags );
 			$wp_query->is_404 = FALSE;
 			$wp_query->is_attachment = FALSE;
 			$wp_query->is_search = TRUE;
@@ -588,7 +588,7 @@ class bSuite {
 			unset($wp_query->query['bsuite_share']);
 			unset($wp_query->query['attachment']);
 			if(count($wp_query->query))
-				$the_title = get_bloginfo('name') .' ('. implode(array_unique(explode('|', strtolower(implode(array_values($wp_query->query), '|')))), ', ') .')';
+				$the_title = get_bloginfo('name') .' ('. wp_specialchars( implode(array_unique(explode('|', strtolower(implode(array_values($wp_query->query), '|')))), ', ')) .')';
 			else
 				$the_title = get_bloginfo('name');
 	
@@ -680,6 +680,41 @@ class bSuite {
 
 
 	//
+	// link to me
+	//
+	function link2me_links( $post_id ){
+		if( !$post_id )
+			return( FALSE );
+
+		//'<a href="'. get_permalink($post_id) .'" title="'. attribute_escape( strip_tags( get_the_title( $post_id ))) .'">'. strip_tags( get_the_title( $post_id )) .'</a>'; //not using this now
+
+//echo '<h2>Hi!</h2>';
+		return( apply_filters('bsuite_link2me', array( array('code' => get_permalink($post_id), 'name' => __( 'Permalink', 'bsuite' ))), $post_id));
+	}
+
+	function link2me( $post_id ){
+		if( !$post_id ){
+			global $id;
+			$post_id = $id;
+		}
+
+		if( !$links = $this->link2me_links( $post_id ))
+			return( FALSE );
+
+		if( count( $links ) ){
+	        $return = '<ul class="linktome">';
+	        foreach( $links as $link ){
+				$return .= '<li><h4>'. $link['name'] .'</h4><input class="linktome_input" type="text" value="'. htmlentities( $link['code'] ) .'" readonly="true" /></li>';
+	        }
+	        $return .= '</ul>';
+			return( $return );
+		}
+		return( FALSE );
+	}
+
+
+
+	//
 	// Searchsmart
 	//
 	function searchsmart_query($query){
@@ -708,16 +743,16 @@ class bSuite {
 			
 			}
 
-			$query = "SELECT SQL_CALC_FOUND_ROWS $wpdb->posts.*, MATCH (content, title) AGAINST ('{$wp_query->query_vars['s']}') AS relevance 
+			$query = "SELECT SQL_CALC_FOUND_ROWS $wpdb->posts.*, MATCH (content, title) AGAINST ('". $wpdb->escape( stripslashes( $wp_query->query_vars['s'] )) ."') AS relevance 
 				FROM $wpdb->posts 
 				LEFT JOIN $this->search_table ON ( post_id = ID )  
 				WHERE 1=1 
-				AND (MATCH (content, title) AGAINST ('{$wp_query->query_vars['s']}'))
+				AND (MATCH (content, title) AGAINST ('". $wpdb->escape( stripslashes( $wp_query->query_vars['s'] )) ."'))
 				AND (post_type IN ('post', 'page') AND (post_status IN ('publish', 'private')))
 				ORDER BY relevance DESC LIMIT $limit[1]
 				";
 
-			
+//print_r($wp_query);			
 //echo "<pre>$query</pre>";
 		}
 		return($query);
@@ -792,7 +827,7 @@ class bSuite {
 			$the_tags[] = get_the_title($id);
 		}
 		
-		if(empty($the_tags[0]))
+		if(!count(array_filter($the_tags)))
 			return FALSE;
 
 		return apply_filters('bsuite_suggestive_tags', $the_tags, $id);
@@ -1172,7 +1207,7 @@ class bSuite {
 		
 		extract($args, EXTR_SKIP);
 		$options = get_option('bsuite_related_posts');
-		$title = empty($options['title']) ? __('Related Posts') : $options['title'];
+		$title = empty($options['title']) ? __('Related Posts', 'bsuite') : $options['title'];
 		if ( !$number = (int) $options['number'] )
 			$number = 5;
 		else if ( $number < 1 )
@@ -1222,7 +1257,7 @@ class bSuite {
 
 		extract($args, EXTR_SKIP);
 		$options = get_option('bsuite_sharelinks');
-		$title = empty($options['title']) ? __('Bookmark &amp; Feeds') : $options['title'];
+		$title = empty($options['title']) ? __('Bookmark &amp; Feeds', 'bsuite') : $options['title'];
 
 		echo $before_widget;
 		echo $before_title . $title . $after_title;
@@ -1240,7 +1275,7 @@ class bSuite {
 		global $wpdb, $commented_posts;
 		extract($args, EXTR_SKIP);
 		$options = get_option('bsuite_recently_commented_posts');
-		$title = empty($options['title']) ? __('Recently Commented Posts') : $options['title'];
+		$title = empty($options['title']) ? __('Recently Commented Posts', 'bsuite') : $options['title'];
 		if ( !$number = (int) $options['number'] )
 			$number = 5;
 		else if ( $number < 1 )
@@ -1291,8 +1326,8 @@ class bSuite {
 	
 	function widget_recently_commented_posts_register() {
 		$class = array('classname' => 'bsuite_recently_commented_posts');
-		wp_register_sidebar_widget('bsuite-recently-commented-posts', __('bSuite Recently Commented'), array($this, 'widget_recently_commented_posts'), $class);
-		wp_register_widget_control('bsuite-recently-commented-posts', __('bSuite Recently Commented'), array($this, 'widget_recently_commented_posts_control'), $class, 'width=320&height=90');
+		wp_register_sidebar_widget('bsuite-recently-commented-posts', __('bSuite Recently Commented', 'bsuite'), array($this, 'widget_recently_commented_posts'), $class);
+		wp_register_widget_control('bsuite-recently-commented-posts', __('bSuite Recently Commented', 'bsuite'), array($this, 'widget_recently_commented_posts_control'), $class, 'width=320&height=90');
 	
 		if ( is_active_widget('widget_recently_commented_posts') ){
 			add_action('wp_head', 'wp_widget_recent_comments_style');
@@ -1304,10 +1339,10 @@ class bSuite {
 	function widgets_register(){
 		$this->widget_recently_commented_posts_register();
 
-		wp_register_sidebar_widget('bsuite-related-posts', __('bSuite Related Posts'), array(&$this, 'widget_related_posts'), 'bsuite_related_posts');
-		wp_register_widget_control('bsuite-related-posts', __('bSuite Related Posts'), array(&$this, 'widget_related_posts_control'), 'width=320&height=90');
+		wp_register_sidebar_widget('bsuite-related-posts', __('bSuite Related Posts', 'bsuite'), array(&$this, 'widget_related_posts'), 'bsuite_related_posts');
+		wp_register_widget_control('bsuite-related-posts', __('bSuite Related Posts', 'bsuite'), array(&$this, 'widget_related_posts_control'), 'width=320&height=90');
 
-		wp_register_sidebar_widget('bsuite-sharelinks', __('bSuite Share Links'), array(&$this, 'widget_sharelinks'), 'bsuite_sharelinks');
+		wp_register_sidebar_widget('bsuite-sharelinks', __('bSuite Share Links', 'bsuite'), array(&$this, 'widget_sharelinks'), 'bsuite_sharelinks');
 	}
 	// end widgets
 
@@ -1357,7 +1392,7 @@ class bSuite {
 		//require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_admin.php');
 
 		//  apply new settings if form submitted
-		if($_REQUEST['Options'] == __('Rebuild bsuite metadata index', 'bsuite')){		
+		if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){		
 			$this->rebuildmetatables();
 		}else if($_REQUEST['Options'] == __('Flush WP object cache', 'bsuite')){
 			wp_cache_flush();
@@ -1376,7 +1411,7 @@ class bSuite {
 <fieldset name="bsuite_general" class="options">
 	<table width="100%" cellspacing="2" cellpadding="5" class="editform">
 		<tr valign="top">
-			<div class="submit"><input type="submit" name="Options" value="<?php _e('Rebuild bsuite metadata index', 'bsuite') ?>" /> &nbsp; 
+			<div class="submit"><input type="submit" name="Options" value="<?php _e('Rebuild bSuite search index', 'bsuite') ?>" /> &nbsp; 
 			<input type="submit" name="Options" value="<?php _e('Flush WP object cache', 'bsuite') ?>" /> &nbsp; 
 			<input type="submit" name="Options" value="<?php _e('PHP Info', 'bsuite') ?>" /> &nbsp; 
 			</div>
@@ -1430,7 +1465,7 @@ class bSuite {
 			LIMIT $n, $interval
 			", ARRAY_A);
 		if( is_array( $posts ) ) {
-			echo '<div class="updated"><p><strong>' . __('Rebuilding bsuite metadata index. Please be patient.', 'bsuite') . '</strong></p></div><div class="narrow">';
+			echo '<div class="updated"><p><strong>' . __('Rebuilding bSuite search index. Please be patient.', 'bsuite') . '</strong></p></div><div class="narrow">';
 			print "<ul>";
 			foreach( $posts as $post ) {
 				$this->searchsmart_upindex($post['ID'], $post['post_content'],  $post['post_title']);
@@ -1500,6 +1535,11 @@ function paginated_links(){
 function bsuite_feedlink() {
 	global $bsuite;
 	return( $bsuite->feedlink() );
+}
+
+function bsuite_link2me() {
+	global $bsuite;
+	echo $bsuite->link2me();
 }
 
 
