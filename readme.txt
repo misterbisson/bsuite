@@ -3,7 +3,7 @@ Contributors: misterbisson
 Donate link: http://MaisonBisson.com/
 Tags: cms, content management, tags, stats, statistics, formatting, pages, manage, integration, admin
 Requires at least: 2.2
-Tested up to: 2.3.1
+Tested up to: 2.3.2
 Stable tag: /trunk/
 
 Suite of tools used to improve WordPress' CMS capabilities and usefulness as an application platform.

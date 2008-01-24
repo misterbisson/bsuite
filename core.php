@@ -515,7 +515,7 @@ class bSuite {
 
 			status_header(200);
 			unset($wp_query->query_vars['attachment']);
-			$wp_query->query['s'] =  implode( ' ', $the_tags );
+			$wp_query->query['s'] = implode( ' ', $the_tags );
 			$wp_query->query_vars['s'] = implode( ' ', $the_tags );
 			$wp_query->is_404 = FALSE;
 			$wp_query->is_attachment = FALSE;
