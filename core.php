@@ -156,7 +156,7 @@ class bSuite {
 		add_filter('save_post', array(&$this, 'innerindex_delete_cache'));
 		add_filter('publish_post', array(&$this, 'innerindex_delete_cache'));
 		add_filter('publish_page', array(&$this, 'innerindex_delete_cache'));
-		$this->kses_allowedposttags(); // allow IDs on H1-6 tags
+		$this->kses_allowedposttags(); // allow IDs on H1-H6 tags
 
 		// bsuggestive
 		add_filter('save_post', array(&$this, 'bsuggestive_delete_cache'));
@@ -169,12 +169,11 @@ class bSuite {
 		
 		// athooks
 		add_filter('bsuite_athooks', array(&$this, 'athooks_default'));
-		add_filter('template_redirect', array(&$this, 'athooks_onredirect'), 8);
-		add_filter('posts_request', array(&$this, 'athooks_onsearch'), 8);
+		add_filter('template_redirect', array(&$this, 'athooks'), 8);
 		add_filter('get_breadcrumb', array(&$this, 'athooks_breadcrumbs'), 5, 2);
 		
 		// sharelinks
-		add_filter('template_redirect', array(&$this, 'sharelinks_redirect'), 8);
+		add_filter('template_redirect', array(&$this, 'sharelinks_redirect'), 9);
 
 		// searchsmart
 		add_filter('posts_request', array(&$this, 'searchsmart_query'), 10);
@@ -470,7 +469,7 @@ class bSuite {
 		// setup some default athooks
 		// $athooks[hook name][where to act (request or redirect)] = 'function name';
 
-		$athooks['related']['request'] = array(&$this, 'athook_get_related');
+		$athooks['related']['redirect'] = array(&$this, 'athook_get_related');
 		$athooks['related']['title'] = __('Related', 'bsuite');
 
 		$athooks['share']['redirect'] = array(&$this, 'athook_sharelinks');
@@ -479,7 +478,7 @@ class bSuite {
 		return($athooks);
 	}
 
-	function athooks_onredirect(){
+	function athooks(){
 		// process athooks
 		// the context of this hook is here:
 		// http://wphooks.flatearth.org/hooks/template_redirect/
@@ -497,26 +496,6 @@ class bSuite {
 			call_user_func($athooks[$wp_query->query_vars['attachment']]['redirect']);
 		}
 		return;
-	}
-
-	function athooks_onsearch($search){
-		// process athooks
-		// the context of this hook is here:
-		// http://wphooks.flatearth.org/hooks/posts_request/
-		// Athooks allow you to change what WP does when a user loads a post
-		// with an /$athook in the URL. 
-		// Example: http://site.org/permalinkpath/athook
-		global $wp_query;
-		$athooks = &$this->athooks_get();
-
-		if($wp_query->query_vars['attachment'] && $athooks[$wp_query->query_vars['attachment']]['request']){
-			$wp_query->is_athook = TRUE;
-			$wp_query->athook['name'] = $wp_query->query_vars['attachment'];
-			$wp_query->athook['title'] = $athooks[$wp_query->query_vars['attachment']]['title'];
-			$wp_query->athook['post'] = &$this->athook_get_post('/'. $wp_query->query_vars['attachment']);
-			call_user_func($athooks[$wp_query->query_vars['attachment']]['request'], $search);
-		}
-		return($search);
 	}
 
 	function athooks_breadcrumbs($breadcrumb, $params){
@@ -545,12 +524,29 @@ class bSuite {
 
 	function athook_get_related($search){
 		// get related items
-		global $wp_query, $wpdb;
+		global $wp_query, $wpdb, $scrib;
 
-		$query_vars['p'] = $wp_query->athook['post'];
+		if(( $wp_query->athook['post'] ) && ( $the_tags = $this->bsuggestive_tags( $wp_query->athook['post'] ))){
+			$this->bsuggestive_to = $wp_query->athook['post'];
+			$imploder = is_object( $scrib ) ? '|' : ' ';
 
-		if(($query_vars['p']) && ($the_tags = $this->bsuggestive_tags($query_vars['p']))){
+/*
+			$imploder = ' ';
 
+			// remove the other post_request filters and add one special for this
+			// remove the Scriblio filter, if present
+			if( is_object( $scrib )){
+				remove_filter( 'posts_request',array(&$scrib, 'the_query' ));
+				$imploder = '|';
+			}
+			remove_filter( 'posts_request',array(&$this, 'searchsmart_query' ));
+			add_filter( 'posts_request', array( &$this, 'bsuggestive_postsrequest' ), 20 );
+
+*/
+			
+			// now query the posts
+			query_posts('s='. implode( $imploder, $the_tags ));
+			
 			status_header(200);
 			unset($wp_query->query_vars['attachment']);
 			$wp_query->query['s'] = implode( ' ', $the_tags );
@@ -563,9 +559,6 @@ class bSuite {
 			$wp_query->is_singular = FALSE;
 			$wp_query->is_archive = FALSE;
 			$wp_query->is_category = FALSE;
-
-			// re-add the searchsmart posts request filter to work around Scriblio
-			add_filter('posts_request', array(&$this, 'searchsmart_query'), 20);
 		}
 
 		return($search);
@@ -587,11 +580,9 @@ class bSuite {
 	}
 
 	function athook_get_post($thing){
-		// get related items
+		// get the post ID
 		global $wp;
-
-		$query_vars = &$this->parse_request(str_replace($thing, '', $wp->request));
-		return($query_vars['p']);
+		return( url_to_postid( str_replace( $thing, '', $wp->request )));
 	}
 	// end athook-related functions
 
@@ -615,6 +606,8 @@ class bSuite {
 			$post_id = $wp_query->query_vars['p'];
 		else if(!empty($wp_query->is_singular) && !empty($wp_query->queried_object_id))
 			$post_id = $wp_query->queried_object_id;
+		else if( !empty( $this->bsuggestive_to ))
+			$post_id = $this->bsuggestive_to;
 	
 		if($post_id){
 			$the_permalink = urlencode(get_permalink($post_id));
@@ -696,10 +689,11 @@ class bSuite {
 
 	function sharelinks_redirect(){
 		global $wp_query, $post_cache;
-		if(!empty($wp_query->query_vars['bsuite_share'])){
+
+		if( !empty( $wp_query->query_vars['bsuite_share'] )){
 			if(!$share = $this->sharelinks())
 				return(FALSE);
-	
+
 			if(!$post_id = $share['the_id']){
 				$GLOBALS['wp_query'] = unserialize('O:8:"WP_Query":39:{s:10:"query_vars";a:40:{s:1:"p";i:0;s:5:"error";s:0:"";s:1:"m";i:0;s:7:"subpost";s:0:"";s:10:"subpost_id";s:0:"";s:10:"attachment";s:0:"";s:13:"attachment_id";i:0;s:4:"name";s:0:"";s:4:"hour";s:0:"";s:6:"static";s:0:"";s:8:"pagename";s:0:"";s:7:"page_id";i:0;s:6:"second";s:0:"";s:6:"minute";s:0:"";s:3:"day";i:0;s:8:"monthnum";i:0;s:4:"year";i:0;s:1:"w";i:0;s:13:"category_name";s:0:"";s:3:"tag";s:0:"";s:6:"tag_id";s:0:"";s:11:"author_name";s:0:"";s:4:"feed";s:0:"";s:2:"tb";s:0:"";s:5:"paged";s:0:"";s:14:"comments_popup";s:0:"";s:7:"preview";s:0:"";s:12:"category__in";a:0:{}s:16:"category__not_in";a:0:{}s:13:"category__and";a:0:{}s:7:"tag__in";a:0:{}s:11:"tag__not_in";a:0:{}s:8:"tag__and";a:0:{}s:12:"tag_slug__in";a:0:{}s:13:"tag_slug__and";a:0:{}s:9:"post_type";s:4:"post";s:14:"posts_per_page";i:10;s:8:"nopaging";b:0;s:5:"order";s:4:"DESC";s:7:"orderby";s:14:"post_date DESC";}s:7:"request";s:116:" SELECT   test23_posts.* FROM test23_posts  WHERE 1=1  AND ID = 938 AND post_type = "post"  ORDER BY post_date DESC ";s:10:"post_count";i:1;s:12:"current_post";i:-1;s:11:"in_the_loop";b:0;s:4:"post";O:8:"stdClass":24:{s:2:"ID";i:0;s:11:"post_author";s:1:"1";s:9:"post_date";s:0:"";s:13:"post_date_gmt";s:0:"";s:12:"post_content";s:0:"";s:10:"post_title";s:10:"Share This";s:13:"post_category";s:1:"0";s:12:"post_excerpt";s:0:"";s:11:"post_status";s:7:"publish";s:14:"comment_status";s:4:"open";s:11:"ping_status";s:4:"open";s:13:"post_password";s:0:"";s:9:"post_name";s:10:"share-this";s:7:"to_ping";s:0:"";s:6:"pinged";s:0:"";s:13:"post_modified";s:0:"";s:17:"post_modified_gmt";s:0:"";s:21:"post_content_filtered";s:0:"";s:11:"post_parent";s:1:"0";s:4:"guid";s:0:"";s:10:"menu_order";s:1:"0";s:9:"post_type";s:4:"post";s:14:"post_mime_type";s:0:"";s:13:"comment_count";s:1:"0";}s:8:"comments";N;s:13:"comment_count";i:0;s:15:"current_comment";i:-1;s:7:"comment";N;s:11:"found_posts";i:0;s:13:"max_num_pages";i:0;s:9:"is_single";b:1;s:10:"is_preview";b:0;s:7:"is_page";b:0;s:10:"is_archive";b:0;s:7:"is_date";b:0;s:7:"is_year";b:0;s:8:"is_month";b:0;s:6:"is_day";b:0;s:7:"is_time";b:0;s:9:"is_author";b:0;s:11:"is_category";b:0;s:6:"is_tag";b:0;s:9:"is_search";b:0;s:7:"is_feed";b:0;s:15:"is_comment_feed";b:0;s:12:"is_trackback";b:0;s:7:"is_home";b:0;s:6:"is_404";b:0;s:17:"is_comments_popup";b:0;s:8:"is_admin";b:0;s:13:"is_attachment";b:0;s:11:"is_singular";b:1;s:9:"is_robots";b:0;s:13:"is_posts_page";b:0;s:8:"is_paged";b:0;s:5:"query";s:5:"p=938";s:5:"posts";a:1:{i:0;R:47;}}');
 				$GLOBALS['wp_query']->post->post_date = $GLOBALS['wp_query']->post->post_date_gmt = $GLOBALS['wp_query']->post->post_modified = $GLOBALS['wp_query']->post->post_modified_gmt = date('Y-m-d H-i-s');
@@ -870,7 +864,19 @@ class bSuite {
 
 		return apply_filters('bsuite_suggestive_tags', $the_tags, $id);
 	}
-	
+
+	function bsuggestive_postsrequest($query) {
+		global $wpdb;
+
+		$the_matching_posts = $this->bsuggestive_getposts( 10 );
+		if( is_array( $the_matching_posts ))
+			return( "SELECT * FROM $wpdb->posts WHERE 1=1 
+				AND ID IN (" . implode( $the_matching_posts, ', ' ) .
+				') AND post_status IN ("publish", "private")' );
+		else
+			return( "SELECT * FROM $wpdb->posts WHERE 1=2" );
+	}
+
 	function bsuggestive_query($the_tags, $id) {
 		global $wpdb;
 
@@ -889,7 +895,7 @@ class bSuite {
 						WHERE MATCH (content, title)
 						AGAINST ('". ereg_replace('[^a-z|A-Z|0-9| ]', ' ', implode(' ', $the_tags)) ."') AND post_id <> $id
 						AND post_status = 'publish'
-						LIMIT 50
+						LIMIT 150
 						", $post_id);
 		}
 		return FALSE;
@@ -944,35 +950,6 @@ class bSuite {
 		return($report);
 	}
 	// end bSuggestive
-
-	function parse_request($request){
-		// parse the $request through the WP rewrite rules and returns query vars
-		// 
-		// code taken from inside parse_request() in /wp-includes/classes.php 
-		// I would rather call it as a function from there, but it doesn't work
-		global $wp_rewrite;
-
-		$rewrite = $wp_rewrite->wp_rewrite_rules();
-		$request_match = $request;
-		foreach ($rewrite as $match => $query) {
-			if (preg_match("!^$match!", $request_match, $matches) ||
-				preg_match("!^$match!", urldecode($request_match), $matches)) {
-		
-				// Trim the query of everything up to the '?'.
-				$query = preg_replace("!^.+\?!", '', $query);
-		
-				// Substitute the substring matches into the query.
-				eval("\$query = \"$query\";");
-				parse_str($query, $query_vars);
-		
-				break;
-			}
-		}
-
-//print_r($query_vars);
-
-		return($query_vars);
-	}
 
 
 
