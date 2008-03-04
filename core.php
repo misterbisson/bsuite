@@ -1456,6 +1456,77 @@ class bSuite {
 		return(TRUE);
 	}
 
+	function makeXMLTree($data){
+		// create parser
+		$parser = xml_parser_create();
+		xml_parser_set_option($parser,XML_OPTION_CASE_FOLDING,0);
+		xml_parser_set_option($parser,XML_OPTION_SKIP_WHITE,1);
+		xml_parse_into_struct($parser,$data,$values,$tags);
+		xml_parser_free($parser);
+		
+		// we store our path here
+		$hash_stack = array();
+		
+		// this is our target
+		$ret = array();
+		foreach ($values as $key => $val) {
+	
+			switch ($val['type']) {
+				case 'open':
+					array_push($hash_stack, $val['tag']);
+					if (isset($val['attributes']))
+						$ret = $this->composeArray($ret, $hash_stack, $val['attributes']);
+					else
+						$ret = $this->composeArray($ret, $hash_stack);
+				break;
+	
+				case 'close':
+					array_pop($hash_stack);
+				break;
+				
+				case 'cdata':
+					array_push($hash_stack, 'cdata');
+					$ret = $this->composeArray($ret, $hash_stack, $val['value']);
+					array_pop($hash_stack);
+				break;
+	
+				case 'complete':
+					array_push($hash_stack, $val['tag']);
+					$ret = $this->composeArray($ret, $hash_stack, $val['value']);
+					array_pop($hash_stack);
+					
+					// handle attributes
+					if (isset($val['attributes'])){
+						foreach($val['attributes'] as $a_k=>$a_v){
+							$hash_stack[] = $val['tag'].'_attribute_'.$a_k;
+							$ret = $this->composeArray($ret, $hash_stack, $a_v);
+							array_pop($hash_stack);
+						}
+					}
+				break;
+			}
+		}
+		
+		return($ret);
+	} // end makeXMLTree
+	
+	function &composeArray($array, $elements, $value=array()){
+		// function used exclusively by makeXMLTree to help turn XML into an array	
+	
+		// get current element
+		$element = array_shift($elements);
+		
+		// does the current element refer to a list
+		if(sizeof($elements) > 0){
+			$array[$element][sizeof($array[$element])-1] = &$this->composeArray($array[$element][sizeof($array[$element])-1], $elements, $value);
+		}else{ // if (is_array($value))
+			$array[$element][sizeof($array[$element])] = $value;
+		}
+		
+		return($array);
+	} // end composeArray
+	
+
 
 	function rebuildmetatables() {
 		// update search table with content from all posts
