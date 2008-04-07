@@ -1427,7 +1427,6 @@ class bSuite {
 	<table width="100%" cellspacing="2" cellpadding="5" class="editform">
 		<tr valign="top">
 			<div class="submit"><input type="submit" name="Options" value="<?php _e('Rebuild bSuite search index', 'bsuite') ?>" /> &nbsp; 
-			<input type="submit" name="Options" value="<?php _e('Flush WP object cache', 'bsuite') ?>" /> &nbsp; 
 			<input type="submit" name="Options" value="<?php _e('PHP Info', 'bsuite') ?>" /> &nbsp; 
 			</div>
 		</tr>
@@ -1537,13 +1536,13 @@ class bSuite {
 		$interval = 50;
 
 
-		if( !isset( $_GET[ 'n' ] ) ) {
+		if( !isset( $_REQUEST[ 'n' ] ) ) {
 			$n = 0;
 			$wpdb->hide_errors();
 			$this->createtables();		
 			$wpdb->show_errors();
 		} else {
-			$n = (int) $_GET[ 'n' ] ;
+			$n = (int) $_REQUEST[ 'n' ] ;
 		}
 		$posts = $wpdb->get_results("SELECT ID, post_content, post_title
 			FROM $wpdb->posts
@@ -1560,12 +1559,12 @@ class bSuite {
 			}
 			print "</ul>";
 			?>
-			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
 			<script language='javascript'>
 			<!--
 
 			function nextpage() {
-				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=Rebuild+bsuite+metadata+index&n=<?php echo ($n + $interval) ?>";
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>";
 			}
 			setTimeout( "nextpage()", 250 );
 
