@@ -1409,9 +1409,12 @@ class bSuite {
 		//  apply new settings if form submitted
 		if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){		
 			$this->rebuildmetatables();
-		}else if($_REQUEST['Options'] == __('Flush WP object cache', 'bsuite')){
-			wp_cache_flush();
-			echo '<div class="updated"><p><strong>' . __('WordPress object cache flushed.', 'bsuite') . '</strong></p></div>';
+		}else if($_REQUEST['Options'] == __('Show rewrite rules', 'bsuite')){
+			echo 'The current rewrite rules (permlink settings):<pre>';
+			global $wp_rewrite;
+			$wp_rewrite->flush_rules();
+			print_r( $wp_rewrite->rewrite_rules() );
+			echo '</pre>';
 		}else if($_REQUEST['Options'] == __('PHP Info', 'bsuite')){
 			phpinfo();
 		}
@@ -1427,6 +1430,7 @@ class bSuite {
 	<table width="100%" cellspacing="2" cellpadding="5" class="editform">
 		<tr valign="top">
 			<div class="submit"><input type="submit" name="Options" value="<?php _e('Rebuild bSuite search index', 'bsuite') ?>" /> &nbsp; 
+			<input type="submit" name="Options" value="<?php _e('Show rewrite rules', 'bsuite') ?>" /> &nbsp; 
 			<input type="submit" name="Options" value="<?php _e('PHP Info', 'bsuite') ?>" /> &nbsp; 
 			</div>
 		</tr>
