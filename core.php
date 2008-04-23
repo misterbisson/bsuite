@@ -625,21 +625,26 @@ class bSuite {
 	
 			$the_excerpt = '';
 		}
-		$content = '';
+		$content = '<ul class="bsuite_sharelinks">';
+	
+		// the embed links 
+		if( $post_id && ( $embed = $this->link2me( $post_id ))){
+			$content .= '<li class="bsuite_share_embed"><h3 id="bsuite_share_embed">Link or embed this</h3>' . $embed .'</li>';
+		}
 	
 		// the bookmark links 
-		$content .= '<h3 id="bsuite_share_bookmark">Bookmark this at</h3><ul>';
+		$content .= '<li class="bsuite_share_bookmark"><h3 id="bsuite_share_bookmark">Bookmark this at</h3><ul>';
 		global $services_bookmark;
 		foreach ($services_bookmark as $key => $data) {
 			$content .= '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/'. $key .'.gif" width="16" height="16" alt="'. attribute_escape($data['name']) .' sharing icon">&nbsp;<a href="'. str_replace(array('{title}', '{url}'), array($the_title, $the_permalink), $data['url']) .'">'. $data['name'] .'</a></li>';
 		}
-		$content .= '</ul>';
+		$content .= '</ul></li>';
 	
 		// the email links
-		$content .= '<h3 id="bsuite_share_email">Email this page</h3><ul><li><a href="mailto:?MIME-Version=1.0&Content-Type=text/html;&subject='. attribute_escape(urldecode($the_title)) .'&body=%0D%0AI found this at '.  attribute_escape(get_bloginfo('name')) .'%0D%0A'. attribute_escape(urldecode($the_permalink)) .'%0D%0A">Send this page using your computer&#039;s emailer</a></li></ul>';
+		$content .= '<li class="bsuite_share_email"><h3 id="bsuite_share_email">Email this page</h3><ul><li><a href="mailto:?MIME-Version=1.0&Content-Type=text/html;&subject='. attribute_escape(urldecode($the_title)) .'&body=%0D%0AI found this at '.  attribute_escape(get_bloginfo('name')) .'%0D%0A'. attribute_escape(urldecode($the_permalink)) .'%0D%0A">Send this page using your computer&#039;s emailer</a></li></ul></li>';
 	
 		// the feed links
-		$content .= '<h3 id="bsuite_share_feed">Stay up to date</h3><ul>';
+		$content .= '<li class="bsuite_share_feed"><h3 id="bsuite_share_feed">Stay up to date</h3><ul>';
 		$feeds = array();
 		if($wp_query->is_singular)
 			$feeds[] = array('title' => 'Comments on this post', 'url' => get_post_comments_feed_link($post_id));
@@ -657,56 +662,23 @@ class bSuite {
 	
 			$content .= '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-feed-16x16.png" width="16" height="16" alt="'. attribute_escape($feed['title']) .' feed icon">&nbsp;<a href="'. $feed['url'] .'">'. $feed['title'] .'</a>. Subscribe via '.  implode($subscribe_links, ', ') .'.</li>';
 		}
-		$content .= '</ul>';
+		$content .= '</ul></li>';
 	
 		// the translation links
-		$content .= '<h3 id="bsuite_share_translate">Automatically translate this to</h3><ul>';
+		$content .= '<li class="bsuite_share_translate"><h3 id="bsuite_share_translate">Automatically translate this to</h3><ul>';
 		global $services_translate;
 		foreach ($services_translate as $key => $data) {
 			$content .= '<li><a href="'. str_replace('{url}', $the_permalink, $data['url']) .'">'. $data['name'] .'</a></li>';
 		}
+		$content .= '</ul></li>';
+
 		$content .= '</ul>';
 	
 		// powered by
-		$content .= '<p>Powered by <a href="http://maisonbisson.com/blog/bsuite">bSuite</a>.</p>';
+		$content .= '<p class="bsuite_share_bsuitetag">Powered by <a href="http://maisonbisson.com/blog/bsuite">bSuite</a>.</p>';
 	
-		return(array('the_id' => $post_id, 'the_title' => urldecode($the_title), 'the_permalink' => urldecode($the_permalink), 'the_content' => $content, ));
-	}
-
-	function sharelinks_url(){
-		global $post, $wp_query;
-		if(($wp_query->in_the_loop && $post->post_type == 'post') || $wp_query->is_single && $post->post_type == 'post')
-			return(get_permalink($post->ID). '/share');
-		return(strtolower(substr($_SERVER['SERVER_PROTOCOL'], 0, strpos($_SERVER['SERVER_PROTOCOL'], '/'))) . '://' . $_SERVER['HTTP_HOST'] . add_query_arg('bsuite_share', 1));
-	}
-
-	function sharelinks_link($title = 'bookmark, share, and feed links'){
-		if($this->sharelinks_nonce)
-			return(FALSE);
-
-		return('<img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-share-16x16.gif" width="16" height="16" alt="bookmark, share, feed, and translate icon" />&nbsp;<a href="'. $this->sharelinks_url() .'" title="bookmark, share, feed, and translate links">'. $title .'</a>');
-	}
-
-	function sharelinks_redirect(){
-		global $wp_query, $post_cache;
-
-		if( !empty( $wp_query->query_vars['bsuite_share'] )){
-			if(!$share = $this->sharelinks())
-				return(FALSE);
-
-			if(!$post_id = $share['the_id']){
-				$GLOBALS['wp_query'] = unserialize('O:8:"WP_Query":39:{s:10:"query_vars";a:40:{s:1:"p";i:0;s:5:"error";s:0:"";s:1:"m";i:0;s:7:"subpost";s:0:"";s:10:"subpost_id";s:0:"";s:10:"attachment";s:0:"";s:13:"attachment_id";i:0;s:4:"name";s:0:"";s:4:"hour";s:0:"";s:6:"static";s:0:"";s:8:"pagename";s:0:"";s:7:"page_id";i:0;s:6:"second";s:0:"";s:6:"minute";s:0:"";s:3:"day";i:0;s:8:"monthnum";i:0;s:4:"year";i:0;s:1:"w";i:0;s:13:"category_name";s:0:"";s:3:"tag";s:0:"";s:6:"tag_id";s:0:"";s:11:"author_name";s:0:"";s:4:"feed";s:0:"";s:2:"tb";s:0:"";s:5:"paged";s:0:"";s:14:"comments_popup";s:0:"";s:7:"preview";s:0:"";s:12:"category__in";a:0:{}s:16:"category__not_in";a:0:{}s:13:"category__and";a:0:{}s:7:"tag__in";a:0:{}s:11:"tag__not_in";a:0:{}s:8:"tag__and";a:0:{}s:12:"tag_slug__in";a:0:{}s:13:"tag_slug__and";a:0:{}s:9:"post_type";s:4:"post";s:14:"posts_per_page";i:10;s:8:"nopaging";b:0;s:5:"order";s:4:"DESC";s:7:"orderby";s:14:"post_date DESC";}s:7:"request";s:116:" SELECT   test23_posts.* FROM test23_posts  WHERE 1=1  AND ID = 938 AND post_type = "post"  ORDER BY post_date DESC ";s:10:"post_count";i:1;s:12:"current_post";i:-1;s:11:"in_the_loop";b:0;s:4:"post";O:8:"stdClass":24:{s:2:"ID";i:0;s:11:"post_author";s:1:"1";s:9:"post_date";s:0:"";s:13:"post_date_gmt";s:0:"";s:12:"post_content";s:0:"";s:10:"post_title";s:10:"Share This";s:13:"post_category";s:1:"0";s:12:"post_excerpt";s:0:"";s:11:"post_status";s:7:"publish";s:14:"comment_status";s:4:"open";s:11:"ping_status";s:4:"open";s:13:"post_password";s:0:"";s:9:"post_name";s:10:"share-this";s:7:"to_ping";s:0:"";s:6:"pinged";s:0:"";s:13:"post_modified";s:0:"";s:17:"post_modified_gmt";s:0:"";s:21:"post_content_filtered";s:0:"";s:11:"post_parent";s:1:"0";s:4:"guid";s:0:"";s:10:"menu_order";s:1:"0";s:9:"post_type";s:4:"post";s:14:"post_mime_type";s:0:"";s:13:"comment_count";s:1:"0";}s:8:"comments";N;s:13:"comment_count";i:0;s:15:"current_comment";i:-1;s:7:"comment";N;s:11:"found_posts";i:0;s:13:"max_num_pages";i:0;s:9:"is_single";b:1;s:10:"is_preview";b:0;s:7:"is_page";b:0;s:10:"is_archive";b:0;s:7:"is_date";b:0;s:7:"is_year";b:0;s:8:"is_month";b:0;s:6:"is_day";b:0;s:7:"is_time";b:0;s:9:"is_author";b:0;s:11:"is_category";b:0;s:6:"is_tag";b:0;s:9:"is_search";b:0;s:7:"is_feed";b:0;s:15:"is_comment_feed";b:0;s:12:"is_trackback";b:0;s:7:"is_home";b:0;s:6:"is_404";b:0;s:17:"is_comments_popup";b:0;s:8:"is_admin";b:0;s:13:"is_attachment";b:0;s:11:"is_singular";b:1;s:9:"is_robots";b:0;s:13:"is_posts_page";b:0;s:8:"is_paged";b:0;s:5:"query";s:5:"p=938";s:5:"posts";a:1:{i:0;R:47;}}');
-				$GLOBALS['wp_query']->post->post_date = $GLOBALS['wp_query']->post->post_date_gmt = $GLOBALS['wp_query']->post->post_modified = $GLOBALS['wp_query']->post->post_modified_gmt = date('Y-m-d H-i-s');
-				$GLOBALS['wp_query']->post->post_title = $share['the_title'];
-				update_post_caches($GLOBALS['wp_query']->posts);
-			}
-				
-			if(!ereg('^'.__('Share This', 'bsuite'), $post_cache[1][$post_id]->post_title))
-				$post_cache[1][$post_id]->post_title = __('Share This', 'bsuite') .': '. $post_cache[1][$post_id]->post_title;
-			$post_cache[1][$post_id]->post_content = $share['the_content'];
-			$post_cache[1][$post_id]->comment_status = 'closed';
-			$posts = $wp_query->posts;
-		}
+		return( $content );
+		//return(array('the_id' => $post_id, 'the_title' => urldecode($the_title), 'the_permalink' => urldecode($the_permalink), 'the_content' => $content, ));
 	}
 	// end sharelinks related functions
 
@@ -1357,7 +1329,7 @@ class bSuite {
 		wp_register_sidebar_widget('bsuite-related-posts', __('bSuite Related Posts', 'bsuite'), array(&$this, 'widget_related_posts'), 'bsuite_related_posts');
 		wp_register_widget_control('bsuite-related-posts', __('bSuite Related Posts', 'bsuite'), array(&$this, 'widget_related_posts_control'), 'width=320&height=90');
 
-		wp_register_sidebar_widget('bsuite-sharelinks', __('bSuite Share Links', 'bsuite'), array(&$this, 'widget_sharelinks'), 'bsuite_sharelinks');
+		//wp_register_sidebar_widget('bsuite-sharelinks', __('bSuite Share Links', 'bsuite'), array(&$this, 'widget_sharelinks'), 'bsuite_sharelinks');
 	}
 	// end widgets
 
