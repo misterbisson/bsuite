@@ -132,6 +132,13 @@ class bSuite {
 
 		global $wpdb;
 		$this->search_table = $wpdb->prefix . 'bsuite3_search';
+		
+		// establish web path to this plugin's directory
+		$this->path_web = '/'. PLUGINDIR .'/'. substr( plugin_basename(__FILE__), 0, strpos( plugin_basename(__FILE__), '/' ));
+
+		// register and queue javascripts
+		wp_register_script( 'scrib-linktome_selectall', $this->path_web . '/js/linktome_selectall.js', array('jquery'), '20080422' );
+		wp_enqueue_script( 'scrib-linktome_selectall' );	
 
 //		$this->options = get_option('bsuite3');
 
@@ -187,7 +194,6 @@ class bSuite {
 		add_action('edit_page_form', array(&$this, 'edit_page_form'));
 
 		add_action('widgets_init', array(&$this, 'widgets_register'));
-		add_action('query_vars', array(&$this, 'set_query_vars'));
 
 		// activation and menu hooks
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
@@ -204,10 +210,6 @@ class bSuite {
 	}
 
 
-
-	function set_query_vars($vars){
-		return(array_unique(array_merge(array('bsuite_share'), $vars)));
-	}
 
 	//
 	// token functions
