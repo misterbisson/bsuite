@@ -132,9 +132,9 @@ class bSuite {
 
 		global $wpdb;
 		$this->search_table = $wpdb->prefix . 'bsuite3_search';
-		
+
 		// establish web path to this plugin's directory
-		$this->path_web = '/'. PLUGINDIR .'/'. substr( plugin_basename(__FILE__), 0, strpos( plugin_basename(__FILE__), '/' ));
+		$this->path_web = '/'. PLUGINDIR .'/'. plugin_basename( dirname( __FILE__ ));
 
 		// register and queue javascripts
 		wp_register_script( 'scrib-linktome_selectall', $this->path_web . '/js/linktome_selectall.js', array('jquery'), '20080422' );
@@ -595,8 +595,6 @@ class bSuite {
 	//
 	function sharelinks(){
 		global $wp_query;
-
-		$this->sharelinks_nonce = TRUE;
 	
 		// exit if 404
 		if($wp_query->is_404)
@@ -1241,7 +1239,7 @@ class bSuite {
 	function widget_sharelinks($args) {
 		global $post, $wpdb;
 
-		if(is_404() || $this->sharelinks_nonce) // no reason to run if it's a 404
+		if( is_404() ) // no reason to run if it's a 404
 			return(FALSE);
 
 		extract($args, EXTR_SKIP);
@@ -1251,9 +1249,9 @@ class bSuite {
 		echo $before_widget;
 		echo $before_title . $title . $after_title;
 		echo '<ul id="sharelinks">';
-		echo '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-share-16x16.gif" width="16" height="16" alt="bookmark and share icon" />&nbsp;<a href="'. $this->sharelinks_url() .'#bsuite_share_bookmark" title="bookmark and share links">Bookmark and Share</a></li>';
-		echo '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-feed-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="'. $this->sharelinks_url() .'#bsuite_share_feed" title="RSS and feed links">RSS Feeds</a></li>';
-		echo '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-translate-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="'. $this->sharelinks_url() .'#bsuite_share_translate" title="RSS and feed links">Translate</a></li>';
+		echo '<li><img src="' . get_settings('siteurl') . $this->path_web .'/img/icon-share-16x16.gif" width="16" height="16" alt="bookmark and share icon" />&nbsp;<a href="#bsuite_share_bookmark" title="bookmark and share links">Bookmark and Share</a></li>';
+		echo '<li><img src="' . get_settings('siteurl') . $this->path_web .'/img/icon-feed-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="#bsuite_share_feed" title="RSS and feed links">RSS Feeds</a></li>';
+		echo '<li><img src="' . get_settings('siteurl') .'/'. $this->path_web .'/img/icon-translate-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="#bsuite_share_translate" title="RSS and feed links">Translate</a></li>';
 		echo '</ul>';
 		echo $after_widget;
 	}
@@ -1331,7 +1329,7 @@ class bSuite {
 		wp_register_sidebar_widget('bsuite-related-posts', __('bSuite Related Posts', 'bsuite'), array(&$this, 'widget_related_posts'), 'bsuite_related_posts');
 		wp_register_widget_control('bsuite-related-posts', __('bSuite Related Posts', 'bsuite'), array(&$this, 'widget_related_posts_control'), 'width=320&height=90');
 
-		//wp_register_sidebar_widget('bsuite-sharelinks', __('bSuite Share Links', 'bsuite'), array(&$this, 'widget_sharelinks'), 'bsuite_sharelinks');
+		wp_register_sidebar_widget('bsuite-sharelinks', __('bSuite Share Links', 'bsuite'), array(&$this, 'widget_sharelinks'), 'bsuite_sharelinks');
 	}
 	// end widgets
 
