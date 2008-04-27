@@ -268,7 +268,10 @@ class bStat {
 	}
 
 	function pop_posts( $args = '' ) {
-		global $wpdb;
+		global $wpdb, $bsuite;
+
+		if( $bsuite->get_loadavg() > 10 )
+			return( FALSE );
 
 		$defaults = array(
 			'count' => 15,
@@ -310,7 +313,10 @@ class bStat {
 	}
 
 	function pop_refs( $args = '' ) {
-		global $wpdb;
+		global $wpdb, $bsuite;
+
+		if( $bsuite->get_loadavg() > 10 )
+			return( FALSE );
 
 		$defaults = array(
 			'count' => 15,
