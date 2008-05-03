@@ -148,68 +148,79 @@ class bStat {
 		return(TRUE);
 	}
 
-	function get_search_engine() {
+	function get_search_engine( $ref ) {
 		// a lot of inspiration and code for this function was taken from
 		// Search Hilite by Ryan Boren and Matt Mullenweg
 		global $wp_query;
-		if( empty($_SERVER['HTTP_REFERER']) && empty($wp_query->query_vars['s']))
+		if( empty( $ref ))
 			return false;
 
-		if ( is_search() )
-			return('internal');
-
-		$referer = urldecode($_SERVER['HTTP_REFERER']);
+		$referer = urldecode( $ref );
 		if (preg_match('|^http://(www)?\.?google.*|i', $referer))
 			return('google');
 	
 		if (preg_match('|^http://search\.yahoo.*|i', $referer))
 			return('yahoo');
 
+		if (preg_match('|^http://search\.live.*|i', $referer))
+			return('windowslive');
+
+		if (preg_match('|^http://search\.msn.*|i', $referer))
+			return('msn');
+
 		if (preg_match('|^http://search\.lycos.*|i', $referer))
 			return('lycos');
-	
-		$siteurl = get_option('home');
-		if (preg_match("#^$siteurl#i", $referer))
+
+		$home = parse_url( get_settings( 'siteurl' ));
+		$ref = parse_url( $referer );	
+		if ( strpos( ' '. $ref['host'] , $home['host'] ))
 			return('internal');
 	
 		return(FALSE);
 	}
 
-	function get_search_terms($engine = 'google') {
+	function get_search_terms( $ref ) {
 		// a lot of inspiration and code for this function was taken from
 		// Search Hilite by Ryan Boren and Matt Mullenweg
-		if(empty($engine))
-			return(FALSE);
+//		if( !$engine = $this->get_search_engine( $ref ))
+//			return(FALSE);
 
-		$referer = urldecode($_SERVER['HTTP_REFERER']);
+$engine = $this->get_search_engine( $ref );
+
+		$referer = $ref;
+
+		$referer = parse_url( $ref );
+		parse_str( $referer['query'], $query_vars );
+
 		$query_array = array();
 		switch ($engine) {
 		case 'google':
-			// Google query parsing code adapted from Dean Allen's
-			// Google Hilite 0.3. http://textism.com
-			$query_terms = preg_replace('/^.*q=([^&]+)&?.*$/i','$1', $referer);
-			$query_terms = preg_replace('/\'|"/', '', $query_terms);
-			$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
-			break;
-	
-		case 'lycos':
-			$query_terms = preg_replace('/^.*query=([^&]+)&?.*$/i','$1', $referer);
-			$query_terms = preg_replace('/\'|"/', '', $query_terms);
-			$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
+			$query_array = explode(' ', urldecode( $query_vars['q'] ));
 			break;
 	
 		case 'yahoo':
-			$query_terms = preg_replace('/^.*p=([^&]+)&?.*$/i','$1', $referer);
-			$query_terms = preg_replace('/\'|"/', '', $query_terms);
-			$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
+			$query_array = explode(' ', urldecode( $query_vars['p'] ));
 			break;
 			
+		case 'windowslive':
+			$query_array = explode(' ', urldecode( $query_vars['q'] ));
+			break;
+	
+		case 'msn':
+			$query_array = explode(' ', urldecode( $query_vars['q'] ));
+			break;
+	
+		case 'lycos':
+			$query_array = explode(' ', urldecode( $query_vars['query'] ));
+			break;
+	
 		case 'internal':
 			$search = get_query_var('s');
 			$search_terms = get_query_var('search_terms');
 	
-			if (!empty($search_terms)) {
-				$query_array = $search_terms;
+			if (!empty($query_vars['s'])) {
+				$query_array = explode(' ', $query_vars['s']);
+				break;
 			} else if (!empty($search)) {
 				$query_array = array($search);
 			} else {
@@ -220,10 +231,16 @@ class bStat {
 				$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
 			}
 		}
-		
+
+		$query_array = array_filter( array_map( array(&$this, 'trimquotes') , $query_array ));
+
 		return $query_array;
 	}
 
+	function trimquotes( $in ) {
+		return( trim( trim( $in ), "'\"" ));
+	}
+	
 	function post_hits( $args = '' ) {
 		global $wpdb;
 
@@ -280,7 +297,7 @@ class bStat {
 		);
 		$args = wp_parse_args( $args, $defaults );
 	
-		$date = 'AND hit_date = NOW()';
+		$date = 'AND hit_date = DATE(NOW())';
 		if($args['days'] > 1)
 			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
 	
@@ -325,7 +342,7 @@ class bStat {
 		);
 		$args = wp_parse_args( $args, $defaults );
 	
-		$date = 'AND hit_date = NOW()';
+		$date = 'AND hit_date = DATE(NOW())';
 		if($args['days'] > 1)
 			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
 	
@@ -382,7 +399,7 @@ class bStat {
 
 		if ( !$pop_posts = wp_cache_get( 'bstat_pop_posts', 'widget' ) ) {
 			$pop_posts = $this->pop_posts("limit=$number&days=$days");
-			wp_cache_add( 'bstat_pop_posts', $pop_posts, 'widget', 300 );
+			wp_cache_add( 'bstat_pop_posts', $pop_posts, 'widget', 3600 );
 		}
 
 		if ( !empty($pop_posts) ) {
@@ -448,7 +465,7 @@ class bStat {
 
 		if ( !$pop_refs = wp_cache_get( 'bstat_pop_refs', 'widget' ) ) {
 			$pop_refs = $this->pop_refs("limit=$number&days=$days");
-			wp_cache_add( 'bstat_pop_refs', $pop_refs, 'widget', 300 );
+			wp_cache_add( 'bstat_pop_refs', $pop_refs, 'widget', 3600 );
 		}
 
 		if ( !empty($pop_refs) ) {
@@ -596,7 +613,7 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 
 	if ( !$result = wp_cache_get( $post_id, 'bstat_post_pulse' ) ) {
 		$result = $wpdb->get_results($request, ARRAY_A);
-		wp_cache_add( $post_id, $result, 'bstat_post_pulse', 300 );
+		wp_cache_add( $post_id, $result, 'bstat_post_pulse', 3600 );
 	}
 
 	if(empty($result))
