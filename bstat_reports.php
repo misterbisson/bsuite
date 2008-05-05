@@ -34,23 +34,23 @@ $bstat_period = 90;
 $date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, date("Y")));
 
 ?>
-<table><tr valign='top'><td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_table WHERE hit_date = CURDATE()"); ?></ul>
+<table><tr valign='top'><td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul>
 
-<h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_table"); ?></ul>
+<h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE object_type IN (0,1)"); ?></ul>
 
-<h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $this->hits_table WHERE hit_date > '$date'"); ?></ul>
+<h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $this->hits_targets WHERE hit_date > '$date' AND object_type IN (0,1)"); ?></ul>
 
-<h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $this->hits_table WHERE hit_date = CURDATE()"); ?></ul></td>
+<h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
 
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, hit_date FROM $this->hits_table WHERE hit_date < CURDATE() GROUP BY hit_date ORDER BY hit_date DESC LIMIT $best_num"); ?>
+<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, hit_date FROM $this->hits_targets WHERE hit_date < CURDATE() AND object_type IN (0,1) GROUP BY hit_date ORDER BY hit_date DESC LIMIT $best_num"); ?>
 
 <td><h4>Previous <?php echo $best_num; ?> Days</h4><ul><?php foreach($rows as $row){ echo '<li>'. $row->hit_count .' ('. $row->hit_date .')</li>'; } ?></ul></td>
 
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, SUM(hit_count) AS sort_order, hit_date FROM $this->hits_table WHERE hit_date < CURDATE() GROUP BY hit_date ORDER BY sort_order DESC LIMIT $best_num"); ?>
+<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, SUM(hit_count) AS sort_order, hit_date FROM $this->hits_targets WHERE hit_date < CURDATE() AND object_type IN (0,1) GROUP BY hit_date ORDER BY sort_order DESC LIMIT $best_num"); ?>
 
 <td><h4>Best <?php echo $best_num; ?> Days</h4><ul><?php foreach($rows as $row){ echo '<li>'. $row->hit_count .' ('. $row->hit_date .')</li>'; } ?></ul></td>
 
@@ -67,18 +67,21 @@ $date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, d
 <table><tr valign='top'><td><h4>Most Reads</h4><ol>
 <?php
 
-$request = "SELECT post_id, FORMAT(SUM(hit_count), 0) AS hit_count, FORMAT((SUM(hit_count)) / ((TO_DAYS(NOW()) - TO_DAYS(MIN(hit_date))) + 1), 0) AS hit_avg, FORMAT(MAX(hit_count), 0) AS hit_max, SUM(hit_count) AS sort_order 
-	FROM $this->hits_table
+$request = "SELECT object_id, object_type, FORMAT(SUM(hit_count), 0) AS hit_count, FORMAT((SUM(hit_count)) / ((TO_DAYS(NOW()) - TO_DAYS(MIN(hit_date))) + 1), 0) AS hit_avg, FORMAT(MAX(hit_count), 0) AS hit_max, SUM(hit_count) AS sort_order 
+	FROM $this->hits_targets
 	WHERE 1=1
-	AND post_id <> 0
-	GROUP BY post_id
+	AND object_type IN (0,1)
+	GROUP BY object_id
 	ORDER BY sort_order DESC
 	LIMIT $detail_lines";
 $result = $wpdb->get_results($request, ARRAY_A);
 
 if(!empty($result)){
 	foreach($result as $post){
-		echo '<li><a href="'. get_permalink($post['post_id']) .'">'. get_the_title($post['post_id']) .'</a><br><small>Tot: '. $post['hit_count'] .' Avg: '. $post['hit_avg'] .' Max: '. $post['hit_max'] ."</small></li>\n";
+		if( 0 == $post['object_type'] )
+			echo '<li><a href="'. get_permalink($post['object_id']) .'">'. get_the_title($post['object_id']) .'</a><br><small>Tot: '. $post['hit_count'] .' Avg: '. $post['hit_avg'] .' Max: '. $post['hit_max'] ."</small></li>\n";
+		else
+			echo '<li><a href="'. $this->bstat_get_term($post['object_id']) .'">'. $this->bstat_get_term($post['object_id']) .'</a><br><small>Tot: '. $post['hit_count'] .' Avg: '. $post['hit_avg'] .' Max: '. $post['hit_max'] ."</small></li>\n";
 	}
 }else{
 	echo '<li>No Data Yet.</li>';
@@ -90,7 +93,7 @@ if(!empty($result)){
 $posts = $wpdb->get_results("SELECT post_id, AVG(hit_count) AS hit_avg
 		FROM $this->hits_table
 		WHERE hit_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
-		AND post_id <> 0
+		AND object_type IN (0,1)
 		GROUP BY post_id
 		ORDER BY post_id ASC", ARRAY_A);
 $avg = array();
