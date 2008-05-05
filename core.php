@@ -609,16 +609,19 @@ bsuite.log();
 	}
 
 	function bstat_migrator(){
-		global $wpdb, $bsuite;
+		global $wpdb;
+
+		if( $this->get_loadavg() > 10 )
+			return( FALSE );
 
 		update_option('bsuite_doing_migration', time() );
 
-		$getcount = 1000;
+		$getcount = 500;
 		$since = date('Y-m-d H:i:s', strtotime('-2 minutes'));
 		
 		$res = $targets = $searchwords = $shistory = array();
 		$res = $wpdb->get_results( "SELECT * 
-			FROM $bsuite->hits_incoming
+			FROM $this->hits_incoming
 			WHERE in_time < '$since'
 			ORDER BY in_time ASC
 			LIMIT $getcount" );
@@ -663,30 +666,30 @@ bsuite.log();
 		}
 
 		if( count( $targets )){
-			if ( false === $wpdb->query( "INSERT INTO $bsuite->hits_targets (object_id, object_type, hit_count, hit_date) VALUES ". implode( $targets, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
+			if ( false === $wpdb->query( "INSERT INTO $this->hits_targets (object_id, object_type, hit_count, hit_date) VALUES ". implode( $targets, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_target into the database'), $wpdb->last_error);
 		}
 		
 		if( count( $searchwords )){
-			if ( false === $wpdb->query( "INSERT INTO $bsuite->hits_searchwords (object_id, object_type, term_id, hit_count, hit_date) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
+			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchwords (object_id, object_type, term_id, hit_count, hit_date) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_searchword into the database'), $wpdb->last_error);
 		}
 
 		if( count( $shistory )){
-			if ( false === $wpdb->query( "INSERT INTO $bsuite->hits_shistory (sess_id, object_id, object_type) VALUES ". implode( $shistory, ',' ) .';' ))
+			if ( false === $wpdb->query( "INSERT INTO $this->hits_shistory (sess_id, object_id, object_type) VALUES ". implode( $shistory, ',' ) .';' ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_session_history into the database'), $wpdb->last_error);
 		}
 
 		if( count( $res )){
-			if ( false === $wpdb->query( "DELETE FROM $bsuite->hits_incoming WHERE in_time < '$since' ORDER BY in_time ASC LIMIT ". count( $res ) .';'))
+			if ( false === $wpdb->query( "DELETE FROM $this->hits_incoming WHERE in_time < '$since' ORDER BY in_time ASC LIMIT ". count( $res ) .';'))
 				return new WP_Error('db_insert_error', __('Could not clean up the incomin stats table'), $wpdb->last_error);
 			if( $getcount > count( $res ))
-				$wpdb->query( "OPTIMIZE TABLE $bsuite->hits_incoming;");
+				$wpdb->query( "OPTIMIZE TABLE $this->hits_incoming;");
 		}
 
 /*		
 		$posts = $wpdb->get_results("SELECT object_id, AVG(hit_count) AS hit_avg
-				FROM $bsuite->hits_targets
+				FROM $this->hits_targets
 				WHERE hit_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
 				AND object_type = 0
 				GROUP BY object_id
@@ -696,7 +699,7 @@ bsuite.log();
 			$avg[$post['object_id']] = $post['hit_avg'];
 		
 		$posts = $wpdb->get_results("SELECT object_id, hit_count * (86400/TIME_TO_SEC(TIME(NOW()))) AS hit_now
-				FROM $bsuite->hits_targets
+				FROM $this->hits_targets
 				WHERE hit_date = CURDATE()
 				AND object_type = 0
 				ORDER BY object_id ASC", ARRAY_A);
@@ -1048,6 +1051,10 @@ $engine = $this->get_search_engine( $ref );
 
 	function searchsmart_upindex_passive(){
 		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
+
+		if( $this->get_loadavg() > 10 )
+			return( FALSE );
+
 		global $wpdb;
 
 		$posts = $wpdb->get_results("SELECT a.ID, a.post_content, a.post_title
