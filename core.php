@@ -1245,8 +1245,7 @@ $engine = $this->get_search_engine( $ref );
 		}else{
 			$load_avg = &$this->sys_getloadavg();
 		}
-		$result = (($load_avg[0] + $load_avg[1]) / 2);
-		return($result);
+		return($load_avg[0]);
 	}
 
 	function sys_getloadavg(){
