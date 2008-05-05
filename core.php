@@ -189,7 +189,7 @@ class bSuite {
 
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
-//		add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
+		add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
 		add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 
 		// cms goodies
