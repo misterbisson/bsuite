@@ -190,7 +190,7 @@ class bSuite {
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
 //		add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
-		add_filter('bsuite_interval', array(&$this, 'searchsmart_reindexpassive'));
+		add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 
 		// cms goodies
 		add_action('dbx_page_advanced', array(&$this, 'edit_insert_excerpt_form'));
@@ -1000,25 +1000,6 @@ $engine = $this->get_search_engine( $ref );
 		return($query);
 	}
 
-	function searchsmart_reindexpassive(){
-		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
-		global $wpdb;
-
-		$posts = $wpdb->get_results("SELECT a.ID, a.post_content, a.post_title
-			FROM $wpdb->posts
-			LEFT JOIN $this->search_table b ON a.ID = b.post_id
-			WHERE a.post_status = 'publish'
-			AND b.post_id IS NULL
-			LIMIT 10
-			", ARRAY_A);
-		if( count( $posts )) {
-			foreach( $posts as $post ) {
-				$this->searchsmart_upindex($post['ID'], $post['post_content'],  $post['post_title']);
-			}
-		}
-		return(TRUE);
-	}
-
 	function searchsmart_onsingle(){
 		// redirects the search to the single page if the search returns only one item
 		global $wp_query;
@@ -1059,6 +1040,26 @@ $engine = $this->get_search_engine( $ref );
 		
 		$wpdb->get_results($request);
 
+		return(TRUE);
+	}
+
+	function searchsmart_upindex_passive(){
+		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
+		global $wpdb;
+
+		$posts = $wpdb->get_results("SELECT a.ID, a.post_content, a.post_title
+			FROM $wpdb->posts a
+			LEFT JOIN $this->search_table b ON a.ID = b.post_id
+			WHERE a.post_status = 'publish'
+			AND b.post_id IS NULL
+			LIMIT 10
+			", ARRAY_A);
+
+		if( count( $posts )) {
+			foreach( $posts as $post ) {
+				$this->searchsmart_upindex($post['ID'], $post['post_content'],  $post['post_title']);
+			}
+		}
 		return(TRUE);
 	}
 
