@@ -139,7 +139,8 @@ class bSuite {
 		$this->hits_searchwords = $wpdb->prefix . 'bsuite4_hits_searchwords';
 		$this->hits_sessions = $wpdb->prefix . 'bsuite4_hits_sessions';
 		$this->hits_shistory = $wpdb->prefix . 'bsuite4_hits_shistory';
-
+		
+		$this->loadavg = $this->get_loadavg();
 
 		// establish web path to this plugin's directory
 		$this->path_web = '/'. PLUGINDIR .'/'. plugin_basename( dirname( __FILE__ ));
@@ -189,8 +190,10 @@ class bSuite {
 
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
-		add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
-		add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
+		if( $this->loadavg < 10 ){ // only do cron if load is low-ish
+			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
+			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
+		}
 
 		// cms goodies
 		add_action('dbx_page_advanced', array(&$this, 'edit_insert_excerpt_form'));
@@ -610,9 +613,6 @@ bsuite.log();
 
 	function bstat_migrator(){
 		global $wpdb;
-
-		if( $this->get_loadavg() > 10 )
-			return( FALSE );
 
 		update_option('bsuite_doing_migration', time() );
 
@@ -1051,10 +1051,6 @@ $engine = $this->get_search_engine( $ref );
 
 	function searchsmart_upindex_passive(){
 		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
-
-		if( $this->get_loadavg() > 10 )
-			return( FALSE );
-
 		global $wpdb;
 
 		$posts = $wpdb->get_results("SELECT a.ID, a.post_content, a.post_title
@@ -1222,7 +1218,7 @@ $engine = $this->get_search_engine( $ref );
 	// cron utility functions
 	//
 	function cron_reccurences( $schedules ) {
-		$schedules['bsuite_interval'] = array('interval' => 90, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
+		$schedules['bsuite_interval'] = array('interval' => 120, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
 		return( $schedules );
 	}
 
