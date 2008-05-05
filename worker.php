@@ -23,4 +23,6 @@ $wpdb->insert( $bsuite->hits_incoming, array( 'in_type' => '0', 'in_session' => 
 if( strlen($_REQUEST['pr'] ))
 	print_r( $bstat->get_search_terms( $_REQUEST['pr'] ));
 */
+
+//phpinfo();
 ?>

@@ -146,7 +146,7 @@ class bSuite {
 
 		// register and queue javascripts
 		wp_register_script( 'scrib-linktome_selectall', $this->path_web . '/js/linktome_selectall.js', array('jquery'), '20080422' );
-		wp_register_script( 'scrib-bstat', $this->path_web . '/js/bstat.js', array('jquery'), '200805022' );
+		wp_register_script( 'scrib-bstat', $this->path_web . '/js/bstat.js', array('jquery'), '200805026' );
 		wp_enqueue_script( 'scrib-linktome_selectall' );	
 		wp_enqueue_script( 'scrib-bstat' );	
 
@@ -548,7 +548,10 @@ class bSuite {
 	//
 	function bstat_js() {
 ?>
-<script type="text/javascript">bsuite.log();</script>
+<script type="text/javascript">
+bsuite.api_location='<?php echo substr( get_settings( 'siteurl' ), strpos( get_settings( 'siteurl' ), ':' ) + 3 ) . $this->path_web . '/worker.php' ?>';
+bsuite.log();
+</script>
 <?php
 	}
 	

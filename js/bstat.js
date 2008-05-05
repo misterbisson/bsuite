@@ -43,6 +43,7 @@ URI Variable Info:
 
 var bsuite={
 	'id':'b-i-fr',
+	'api_location':'',
 	'api_key':'073ccf57bf2dc2a7ba98d51e2ec7cb7e',
 	'api_sig':'',
 	'doc':document,
@@ -106,7 +107,7 @@ var bsuite={
 ********************************************/
 			var src='http:';
 			if(this.url.protocol=='https:') src='https:';
-			src+='//test23.wpopac.net/wp-content/plugins/bsuite_core/worker.php';
+			src+='//'+this.api_location;
 			//generate a random number to prevent caching
 			var n = Math.round(Math.random()*2147483647);
 			//set up the querystring
@@ -120,7 +121,7 @@ var bsuite={
 			//build image
 			var i=new Image(1,1);
 			i.src=src;
-			
+
 			i.onload=function(){return;};
 		}
 	},
