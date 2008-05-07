@@ -190,9 +190,9 @@ class bSuite {
 
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
-		if( $this->loadavg < 10 ){ // only do cron if load is low-ish
+		if( $this->loadavg < 6 ){ // only do cron if load is low-ish
 			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
-			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
+//			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
 
 		// cms goodies
@@ -1218,7 +1218,7 @@ $engine = $this->get_search_engine( $ref );
 	// cron utility functions
 	//
 	function cron_reccurences( $schedules ) {
-		$schedules['bsuite_interval'] = array('interval' => 120, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
+		$schedules['bsuite_interval'] = array('interval' => 300, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
 		return( $schedules );
 	}
 
