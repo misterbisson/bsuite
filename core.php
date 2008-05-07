@@ -619,7 +619,7 @@ bsuite.log();
 
 		update_option('bsuite_doing_migration', time() + 250 );
 
-		$getcount = 500;
+		$getcount = 100;
 		$since = date('Y-m-d H:i:s', strtotime('-2 minutes'));
 		
 		$res = $targets = $searchwords = $shistory = array();
@@ -1230,7 +1230,7 @@ $engine = $this->get_search_engine( $ref );
 	// cron utility functions
 	//
 	function cron_reccurences( $schedules ) {
-		$schedules['bsuite_interval'] = array('interval' => 300, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
+		$schedules['bsuite_interval'] = array('interval' => 93, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
 		return( $schedules );
 	}
 
