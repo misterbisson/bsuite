@@ -614,7 +614,10 @@ bsuite.log();
 	function bstat_migrator(){
 		global $wpdb;
 
-		update_option('bsuite_doing_migration', time() );
+		if ( get_option('bsuite_doing_migration') > time() )
+			return( TRUE );
+
+		update_option('bsuite_doing_migration', time() + 250 );
 
 		$getcount = 500;
 		$since = date('Y-m-d H:i:s', strtotime('-2 minutes'));
@@ -726,7 +729,7 @@ bsuite.log();
 		
 //print_r($wpdb->queries);
 
-		delete_option('bsuite_doing_migration');
+		update_option( 'bsuite_doing_migration', 0 );
 		return(TRUE);
 	}
 
@@ -1051,6 +1054,12 @@ $engine = $this->get_search_engine( $ref );
 
 	function searchsmart_upindex_passive(){
 		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
+
+		if ( get_option('bsuite_doing_ftindex') > time() )
+			return( TRUE );
+
+		update_option('bsuite_doing_ftindex', time() + 330 );
+
 		global $wpdb;
 
 		$posts = $wpdb->get_results("SELECT a.ID, a.post_content, a.post_title
@@ -1066,6 +1075,9 @@ $engine = $this->get_search_engine( $ref );
 				$this->searchsmart_upindex($post['ID'], $post['post_content'],  $post['post_title']);
 			}
 		}
+
+		update_option('bsuite_doing_ftindex', 0 );
+
 		return(TRUE);
 	}
 
