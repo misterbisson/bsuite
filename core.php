@@ -1230,7 +1230,7 @@ $engine = $this->get_search_engine( $ref );
 	// cron utility functions
 	//
 	function cron_reccurences( $schedules ) {
-		$schedules['bsuite_interval'] = array('interval' => 93, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
+		$schedules['bsuite_interval'] = array('interval' => 300, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
 		return( $schedules );
 	}
 
