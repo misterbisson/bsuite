@@ -841,7 +841,7 @@ $engine = $this->get_search_engine( $ref );
 
 		if ( !$result = wp_cache_get( (int) $args['post_id'] .'_'. (int) $args['days'], 'bstat_post_hits' ) ) {
 			$result = $wpdb->get_results($request, ARRAY_A);
-			wp_cache_add( (int) $args['post_id'] .'_'. (int) $args['days'], $result, 'bstat_post_hits', 300 );
+			wp_cache_add( (int) $args['post_id'] .'_'. (int) $args['days'], $result, 'bstat_post_hits', 1800 );
 		}
 
 		if(empty($result))
@@ -2417,6 +2417,13 @@ function bsuite_link2me() {
 	echo $bsuite->link2me();
 }
 
+function bstat_hits($template = '%%hits%% hits, about %%avg%% daily', $post_id = NULL, $todayonly = 0, $return = NULL) {
+	global $bsuite;
+	if(!empty($return))
+		return($bsuite->post_hits(array('post_id' => $post_id,'days' => $todayonly, 'template' => $template )));
+	echo $bsuite->post_hits(array('post_id' => $post_id,'days' => $todayonly, 'template' => $template ));
+}
+
 
 // deprecated functions
 function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit = 1, $accurate = 4) {
@@ -2516,9 +2523,9 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 
 // php4 compatibility, argh
 if(!function_exists('str_ireplace')){
-function str_ireplace($a, $b, $c){
-	return str_replace($a, $b, $c);
-}
+	function str_ireplace($a, $b, $c){
+		return str_replace($a, $b, $c);
+	}
 }
 
 
