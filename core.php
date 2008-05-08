@@ -614,7 +614,7 @@ bsuite.log();
 	function bstat_migrator(){
 		global $wpdb;
 
-		if ( get_option('bsuite_doing_migration') > time() )
+		if ( ( get_option('bsuite_doing_migration') > time() ) || ( get_option('bsuite_doing_report') > time() ))
 			return( TRUE );
 
 		update_option('bsuite_doing_migration', time() + 250 );
@@ -931,7 +931,7 @@ $engine = $this->get_search_engine( $ref );
 	
 	
 		$request = "SELECT term_id, SUM(hit_count) AS hit_count
-			FROM $this->rterms_table
+			FROM $this->hits_searchwords
 			WHERE 1=1
 			$date
 			GROUP BY term_id
@@ -949,8 +949,8 @@ $engine = $this->get_search_engine( $ref );
 		if($args['return'] == 'formatted'){
 			$list = '';
 			foreach($result as $row){
-				$term = get_term($row['term_id'], 'bsuite_search');
-				$list .= str_replace(array('%%title%%','%%hits%%'), array($term->name, $row['hit_count']), $args['template']);
+				$term = $this->bstat_get_term( $row['term_id'] );
+				$list .= str_replace(array('%%title%%','%%hits%%'), array($term, $row['hit_count']), $args['template']);
 			}		
 			return($list);
 		}
@@ -1896,7 +1896,9 @@ $engine = $this->get_search_engine( $ref );
 		$this->createtables();
 		$this->cron_register();
 
+		update_option('bsuite_doing_report', time() + 250 );
 		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/bstat_reports.php');
+		update_option('bsuite_doing_report', 0 );
 	}
 	
 	function optionspage() {

@@ -90,29 +90,29 @@ if(!empty($result)){
 </ol></td>
 
 <?php
-$posts = $wpdb->get_results("SELECT post_id, AVG(hit_count) AS hit_avg
-		FROM $this->hits_table
+$posts = $wpdb->get_results("SELECT object_id, object_type, AVG(hit_count) AS hit_avg
+		FROM $this->hits_targets
 		WHERE hit_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
-		AND object_type IN (0,1)
-		GROUP BY post_id
-		ORDER BY post_id ASC", ARRAY_A);
+		AND object_type = 0
+		GROUP BY object_id
+		ORDER BY object_id ASC", ARRAY_A);
 $avg = array();
 foreach($posts as $post)
-	$avg[$post['post_id']] = $post['hit_avg'];
+	$avg[$post['object_id']] = $post['hit_avg'];
 
 
-$posts = $wpdb->get_results("SELECT post_id, hit_count * (86400/TIME_TO_SEC(TIME(NOW()))) AS hit_now
-		FROM $this->hits_table
+$posts = $wpdb->get_results("SELECT object_id, object_type, hit_count * (86400/TIME_TO_SEC(TIME(NOW()))) AS hit_now
+		FROM $this->hits_targets
 		WHERE hit_date = CURDATE()
-		AND post_id <> 0
-		ORDER BY post_ID ASC;", ARRAY_A);
+		AND object_type = 0
+		ORDER BY object_id ASC;", ARRAY_A);
 $now = array();
 foreach($posts as $post)
-	$now[$post['post_id']] = $post['hit_now'];
+	$now[$post['object_id']] = $post['hit_now'];
 
 $diff = array();
 foreach($posts as $post)
-	$diff[$post['post_id']] = intval(($now[$post['post_id']] - $avg[$post['post_id']]) * 1000 );
+	$diff[$post['object_id']] = intval(($now[$post['object_id']] - $avg[$post['object_id']]) * 1000 );
 
 $win = count(array_filter($diff, create_function('$a', 'if($a > 0) return(TRUE);')));
 $lose = count($diff) - $win;
@@ -125,8 +125,8 @@ ksort($sort);
 <?php
 
 if(!empty($sort)){
-	foreach(array_slice(array_reverse($sort), 0, $detail_lines) as $post_id){
-		echo '<li><a href="'. get_permalink($post_id) .'">'. get_the_title($post_id) .'</a><br><small>Up: '. number_format($diff[$post_id] / 1000, 0) .' Avg: '. number_format($avg[$post_id], 0) .' Today: '. number_format($now[$post_id], 0) ."</small></li>\n";
+	foreach(array_slice(array_reverse($sort), 0, $detail_lines) as $object_id){
+		echo '<li><a href="'. get_permalink($object_id) .'">'. get_the_title($object_id) .'</a><br><small>Up: '. number_format($diff[$object_id] / 1000, 0) .' Avg: '. number_format($avg[$object_id], 0) .' Today: '. number_format($now[$object_id], 0) ."</small></li>\n";
 	}
 }else{
 	echo '<li>No Data Yet.</li>';
@@ -138,8 +138,8 @@ if(!empty($sort)){
 <?php
 
 if(!empty($sort)){
-	foreach(array_slice($sort, 0, $detail_lines) as $post_id){
-		echo '<li><a href="'. get_permalink($post_id) .'">'. get_the_title($post_id) .'</a><br><small>Down: '. number_format($diff[$post_id] / 1000, 0) .' Avg: '. number_format($avg[$post_id], 0) .' Today: '. number_format($now[$post_id], 0) ."</small></li>\n";
+	foreach(array_slice($sort, 0, $detail_lines) as $object_id){
+		echo '<li><a href="'. get_permalink($object_id) .'">'. get_the_title($object_id) .'</a><br><small>Down: '. number_format($diff[$object_id] / 1000, 0) .' Avg: '. number_format($avg[$object_id], 0) .' Today: '. number_format($now[$object_id], 0) ."</small></li>\n";
 	}
 }else{
 	echo '<li>No Data Yet.</li>';
