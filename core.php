@@ -653,7 +653,7 @@ bsuite.log();
 			// look for search words
 			if( ( $referers = implode( $this->get_search_terms( $hit->in_from ), ' ') ) && ( 0 < strlen( $referers ))) {
 print_r( $referers ); 
-				$term_id = $this->bstat_insert_term( $referers ));
+				$term_id = $this->bstat_insert_term( $referers );
 				$searchwords[] = "($object_id, $object_type, $term_id, " . "1, '$hit->in_time')";
 			}
 			
