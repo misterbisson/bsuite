@@ -191,7 +191,7 @@ class bSuite {
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
 		if( $this->loadavg < 6 ){ // only do cron if load is low-ish
-			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
+//			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
 //			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
 
@@ -614,13 +614,16 @@ bsuite.log();
 	function bstat_migrator(){
 		global $wpdb;
 
-		if ( ( get_option('bsuite_doing_migration') > time() ) || ( get_option('bsuite_doing_report') > time() ))
+		if ( 
+			( get_option('bsuite_doing_migration') > time() ) || 
+			( get_option('bsuite_doing_report') > time() )
+		)
 			return( TRUE );
 
 		update_option('bsuite_doing_migration', time() + 250 );
 
 		$getcount = 100;
-		$since = date('Y-m-d H:i:s', strtotime('-2 minutes'));
+		$since = date('Y-m-d H:i:s', strtotime('-1 minutes'));
 		
 		$res = $targets = $searchwords = $shistory = array();
 		$res = $wpdb->get_results( "SELECT * 
@@ -630,7 +633,6 @@ bsuite.log();
 			LIMIT $getcount" );
 		
 		foreach( $res as $hit ){
-//print_r($hit);
 			$object_id = $object_type = $session_id = 0;
 
 			if( !strlen( $hit->in_to ))
@@ -1238,7 +1240,7 @@ $engine = $this->get_search_engine( $ref );
 		// take a look at Glenn Slaven's tutorial on WP's psudo-cron:
 		// http://blog.slaven.net.au/archives/2007/02/01/timing-is-everything
 		wp_clear_scheduled_hook('bsuite_interval');
-		wp_schedule_event( 0, 'bsuite_interval', 'bsuite_interval' );
+//		wp_schedule_event( 0, 'bsuite_interval', 'bsuite_interval' );
 	}
 	// end cron functions
 
