@@ -884,9 +884,6 @@ $engine = $this->get_search_engine( $ref );
 			GROUP BY object_id
 			ORDER BY hit_count DESC
 			$limit";
-
-echo "<h2>$request</h2>";
-
 		$result = $wpdb->get_results($request, ARRAY_A);
 
 		if(empty($result))
