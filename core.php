@@ -652,7 +652,9 @@ bsuite.log();
 		
 			// look for search words
 			if( ( $referers = implode( $this->get_search_terms( $hit->in_from ), ' ') ) && ( 0 < strlen( $referers ))) {
-print_r( $referers ); 
+
+print_r( $hit );
+
 				$term_id = $this->bstat_insert_term( $referers );
 				$searchwords[] = "($object_id, $object_type, $term_id, " . "1, '$hit->in_time')";
 			}
@@ -821,6 +823,8 @@ $engine = $this->get_search_engine( $ref );
 		}
 
 		$query_array = array_filter( array_map( array(&$this, 'trimquotes') , $query_array ));
+
+print_r( $query_array );
 
 		return $query_array;
 	}
