@@ -777,8 +777,6 @@ print_r( $hit );
 
 $engine = $this->get_search_engine( $ref );
 
-		$referer = $ref;
-
 		$referer = parse_url( $ref );
 		parse_str( $referer['query'], $query_vars );
 
@@ -805,21 +803,11 @@ $engine = $this->get_search_engine( $ref );
 			break;
 	
 		case 'internal':
-			$search = get_query_var('s');
-			$search_terms = get_query_var('search_terms');
-	
-			if (!empty($query_vars['s'])) {
-				$query_array = explode(' ', $query_vars['s']);
-				break;
-			} else if (!empty($search)) {
-				$query_array = array($search);
-			} else {
-				$query_terms = preg_replace('/^.*s=([^&]+)&?.*$/i','$1', $referer);
-				if(preg_match('|^http://|i', $query_terms))
-					return(FALSE);
-				$query_terms = preg_replace('/\'|"/', '', $query_terms);
-				$query_array = preg_split ("/[\s,\+\.]+/", $query_terms);
-			}
+			if( $query_vars['s'] )
+				$query_array = explode(' ', urldecode( $query_vars['s'] ));
+
+			// also need to handle the case where a search matches the /search/ pattern
+			break;
 		}
 
 		$query_array = array_filter( array_map( array(&$this, 'trimquotes') , $query_array ));
