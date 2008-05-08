@@ -190,8 +190,8 @@ class bSuite {
 
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
-		if( $this->loadavg < 6 ){ // only do cron if load is low-ish
-//			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
+		if( $this->loadavg < 4 ){ // only do cron if load is low-ish
+			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
 //			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
 
@@ -1240,7 +1240,7 @@ $engine = $this->get_search_engine( $ref );
 		// take a look at Glenn Slaven's tutorial on WP's psudo-cron:
 		// http://blog.slaven.net.au/archives/2007/02/01/timing-is-everything
 		wp_clear_scheduled_hook('bsuite_interval');
-//		wp_schedule_event( 0, 'bsuite_interval', 'bsuite_interval' );
+		wp_schedule_event( 0, 'bsuite_interval', 'bsuite_interval' );
 	}
 	// end cron functions
 
