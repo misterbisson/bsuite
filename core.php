@@ -832,7 +832,7 @@ $engine = $this->get_search_engine( $ref );
 		$request = "SELECT
 			FORMAT(SUM(hit_count), 0) AS hits, 
 			FORMAT(AVG(hit_count), 0) AS average
-			FROM $this->hits_table
+			FROM $this->hits_targets
 			WHERE 1=1
 			$post_id
 			AND object_type = 0
@@ -877,7 +877,7 @@ $engine = $this->get_search_engine( $ref );
 	
 	
 		$request = "SELECT object_id, SUM(hit_count) AS hit_count
-			FROM $this->hits_table
+			FROM $this->hits_targets
 			WHERE 1=1
 			AND object_type = 0
 			$date
