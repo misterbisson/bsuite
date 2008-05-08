@@ -652,9 +652,6 @@ bsuite.log();
 		
 			// look for search words
 			if( ( $referers = implode( $this->get_search_terms( $hit->in_from ), ' ') ) && ( 0 < strlen( $referers ))) {
-
-print_r( $hit );
-
 				$term_id = $this->bstat_insert_term( $referers );
 				$searchwords[] = "($object_id, $object_type, $term_id, " . "1, '$hit->in_time')";
 			}
@@ -812,8 +809,6 @@ $engine = $this->get_search_engine( $ref );
 
 		$query_array = array_filter( array_map( array(&$this, 'trimquotes') , $query_array ));
 
-print_r( $query_array );
-
 		return $query_array;
 	}
 
@@ -827,7 +822,7 @@ print_r( $query_array );
 		);
 		$args = wp_parse_args( $args, $defaults );
 
-		$post_id = (int) $args['post_id'] > 1 ? 'AND post_id = '. (int) $args['post_id'] : '';
+		$post_id = (int) $args['post_id'] > 1 ? 'AND object_id = '. (int) $args['post_id'] : '';
 	
 		$date = '';
 		if($args['days'] > 1)
@@ -840,6 +835,7 @@ print_r( $query_array );
 			FROM $this->hits_table
 			WHERE 1=1
 			$post_id
+			AND object_type = 0
 			$date
 			";
 
@@ -880,12 +876,12 @@ print_r( $query_array );
 		$limit = 'LIMIT '. (0 + $args['count']);
 	
 	
-		$request = "SELECT post_id, SUM(hit_count) AS hit_count
+		$request = "SELECT object_id, SUM(hit_count) AS hit_count
 			FROM $this->hits_table
 			WHERE 1=1
-			AND post_id <> 0
+			AND object_type = 0
 			$date
-			GROUP BY post_id
+			GROUP BY object_id
 			ORDER BY hit_count DESC
 			$limit";
 		$result = $wpdb->get_results($request, ARRAY_A);
@@ -899,7 +895,7 @@ print_r( $query_array );
 		if($args['return'] == 'formatted'){
 			$list = '';
 			foreach($result as $post){
-				$list .= str_replace(array('%%title%%','%%hits%%','%%link%%'), array(get_the_title($post['post_id']), $post['hit_count'], get_permalink($post['post_id'])), $args['template']);
+				$list .= str_replace(array('%%title%%','%%hits%%','%%link%%'), array(get_the_title($post['object_id']), $post['hit_count'], get_permalink($post['object_id'])), $args['template']);
 			}
 			return($list);
 		}
