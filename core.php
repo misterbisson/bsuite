@@ -561,13 +561,13 @@ bsuite.log();
 	function bstat_get_term( $id ) {
 		global $wpdb;
 
-		return $wpdb->get_var("SELECT name FROM $this->hits_terms WHERE ". $wpdb->prepare( "term_id = %s", (int) $id ));
+		return( (int) $wpdb->get_var("SELECT name FROM $this->hits_terms WHERE ". $wpdb->prepare( "term_id = %s", (int) $id )) );
 	}
 	
 	function bstat_is_term( $term ) {
 		global $wpdb;
 	
-		return $wpdb->get_var("SELECT term_id FROM $this->hits_terms WHERE ". $wpdb->prepare( "name = %s", substr( $term, 0, 255 )));
+		return( (int) $wpdb->get_var("SELECT term_id FROM $this->hits_terms WHERE ". $wpdb->prepare( "name = %s", substr( $term, 0, 255 ))) );
 	}
 	
 	function bstat_insert_term( $term ) {
@@ -579,7 +579,7 @@ bsuite.log();
 			$term_id = (int) $wpdb->insert_id;
 		}
 	
-		return( $term_id );
+		return( (int) $term_id );
 	}
 
 	function bstat_is_session( $session_cookie ) {
