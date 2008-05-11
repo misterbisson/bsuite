@@ -605,8 +605,10 @@ bsuite.log();
 			$s['sess_bb'] = $se['bb'];
 			$s['sess_bl'] = $se['bl'];
 
-			if ( false === $wpdb->insert( $this->hits_sessions, $s ))
-				return new WP_Error('db_insert_error', __('Could not insert term into the database'), $wpdb->last_error);
+			if ( false === $wpdb->insert( $this->hits_sessions, $s )){
+				new WP_Error('db_insert_error', __('Could not insert session into the database'), $wpdb->last_error);
+				return( FALSE );
+			}
 			$session_id = (int) $wpdb->insert_id;
 		}
 
@@ -659,8 +661,6 @@ bsuite.log();
 			// look for search words
 			if( ( $referers = implode( $this->get_search_terms( $hit->in_from ), ' ') ) && ( 0 < strlen( $referers ))) {
 				$term_id = $this->bstat_insert_term( $referers );
-echo "<h2>$referers</h2>";
-print_r( $term_id );
 				$searchwords[] = "($object_id, $object_type, $term_id, 1, '$hit->in_time')";
 			}
 			
@@ -706,14 +706,14 @@ print_r( $term_id );
 			$status['did_shistory'] = count( $shistory );
 			update_option( 'bsuite_doing_migration_status', $status );
 		}
-/*
+
 		if( count( $res )){
 			if ( false === $wpdb->query( "DELETE FROM $this->hits_incoming WHERE in_time < '$since' ORDER BY in_time ASC LIMIT ". count( $res ) .';'))
 				return new WP_Error('db_insert_error', __('Could not clean up the incoming stats table'), $wpdb->last_error);
 			if( $getcount > count( $res ))
 				$wpdb->query( "OPTIMIZE TABLE $this->hits_incoming;");
 		}
-*/
+
 /*		
 		$posts = $wpdb->get_results("SELECT object_id, AVG(hit_count) AS hit_avg
 				FROM $this->hits_targets
