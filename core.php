@@ -574,8 +574,10 @@ bsuite.log();
 		global $wpdb;
 	
 		if ( !$term_id = $this->bstat_is_term( $term )) {
-			if ( false === $wpdb->insert( $this->hits_terms, array( 'name' => $term )))
-				return new WP_Error('db_insert_error', __('Could not insert term into the database'), $wpdb->last_error);
+			if ( false === $wpdb->insert( $this->hits_terms, array( 'name' => $term ))){
+				new WP_Error('db_insert_error', __('Could not insert term into the database'), $wpdb->last_error);
+				return( 1 );
+			}
 			$term_id = (int) $wpdb->insert_id;
 		}
 	
