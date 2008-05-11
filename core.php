@@ -191,7 +191,7 @@ class bSuite {
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
 		if( $this->loadavg < 4 ){ // only do cron if load is low-ish
-			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
+//			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
 //			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
 
@@ -615,12 +615,13 @@ bsuite.log();
 		global $wpdb;
 
 		if ( 
-			( get_option('bsuite_doing_migration') > time() ) || 
-			( get_option('bsuite_doing_report') > time() )
+			( get_option( 'bsuite_doing_migration') > time() ) || 
+			( get_option( 'bsuite_doing_report') > time() )
 		)
 			return( TRUE );
 
-		update_option('bsuite_doing_migration', time() + 250 );
+		update_option( 'bsuite_doing_migration', time() + 250 );
+		$status = get_option ( 'bsuite_doing_migration_status' );
 
 		$getcount = 100;
 		$since = date('Y-m-d H:i:s', strtotime('-1 minutes'));
@@ -632,6 +633,9 @@ bsuite.log();
 			ORDER BY in_time ASC
 			LIMIT $getcount" );
 		
+		$status['count_incoming'] = count( $res );
+		update_option( 'bsuite_doing_migration_status', $status );
+
 		foreach( $res as $hit ){
 			$object_id = $object_type = $session_id = 0;
 
@@ -670,24 +674,38 @@ bsuite.log();
 			}
 		}
 
-		if( count( $targets )){
+		$status['count_targets'] = count( $targets );
+		$status['count_searchwords'] = count( $searchwords );
+		$status['count_shistory'] = count( $shistory );
+		update_option( 'bsuite_doing_migration_status', $status );
+
+		if( count( $targets ) && !$status['did_targets'] ){
 			if ( false === $wpdb->query( "INSERT INTO $this->hits_targets (object_id, object_type, hit_count, hit_date) VALUES ". implode( $targets, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_target into the database'), $wpdb->last_error);
+
+			$status['did_targets'] = 1 ;
+			update_option( 'bsuite_doing_migration_status', $status );
 		}
 		
-		if( count( $searchwords )){
+		if( count( $searchwords ) && !$status['did_searchwords'] ){
 			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchwords (object_id, object_type, term_id, hit_count, hit_date) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_searchword into the database'), $wpdb->last_error);
+
+			$status['did_searchwords'] = 1;
+			update_option( 'bsuite_doing_migration_status', $status );
 		}
 
-		if( count( $shistory )){
+		if( count( $shistory ) && !$status['did_shistory'] ){
 			if ( false === $wpdb->query( "INSERT INTO $this->hits_shistory (sess_id, object_id, object_type) VALUES ". implode( $shistory, ',' ) .';' ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_session_history into the database'), $wpdb->last_error);
+
+			$status['did_shistory'] = count( $shistory );
+			update_option( 'bsuite_doing_migration_status', $status );
 		}
 
 		if( count( $res )){
 			if ( false === $wpdb->query( "DELETE FROM $this->hits_incoming WHERE in_time < '$since' ORDER BY in_time ASC LIMIT ". count( $res ) .';'))
-				return new WP_Error('db_insert_error', __('Could not clean up the incomin stats table'), $wpdb->last_error);
+				return new WP_Error('db_insert_error', __('Could not clean up the incoming stats table'), $wpdb->last_error);
 			if( $getcount > count( $res ))
 				$wpdb->query( "OPTIMIZE TABLE $this->hits_incoming;");
 		}
@@ -732,6 +750,7 @@ bsuite.log();
 //print_r($wpdb->queries);
 
 		update_option( 'bsuite_doing_migration', 0 );
+		update_option( 'bsuite_doing_migration_status', array() );
 		return(TRUE);
 	}
 
