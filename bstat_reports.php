@@ -168,7 +168,7 @@ if(!empty($sort)){
 // Incoming Search Terms
 //
 
-$refs = $this->pop_refs("limit=$detail_lines&days=$bstat_period");
+$refs = $this->pop_refs("limit=$detail_lines&days=$bstat_period&count=25");
 if(!empty($refs))
 	echo $refs;
 else

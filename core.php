@@ -939,10 +939,10 @@ $engine = $this->get_search_engine( $ref );
 		$args = wp_parse_args( $args, $defaults );
 	
 		$date = 'AND hit_date = DATE(NOW())';
-		if($args['days'] > 1)
+		if( (int) $args['days'] > 1 )
 			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
 	
-		$limit = 'LIMIT '. (0 + $args['count']);
+		$limit = 'LIMIT '. (int) $args['count'];
 	
 	
 		$request = "SELECT term_id, SUM(hit_count) AS hit_count
