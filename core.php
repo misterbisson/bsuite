@@ -1107,85 +1107,50 @@ $engine = $this->get_search_engine( $ref );
 
 
 	// bSuggestive related functions
-	function bsuggestive_tags($id = FALSE) {
-		$id = (int) $id;
-		if ( !$id )
-			$id = (int) $post->ID;
-		if ( !$id )
-			return FALSE;
-		
-		$tags = get_the_tags($id);
-		if($tags){
-			foreach( $tags as $tag) {
-				$the_tags[] = $tag->name;
-			}
-		}else{
-			$the_tags[] = get_the_title($id);
-		}
-		
-		if(!count(array_filter($the_tags)))
-			return FALSE;
-
-		return apply_filters('bsuite_suggestive_tags', $the_tags, $id);
-	}
-
-	function bsuggestive_postsrequest($query) {
-		global $wpdb;
-
-		$the_matching_posts = $this->bsuggestive_getposts( 10 );
-		if( is_array( $the_matching_posts ))
-			return( "SELECT * FROM $wpdb->posts WHERE 1=1 
-				AND ID IN (" . implode( $the_matching_posts, ', ' ) .
-				') AND post_status IN ("publish", "private")' );
-		else
-			return( "SELECT * FROM $wpdb->posts WHERE 1=2" );
-	}
-
-	function bsuggestive_query($the_tags, $id) {
+	function bsuggestive_query( $id ) {
 		global $wpdb;
 
 		$id = (int) $id;
-		if ( !$id )
-			$id = (int) $post->ID;
-		if ( !$id )
-			return FALSE;
 
-		if($id && is_array($the_tags)){
-			return apply_filters('bsuite_suggestive_query', 
-				"SELECT post_id
-						FROM $this->search_table 
-						LEFT JOIN $wpdb->posts
-						ON post_id = ID
-						WHERE MATCH (content, title)
-						AGAINST ('". ereg_replace('[^a-z|A-Z|0-9| ]', ' ', implode(' ', $the_tags)) ."') AND post_id <> $id
-						AND post_status = 'publish'
-						LIMIT 150
-						", $post_id);
+		if( $id ){
+			$taxonomies = ( array_filter( apply_filters( 'bsuite_suggestive_taxonomies', array( 'post_tag', 'category' ))));
+			
+			if( is_array( $taxonomies ))
+				return( apply_filters('bsuite_suggestive_query',
+					"SELECT t_r.object_id AS post_id, COUNT(t_r.object_id) AS hits
+					FROM ( SELECT t_ra.term_taxonomy_id
+						FROM $wpdb->term_relationships t_ra
+						LEFT JOIN $wpdb->term_taxonomy t_ta ON t_ta.term_taxonomy_id = t_ra.term_taxonomy_id
+						WHERE t_ra.object_id  = $id
+						AND t_ta.taxonomy IN ('". implode( $taxonomies, "','") ."')
+					) ttid
+					LEFT JOIN $wpdb->term_relationships t_r ON t_r.term_taxonomy_id = ttid.term_taxonomy_id
+					LEFT JOIN $wpdb->posts p ON t_r.object_id  = p.ID
+					WHERE p.ID != $id
+					AND p.post_status = 'publish'
+					GROUP BY p.ID
+					ORDER BY hits DESC, p.post_date_gmt DESC
+					LIMIT 150", $id)
+				);
 		}
 		return FALSE;
 	}
 	
-	function bsuggestive_getposts($id = FALSE) {
-		global $post, $wpdb;
-		
-		$id = (int) $id;
-		if ( !$id )
-			$id = (int) $post->ID;
-		if ( !$id )
-			return FALSE;
+	function bsuggestive_getposts( $id ) {
+		global $wpdb;
 
 		if ( !$related_posts = wp_cache_get( $id, 'bsuite_related_posts' ) ) {
-			if(($the_tags = $this->bsuggestive_tags($id)) && ($the_query = $this->bsuggestive_query($the_tags, $id))){
+			if( $the_query = $this->bsuggestive_query( $id ) ){
 				$related_posts = $wpdb->get_col($the_query);
 				wp_cache_add( $id, $related_posts, 'bsuite_related_posts', 864000 );
 				return($related_posts); // if we have to go to the DB to get the posts, then this will get returned
 			}
-			return FALSE; // if there's nothing in the cache and we've got no tags, then we return false
+			return( FALSE ); // if there's nothing in the cache and we've got no query
 		}
 		return($related_posts); // if the cache is still warm, then we return this
 	}
 
-	function bsuggestive_delete_cache($id) {
+	function bsuggestive_delete_cache( $id ) {
 		$id = (int) $id;
 		if ( !$id )
 			return FALSE;
@@ -1199,9 +1164,9 @@ $engine = $this->get_search_engine( $ref );
 
 		$id = (int) $post->ID;
 		if ( !$id )
-			return FALSE;
+			return( FALSE ); // no ID, no service
 
-		$posts = array_slice($this->bsuggestive_getposts($id), 0, 5);
+		$posts = array_slice($this->bsuggestive_getposts( $id ), 0, 5);
 		if($posts){
 			$report = '';
 			foreach($posts as $post_id){
