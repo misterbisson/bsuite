@@ -561,7 +561,7 @@ bsuite.log();
 	function bstat_get_term( $id ) {
 		global $wpdb;
 
-		return( (int) $wpdb->get_var("SELECT name FROM $this->hits_terms WHERE ". $wpdb->prepare( "term_id = %s", (int) $id )) );
+		return( $wpdb->get_var("SELECT name FROM $this->hits_terms WHERE ". $wpdb->prepare( "term_id = %s", (int) $id )) );
 	}
 	
 	function bstat_is_term( $term ) {
