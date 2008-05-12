@@ -191,8 +191,8 @@ class bSuite {
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
 		if( $this->loadavg < 4 ){ // only do cron if load is low-ish
-//			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
-//			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
+			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
+			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
 
 		// cms goodies
@@ -1091,7 +1091,8 @@ $engine = $this->get_search_engine( $ref );
 			}
 		}
 
-		update_option('bsuite_doing_ftindex', 0 );
+		// diabled so that the update runs less often.
+		//update_option('bsuite_doing_ftindex', 0 );
 
 		return(TRUE);
 	}
@@ -1912,9 +1913,13 @@ $engine = $this->get_search_engine( $ref );
 		$this->createtables();
 		$this->cron_register();
 
-		update_option('bsuite_doing_report', time() + 250 );
+		update_option('bsuite_doing_report', time() + 300 );
+
 		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/bstat_reports.php');
-		update_option('bsuite_doing_report', 0 );
+		
+		// disabled so that stats migrations can't run for a while after the report is complete.
+		// allows the system to cool down (Hokey, I know. Let's hope it works.)
+		//update_option('bsuite_doing_report', 0 );
 	}
 	
 	function optionspage() {
