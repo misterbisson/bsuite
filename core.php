@@ -191,8 +191,8 @@ class bSuite {
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
 		if( $this->loadavg < 4 ){ // only do cron if load is low-ish
-			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
-			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
+//			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
+//			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
 
 		// cms goodies
