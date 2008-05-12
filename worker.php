@@ -13,7 +13,7 @@ else
 setcookie ( 'bsuite_session', $session, time()+1800, '/' );
 
 // create an array of 'extra' details
-$in_extra = array(  'ip' => $_SERVER["REMOTE_ADDR"], 'br' => $_REQUEST['br'],  'bb' => $_REQUEST['bb'],  'bl' => $_REQUEST['bl'],  'bc' => $_REQUEST['bc']);
+$in_extra = array(  'ip' => $_SERVER["REMOTE_ADDR"], 'br' => $_REQUEST['br'],  'bb' => $_REQUEST['bb'],  'bl' => $_REQUEST['bl'],  'bc' => $_REQUEST['bc'],  'ba' => urlencode( $_SERVER['HTTP_USER_AGENT'] ) );
 
 // insert the hit
 $wpdb->insert( $bsuite->hits_incoming, array( 'in_type' => '0', 'in_session' => $session, 'in_to' => $_SERVER['HTTP_REFERER'] , 'in_from' => $_REQUEST['pr'], 'in_extra' => serialize( $in_extra )));

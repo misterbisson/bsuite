@@ -604,6 +604,7 @@ bsuite.log();
 			$s['sess_br'] = $se['br'];
 			$s['sess_bb'] = $se['bb'];
 			$s['sess_bl'] = $se['bl'];
+			$s['sess_ba'] = urldecode( $se['ba'] );
 
 			if ( false === $wpdb->insert( $this->hits_sessions, $s )){
 				new WP_Error('db_insert_error', __('Could not insert session into the database'), $wpdb->last_error);
@@ -1882,6 +1883,7 @@ $engine = $this->get_search_engine( $ref );
 				sess_bl varchar(8) default '',
 				sess_bb varchar(24) default '',
 				sess_br varchar(24) default '',
+				sess_ba varchar(200) default '',
 				PRIMARY KEY  (sess_id),
 				UNIQUE KEY sess_cookie_uniq (sess_cookie),
 				KEY sess_cookie (sess_cookie(2))
