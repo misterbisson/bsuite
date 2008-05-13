@@ -2,12 +2,12 @@
 /*
 Plugin Name: bStat Upgrader
 Plugin URI: http://maisonbisson.com/blog/bsuite
-Description: Upgrade from previous versions of bSuite stats/bStat to bSuite bStats.
-Version: 0.1
+Description: Upgrade from bSuite bStats. 3.x to bSuite 4
+Version: 4.0 a 
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
-/*  Copyright 2007 Casey Bisson 
+/*  Copyright 2008 Casey Bisson 
 
 	This program is free software; you can redistribute it and/or modify 
 	it under the terms of the GNU General Public License as published by 
@@ -46,10 +46,28 @@ class bStat_Import {
 				$this->greet();
 				break;
 			case 1 : 
-				$this->get_dates(); 
+				$this->get_targets(); 
 				break; 
 			case 2 : 
-				$this->get_hits(); 
+				$this->get_terms(); 
+				break; 
+			case 3 : 
+				$this->get_searchwords(); 
+				break; 
+			case 4 : 
+				$this->delete_taxonomies(); 
+				break; 
+			case 5 : 
+				$this->delete_terms(); 
+				break; 
+			case 6 : 
+				$this->optimize_wptables(); 
+				break; 
+			case 7 : 
+				$this->delete_oldtables(); 
+				break; 
+			case 8 : 
+				$this->show_queries(); 
 				break; 
 		} 
 
@@ -67,134 +85,211 @@ class bStat_Import {
 	}
 
 	function greet() {
-		echo '<div class="narrow">';
-		echo '<p>'.__('Yeah baby! This imports hit counts and search engine terms from older versions of bSuite or bStat into the new bSuite bStat.').'</p>';
-		echo '<p>'.__('This has not been tested much. Mileage may vary.').'</p>';
+		global $bsuite;
 		
-		if(!bstat){
-			echo '<p>'.__('You must activate bStat before proceeding.').'</p>';
+		echo '<div class="narrow">';
+		echo '<p>'.__('If you used bSuite3 for stats collection, you&#8217;ll need this (or some manual MySQL queries) to move the data into the new bSuite4 tables.').'</p>';
+
+		set_time_limit( 0 );
+		if( ! 0 == ini_get( 'max_execution_time' ) ){
+			echo '<h3>'.__('Ack! Failed to reset PHP&#8217;s <a href="http://php.net/set_time_limit">maximum execution time</a>.').'</h3>';
+			echo '<p>'. __('Your server&#8217;s default time of ') . ini_get( 'max_execution_time' ) . __(' seconds may be too low to complete this upgrade. Some queries can take as long as 30 minutes to complete on a large data set.') .'</p>';
+			echo '<p>'. __('You can try executing the MySQL commands manually if you&#8217;d like.') .'</p>';
+		}else if( !$bsuite ){
+			echo '<p>'.__('You must activate bSuite 4 before proceeding.').'</p>';
 		}else{
-			echo '<p><strong>'.__('Don&#8217;t be stupid - backup your database before proceeding!').'</strong></p>';
+			$bsuite->createtables(); // just to make sure
+			echo '<p><strong>'.__('It&#8217;s worth mentioning that most people recommend backing up your database before doing things like this.').'</strong></p>';
 			echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=1" method="post">';
-			echo '<p class="submit"><input type="submit" name="submit" value="'.__('Step 1 &raquo;').'" /></p>';
+			echo '<p class="submit"><input type="submit" name="submit" value="'.__('Import hits stats &raquo;').'" /></p>';
+			echo '<p>No thanks, <a href="admin.php?import='. $this->importer_code .'&amp;step=8">just show me the MySQL queries</a>.</p>';
 			echo '</form>';
 		}
 		echo '</div>';
 	}
 
-	function get_dates() { 
-		global $wpdb; 
-		$dates_hits = $wpdb->get_col('SELECT bstat_date 
-			FROM '. $wpdb->prefix .'bstat_hits
-			GROUP BY bstat_date
-			');
-		update_option('bstat_import_hits', $dates_hits);
+	function get_targets() { 
+		set_time_limit( 0 );
+		global $wpdb, $bsuite; 
 
-		$dates_refs = $wpdb->get_col('SELECT bstat_date 
-			FROM '. $wpdb->prefix .'bstat_refs
-			WHERE issearchengine = 1
-			GROUP BY bstat_date
-			');
-		update_option('bstat_import_refs', $dates_refs);
+		update_option('bsuite_doing_report', time() + 2400 );
 
 		echo '<div class="narrow">';
-		echo '<p>You&#039;ve got '. count($dates_hits) .' days of hits and '. count($dates_refs) .' days of referrers (yes, they&#039;re often different).</p>';
+		echo '<p>Importing post hits stats.</p>';
+		echo '<p>Please be patient, this could take a long time.</p>';
+		
+		$wpdb->get_results( $this->query_get_targets );
 
+		echo '<p>Done!</p>';
 		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=2" method="post">';
-		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Next &raquo;').'" /></p>';
+		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Import search terms &raquo;').'" /></p>';
 		echo '</form>';
 	}
 
-	function get_hits() { 
+	function get_terms() { 
+		set_time_limit( 0 );
+		global $wpdb, $bsuite; 
+
+		update_option('bsuite_doing_report', time() + 2400 );
+
 		echo '<div class="narrow">';
-		// update search table with content from all posts
-		global $wpdb, $bstat; 
-	
-		set_time_limit(0);
-		ignore_user_abort(TRUE);
-
-		$dates_hits = get_option('bstat_import_hits');
-		$date_hit = array_shift($dates_hits);
-		$hits = $wpdb->get_results('
-			SELECT post_id, hits_reads 
-			FROM '. $wpdb->prefix .'bstat_hits 
-			WHERE bstat_date = "'. $date_hit .'"
-			', ARRAY_A);
-		update_option('bstat_import_hits', $dates_hits);
-
-		if( is_array( $hits ) ) {
-			echo '<p>You&#039;ve got '. count($hits) .' entries in the hits table for '. $date_hit .'. Just '. count($dates_hits).' more days to go, please be patient.</p>';
-
-			foreach( $hits as $hit ) {
-				$wpdb->get_results("
-					INSERT INTO $bstat->hits_table
-					(post_id, hit_count, hit_date)
-					VALUES ({$hit['post_id']}, {$hit['hits_reads']}, '{$date_hit}')
-					ON DUPLICATE KEY UPDATE hit_count = hit_count + {$hit['hits_reads']}
-					");
-				echo '. ';
-			}
-		}
-
-		$dates_refs = get_option('bstat_import_refs');
-		$date_ref = array_shift($dates_refs);
-		$refs = $wpdb->get_results('
-			SELECT post_id, hits, ref
-			FROM '. $wpdb->prefix .'bstat_refs 
-			WHERE bstat_date = "'. $date_ref .'"
-			AND issearchengine = 1
-			', ARRAY_A);
-		update_option('bstat_import_refs', $dates_refs);
-
-		if( is_array( $refs ) ) {
-			echo '<p>You&#039;ve got '. count($refs) .' entries in the refs table for '. $date_ref .'. Only '. count($dates_refs).' more days to go, please be patient.</p>';
-
-			foreach( $refs as $ref ) {
-				// check if this search is already in the terms table
-				if(!is_term(urldecode($ref['ref']), 'bsuite_search'))
-					wp_insert_term(urldecode($ref['ref']), 'bsuite_search');
+		echo '<p>Importing old search terms.</p>';
+		echo '<p>Please be patient, this could take a long time.</p>';
 		
-				// it's in the terms table, what's the id?
-				$term_id = is_term(urldecode($ref['ref']));
+		$wpdb->get_results( $this->query_get_terms );
+
+		echo '<p>Done!</p>';
+		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=3" method="post">';
+		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Import search targets &raquo;').'" /></p>';
+		echo '</form>';
+	}
+
+	function get_searchwords() { 
+		set_time_limit( 0 );
+		global $wpdb, $bsuite; 
+
+		update_option('bsuite_doing_report', time() + 2400 );
+
+		echo '<div class="narrow">';
+		echo '<p>Importing old search targets.</p>';
+		echo '<p>Please be patient, this could take a long time.</p>';
 		
-				// write it to the bsuite3_refs table with date
-				if(!empty($term_id)){
-					$wpdb->query("
-						INSERT INTO $bstat->rterms_table
-							(post_id, term_id, hit_count, hit_date) 
-							VALUES ({$ref['post_id']}, $term_id, {$ref['hits']}, '$date_ref')
-							ON DUPLICATE KEY UPDATE hit_count = hit_count + {$ref['hits']};
-						");
-					// the following is disabled now because it causes memory problems
-					//wp_set_object_terms($ref['post_id'], urldecode($ref['ref']), 'bsuite_search', TRUE);
-				}
-				echo '. ';
-			}
-		}
+		$wpdb->get_results( $this->query_get_searchwords );
 
-		if(count($dates_hits) == 0 && count($dates_refs) == 0){
-			echo '<p><strong>Yep. We&#039;re done.</strong></p>';
-			echo '<p>Now, go deactivate this plugin. You don&#039;t need it anymore. (Running it again will inflate your stats, but that&#039;s cheating.)</p>';
-		} else {
-			?>
-			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="<?php echo get_option('siteurl'); ?>/wp-admin/admin.php?import=<?php echo $this->importer_code; ?>&step=2"><?php _e("Next Page"); ?></a> </p>
-			<script language='javascript'>
-			<!--
+		echo '<p>Done!</p>';
+		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=4" method="post">';
+		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Clean up taxonomies &raquo;').'" /></p>';
+		echo '</form>';
+	}
 
-			function nextpage() {
-				location.href="<?php echo get_option('siteurl'); ?>/wp-admin/admin.php?import=<?php echo $this->importer_code; ?>&step=2";
-			}
-			setTimeout( "nextpage()", 250 );
+	function delete_taxonomies() { 
+		set_time_limit( 0 );
+		global $wpdb, $bsuite; 
 
-			//-->
-			</script>
-			<?php
-		}
-	} 
+		update_option('bsuite_doing_report', time() + 2400 );
+
+		echo '<div class="narrow">';
+		echo '<p>Cleaning up WordPress&#8217; term_taxonomy table.</p>';
+		echo '<p>Please be patient, this could take a long time.</p>';
+		
+		$wpdb->get_results( $this->query_delete_taxonomies );
+
+		echo '<p>Done!</p>';
+		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=5" method="post">';
+		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Clean up terms &raquo;').'" /></p>';
+		echo '</form>';
+	}
+
+	function delete_terms() { 
+		set_time_limit( 0 );
+		global $wpdb, $bsuite; 
+
+		update_option('bsuite_doing_report', time() + 2400 );
+
+		echo '<div class="narrow">';
+		echo '<p>Cleaning up WordPress&#8217; terms table.</p>';
+		echo '<p>Please be patient, this could take a long time.</p>';
+		
+		$wpdb->get_results( $this->query_delete_terms );
+
+		echo '<p>Done!</p>';
+		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=6" method="post">';
+		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Optimize tables &raquo;').'" /></p>';
+		echo '</form>';
+	}
+
+	function optimize_wptables() { 
+		set_time_limit( 0 );
+		global $wpdb, $bsuite; 
+
+		update_option('bsuite_doing_report', time() + 2400 );
+
+		echo '<div class="narrow">';
+		echo '<p>Optimizing WordPress&#8217; terms and term_taxonomies tables.</p>';
+		
+		$wpdb->get_results( $this->query_optimize_wptables );
+
+		echo '<p>Done!</p>';
+		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=7" method="post">';
+		echo '<p class="submit"><input type="submit" name="submit" value="'.__('Delete old tables &raquo;').'" /></p>';
+		echo '</form>';
+	}
+
+	function delete_oldtables() { 
+		set_time_limit( 0 );
+		global $wpdb, $bsuite; 
+
+		update_option('bsuite_doing_report', time() + 2400 );
+
+		echo '<div class="narrow">';
+		echo '<p>Deleting old bSuite3 tables.</p>';
+		
+		$wpdb->get_results( $this->query_delete_oldtables );
+
+		echo '<p>Done!</p>';
+
+		echo '<p>Fini!</p>';
+
+		echo '<p>All set!</p>';
+
+		echo '<p>Don&#8217;t forget to disable this plugin.</p>';
+	}
+
+	function show_queries() { 
+		echo '<ol>';
+		echo '<li><h3>Import page load stats:</h3><pre>'. $this->query_get_targets .'</pre></liu>';
+		echo '<li><h3>Import search terms:</h3><pre>'. $this->query_get_terms .'</pre></liu>';
+		echo '<li><h3>Import search targets:</h3><pre>'. $this->query_get_searchwords .'</pre></liu>';
+		echo '<li><h3>Clean up taxonomies:</h3><pre>'. $this->query_delete_taxonomies .'</pre></liu>';
+		echo '<li><h3>Clean up terms:</h3><pre>'. $this->query_delete_terms .'</pre></liu>';
+		echo '<li><h3>Optimize tables:</h3><pre>'. $this->query_optimize_wptables .'</pre></liu>';
+		echo '<li><h3>Delete old tables:</h3><pre>'. $this->query_delete_oldtables .'</pre></liu>';
+		echo '</ol>';
+	}
+
 
 	// Default constructor 
 	function bStat_Import() { 
-		// Nothing. 
+		global $wpdb, $bsuite; 
+
+		$this->query_get_targets = 'INSERT IGNORE
+INTO '. $bsuite->hits_targets .'
+SELECT post_id AS object_id, 0 AS object_type, hit_count, hit_date
+FROM '. $wpdb->prefix .'bsuite3_hits
+WHERE post_id != 0';
+
+		$this->query_get_terms = 'INSERT IGNORE
+INTO '. $bsuite->hits_terms .' (name)
+SELECT t.name AS name
+FROM '. $wpdb->terms .' t
+LEFT JOIN '. $wpdb->term_taxonomy .' tt ON t.term_id = tt.term_id
+WHERE tt.taxonomy = "bsuite_search"';
+
+		$this->query_get_searchwords = 'INSERT IGNORE
+INTO '. $bsuite->hits_searchwords .'
+SELECT a.post_id AS object_id, 0 AS object_type, c.term_id AS term_id, a.hit_count AS hit_count, a.hit_date AS hit_date
+FROM '. $wpdb->prefix .'bsuite3_refs_terms a
+LEFT JOIN '. $wpdb->terms .' b ON a.term_id = b.term_id
+LEFT JOIN '. $bsuite->hits_terms .' c ON b.name = c.name
+WHERE a.post_id != 0
+ORDER BY a.hit_date, a.post_id';
+
+		$this->query_delete_taxonomies = 'DELETE QUICK
+FROM '. $wpdb->term_taxonomy .'
+WHERE taxonomy = "bsuite_search"';
+
+		$this->query_delete_terms = 'DELETE QUICK
+FROM '. $wpdb->terms .'
+USING '. $wpdb->terms .'
+LEFT JOIN '. $wpdb->term_taxonomy .' ON '. $wpdb->terms .'.term_id = '. $wpdb->term_taxonomy .'.term_id
+WHERE '. $wpdb->term_taxonomy .'.term_id IS NULL';
+
+		$this->query_optimize_wptables = 'OPTIMIZE TABLE '. $wpdb->terms .';
+OPTIMIZE TABLE '. $wpdb->term_taxonomy .';';
+
+		$this->query_delete_oldtables = 'DROP TABLE '. $wpdb->prefix .'bsuite3_hits;
+DROP TABLE '. $wpdb->prefix .'bsuite3_refs_terms;
+DROP TABLE '. $wpdb->prefix .'bsuite3_search;';
 	} 
 } 
 

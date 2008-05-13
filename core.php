@@ -2,8 +2,8 @@
 /*
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/blog/bsuite/
-Description: It's okay for a few things, but you could probably do better. <a href="http://maisonbisson.com/blog/bsuite/core">Documentation here</a>.
-Version: 3.03 
+Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/blog/bsuite/core">Documentation here</a>.
+Version: 4.0 a 
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
