@@ -77,7 +77,7 @@ class bStat_Import {
 
 	function header()  {
 		echo '<div class="wrap">';
-		echo '<h2>'.__('bStat Upgrader').'</h2>';
+		echo '<h2>'.__('bSuite bStat Upgrader').'</h2>';
 	}
 
 	function footer() {
@@ -85,13 +85,15 @@ class bStat_Import {
 	}
 
 	function greet() {
-		global $bsuite;
+		global $wpdb, $bsuite; 
+		set_time_limit( 0 );
 		
 		echo '<div class="narrow">';
 		echo '<p>'.__('If you used bSuite3 for stats collection, you&#8217;ll need this (or some manual MySQL queries) to move the data into the new bSuite4 tables.').'</p>';
 
-		set_time_limit( 0 );
-		if( ! 0 == ini_get( 'max_execution_time' ) ){
+		if( !count( $wpdb->get_col( $this->query_checktables ))){
+			echo '<h3>'.__('Huh? You&#8217;ve got no tables to import.').'</h3>';
+		}else if( ! 0 == ini_get( 'max_execution_time' ) ){
 			echo '<h3>'.__('Ack! Failed to reset PHP&#8217;s <a href="http://php.net/set_time_limit">maximum execution time</a>.').'</h3>';
 			echo '<p>'. __('Your server&#8217;s default time of ') . ini_get( 'max_execution_time' ) . __(' seconds may be too low to complete this upgrade. Some queries can take as long as 30 minutes to complete on a large data set.') .'</p>';
 			echo '<p>'. __('You can try executing the MySQL commands manually if you&#8217;d like.') .'</p>';
@@ -115,6 +117,7 @@ class bStat_Import {
 		update_option('bsuite_doing_report', time() + 2400 );
 
 		echo '<div class="narrow">';
+		echo '<h3>Step 1 of 7.</h3>';
 		echo '<p>Importing post hits stats.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
 		
@@ -133,6 +136,7 @@ class bStat_Import {
 		update_option('bsuite_doing_report', time() + 2400 );
 
 		echo '<div class="narrow">';
+		echo '<h3>Step 2 of 7.</h3>';
 		echo '<p>Importing old search terms.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
 		
@@ -151,6 +155,7 @@ class bStat_Import {
 		update_option('bsuite_doing_report', time() + 2400 );
 
 		echo '<div class="narrow">';
+		echo '<h3>Step 3 of 7.</h3>';
 		echo '<p>Importing old search targets.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
 		
@@ -169,6 +174,7 @@ class bStat_Import {
 		update_option('bsuite_doing_report', time() + 2400 );
 
 		echo '<div class="narrow">';
+		echo '<h3>Step 4 of 7.</h3>';
 		echo '<p>Cleaning up WordPress&#8217; term_taxonomy table.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
 		
@@ -187,6 +193,7 @@ class bStat_Import {
 		update_option('bsuite_doing_report', time() + 2400 );
 
 		echo '<div class="narrow">';
+		echo '<h3>Step 5 of 7.</h3>';
 		echo '<p>Cleaning up WordPress&#8217; terms table.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
 		
@@ -205,6 +212,7 @@ class bStat_Import {
 		update_option('bsuite_doing_report', time() + 2400 );
 
 		echo '<div class="narrow">';
+		echo '<h3>Step 6 of 7.</h3>';
 		echo '<p>Optimizing WordPress&#8217; terms and term_taxonomies tables.</p>';
 		
 		$wpdb->get_results( $this->query_optimize_wptables );
@@ -222,6 +230,7 @@ class bStat_Import {
 		update_option('bsuite_doing_report', time() + 2400 );
 
 		echo '<div class="narrow">';
+		echo '<h3>Step 7 of 7.</h3>';
 		echo '<p>Deleting old bSuite3 tables.</p>';
 		
 		$wpdb->get_results( $this->query_delete_oldtables );
@@ -232,7 +241,7 @@ class bStat_Import {
 
 		echo '<p>All set!</p>';
 
-		echo '<p>Don&#8217;t forget to disable this plugin.</p>';
+		echo '<h4>Don&#8217;t forget to disable this plugin.</h4>';
 	}
 
 	function show_queries() { 
@@ -251,6 +260,9 @@ class bStat_Import {
 	// Default constructor 
 	function bStat_Import() { 
 		global $wpdb, $bsuite; 
+
+
+		$this->query_checktables = 'SHOW TABLES LIKE "'. $wpdb->prefix .'bsuite3%"';
 
 		$this->query_get_targets = 'INSERT IGNORE
 INTO '. $bsuite->hits_targets .'
