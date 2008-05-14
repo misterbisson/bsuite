@@ -156,10 +156,14 @@ class bSuite {
 		// register hooks
 		//
 
-		// machine tags
-		add_action('save_post', array(&$this, 'machtag_save_post'), 2, 2);		
-		
+		// shortcodes
+		add_shortcode('pagemenu', array(&$this, 'shortcode_pagemenu'));
+		add_shortcode('innerindex', array(&$this, 'shortcode_innerindex'));
+		add_shortcode('feed', array(&$this, 'shortcode_feed'));
+//		add_shortcode('redirect', array(&$this, 'shortcode_redirect'));
+
 		// tokens
+		// tokens are deprecated. please use shortcode functionality instead.
 		add_filter('bsuite_tokens', array(&$this, 'tokens_default'));
 		add_filter('the_content', array(&$this, 'tokens_the_content'), 0);
 		add_filter('the_content_rss', array(&$this, 'tokens_the_content_rss'), 0);
@@ -182,7 +186,7 @@ class bSuite {
 
 		// searchsmart
 		add_filter('posts_request', array(&$this, 'searchsmart_query'), 10);
-		add_filter('template_redirect', array(&$this, 'searchsmart_onsingle'), 8);
+		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
 		add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
 		
 		// bstat
@@ -194,6 +198,9 @@ class bSuite {
 			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
 			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
+
+		// machine tags
+		add_action('save_post', array(&$this, 'machtag_save_post'), 2, 2);		
 
 		// cms goodies
 		add_action('dbx_page_advanced', array(&$this, 'edit_insert_excerpt_form'));
@@ -217,6 +224,138 @@ class bSuite {
 
 
 
+	}
+
+
+
+	//
+	// shortcode functions
+	//
+	function shortcode_pagemenu( $arg ){
+		// [pagemenu ]
+		global $id;
+
+		$arg = shortcode_atts( array(
+			'title' => 'Contents',
+			'div_class' => 'contents pagemenu',
+			'ul_class' => 'contents pagemenu',
+			'ol_class' => FALSE,
+			'echo' => 0,
+			'child_of' => $id,
+			'depth' => 1,
+			'sort_column' => 'menu_order, post_title',
+			'title_li' => '',
+			'show_date'   => '',
+			'date_format' => get_option('date_format'),
+			'exclude'     => '',
+			'authors'     => '',
+		), $arg );
+
+		$prefix = $suffix = '';
+		if( $arg['div_class'] ){
+			$prefix .= '<div class="'. $arg['div_class'] .'">';
+			$suffix .= '</div>';
+			if( $arg['title'] )
+				$prefix .= '<h3>'. $arg['title'] .'</h3>';
+			if( $arg['ul_class'] ){
+				$prefix .= '<ul>';
+				$suffix = '</ul>'. $suffix;
+			}else if( $arg['ol_class'] ){
+				$prefix .= '<ol>';
+				$suffix = '</ol>'. $suffix;
+			}
+		}else{
+			if( $arg['title'] )
+				$prefix .= '<h3 class="'. $arg['ul_class'] . $arg['ol_class'] .'">'. $arg['title'] .'</h3>';
+			if( $arg['ul_class'] ){
+				$prefix .= '<ul class="'. $arg['ul_class'] .'">';
+				$suffix = '</ul>'. $suffix;
+			}else if( $arg['ol_class'] ){
+				$prefix .= '<ol class="'. $arg['ol_class'] .'">';
+				$suffix = '</ol>'. $suffix;
+			}
+		}
+
+		return( $prefix . wp_list_pages( $arg ) . $suffix );
+	}
+	
+	function shortcode_innerindex( $arg ){
+		// [innerindex ]
+		global $id;
+
+		$arg = shortcode_atts( array(
+			'title' => 'Contents',
+			'div_class' => 'contents innerindex',
+		), $arg );
+		
+		$prefix = $suffix = '';
+		if( $arg['div_class'] ){
+			$prefix .= '<div class="'. $arg['div_class'] .'">';
+			$suffix .= '</div>';
+			if( $arg['title'] )
+				$prefix .= '<h3>'. $arg['title'] .'</h3>';
+		}else{
+			if( $arg['title'] )
+				$prefix .= '<h3>'. $arg['title'] .'</h3>';
+		}
+
+		if ( !$menu = wp_cache_get( $id, 'bsuite_innerindex' )) {
+			$menu = $this->innerindex_build( get_post_field( 'post_content', $id ));
+			wp_cache_add( $id, $menu, 'bsuite_innerindex', 864000 );
+		}
+
+		return( $prefix . str_replace( '%%the_permalink%%', get_permalink( $id ), $menu ) . $suffix );
+	}
+	
+	function shortcode_redirect($stuff){
+		// [[redirect|$url]]
+		if(!headers_sent())
+			header("Location: $stuff");
+		return('redirect: <a href="'. $stuff .'">'. $stuff .'</a>');
+	}
+
+	function shortcode_feed( $arg ){
+		// [feed ]
+
+		$arg = shortcode_atts( array(
+			'title' => FALSE,
+			'div_class' => FALSE,
+			'ul_class' => 'feed',
+			'ol_class' => FALSE,
+			'feed_url' => FALSE,
+			'count' => 5,
+			'template' => '<li><h4><a href="%%link%%">%%title%%</a></h4><p>%%content%%</p></li>',
+		), $arg );
+
+		if( ! $arg[ 'feed_url' ] )
+			return( FALSE );
+
+		$prefix = $suffix = '';
+		if( $arg['div_class'] ){
+			$prefix .= '<div class="'. $arg['div_class'] .'">';
+			$suffix .= '</div>';
+			if( $arg['title'] )
+				$prefix .= '<h3>'. $arg['title'] .'</h3>';
+			if( $arg['ul_class'] ){
+				$prefix .= '<ul>';
+				$suffix = '</ul>'. $suffix;
+			}else if( $arg['ol_class'] ){
+				$prefix .= '<ol>';
+				$suffix = '</ol>'. $suffix;
+			}
+		}else{
+			if( $arg['title'] )
+				$prefix .= '<h3 class="'. $arg['ul_class'] . $arg['ol_class'] .'">'. $arg['title'] .'</h3>';
+			if( $arg['ul_class'] ){
+				$prefix .= '<ul class="'. $arg['ul_class'] .'">';
+				$suffix = '</ul>'. $suffix;
+			}else if( $arg['ol_class'] ){
+				$prefix .= '<ol class="'. $arg['ol_class'] .'">';
+				$suffix = '</ol>'. $suffix;
+			}
+		}
+
+		return( $prefix . $this->get_feed( $arg['feed_url'], $arg['count'], $arg['template'], TRUE) . $suffix );
 	}
 
 
@@ -619,10 +758,7 @@ bsuite.log();
 	function bstat_migrator(){
 		global $wpdb;
 
-		if ( 
-			( get_option( 'bsuite_doing_migration') > time() ) || 
-			( get_option( 'bsuite_doing_report') > time() )
-		)
+		if ( get_option( 'bsuite_doing_migration') > time() )
 			return( TRUE );
 
 		update_option( 'bsuite_doing_migration', time() + 250 );
@@ -662,7 +798,7 @@ bsuite.log();
 			// look for search words
 			if( ( $referers = implode( $this->get_search_terms( $hit->in_from ), ' ') ) && ( 0 < strlen( $referers ))) {
 				$term_id = $this->bstat_insert_term( $referers );
-				$searchwords[] = "($object_id, $object_type, $term_id, 1, '$hit->in_time')";
+				$searchwords[] = "($object_id, $object_type, $term_id, 1)";
 			}
 			
 			if( $session_id ){
@@ -693,7 +829,7 @@ bsuite.log();
 		}
 		
 		if( count( $searchwords ) && !$status['did_searchwords'] ){
-			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchwords (object_id, object_type, term_id, hit_count, hit_date) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
+			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchwords (object_id, object_type, term_id, hit_count) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_searchword into the database'), $wpdb->last_error);
 
 			$status['did_searchwords'] = 1;
@@ -938,19 +1074,18 @@ $engine = $this->get_search_engine( $ref );
 		);
 		$args = wp_parse_args( $args, $defaults );
 	
-		$date = 'AND hit_date = DATE(NOW())';
-		if( (int) $args['days'] > 1 )
-			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
-	
 		$limit = 'LIMIT '. (int) $args['count'];
 	
-	
-		$request = "SELECT term_id, SUM(hit_count) AS hit_count
-			FROM $this->hits_searchwords
-			WHERE 1=1
-			$date
-			GROUP BY term_id
-			ORDER BY hit_count DESC
+		$request = "SELECT COUNT(*) AS hit_count, object_id AS term_id
+			FROM (
+				SELECT object_id
+				FROM $this->hits_shistory
+				WHERE object_type = 2
+				ORDER BY sess_id DESC
+				LIMIT 1000
+			) a
+			GROUP BY object_id
+			ORDER BY hits DESC
 			$limit";
 
 		$result = $wpdb->get_results($request, ARRAY_A);
@@ -974,18 +1109,11 @@ $engine = $this->get_search_engine( $ref );
 
 
 
-
-
-
-
-
-
 	//
 	// Searchsmart
 	//
 	function searchsmart_query($query){
-	
-		global $wp_query, $wpdb;
+		global $wp_query, $wp_rewrite, $wpdb;
 
 		if($wp_query->is_admin)
 			return($query);
@@ -1024,14 +1152,16 @@ $engine = $this->get_search_engine( $ref );
 		return($query);
 	}
 
-	function searchsmart_onsingle(){
+	function searchsmart_direct(){
+		global $wp_query, $wp_rewrite;
+		// redirects ?s={search_term} to /search/{search_term} if permalinks are working
+		if( isset( $_GET['s'] ) && !empty( $wp_rewrite->permalink_structure ) )
+			wp_redirect(get_option('siteurl') .'/'. $wp_rewrite->search_base .'/'. urlencode( $_GET['s'] ), '301');
+
 		// redirects the search to the single page if the search returns only one item
-		global $wp_query;
-		if($wp_query->is_search && $wp_query->post_count == 1){
-			//$wp_query->is_search = NULL;
-			//$wp_query->is_single = TRUE;
-			header('Location: '. get_permalink($wp_query->post->ID));
-		}
+		if($wp_query->is_search && $wp_query->post_count == 1)
+			wp_redirect( get_permalink( $wp_query->post->ID ) , '302');
+
 		return(TRUE);
 	}
 
@@ -1732,7 +1862,6 @@ $engine = $this->get_search_engine( $ref );
 	?>
 				<p><label for="bstat-pop-refs-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bstat-pop-refs-title" name="bstat-pop-refs-title" type="text" value="<?php echo $title; ?>" /></label></p>
 				<p><label for="bstat-pop-refs-number"><?php _e('Number of refs to show:'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-refs-number" name="bstat-pop-refs-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
-				<p><label for="bstat-pop-refs-days"><?php _e('In past x days (1 = today only):'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-refs-days" name="bstat-pop-refs-days" type="text" value="<?php echo $days; ?>" /></label> <?php _e('(at most 30)'); ?></p>
 				<input type="hidden" id="bstat-pop-refs-submit" name="bstat-pop-refs-submit" value="1" />
 	<?php
 	}
@@ -1757,9 +1886,11 @@ $engine = $this->get_search_engine( $ref );
 
 	// administrivia
 	function activate() {
+
+		update_option('bsuite_doing_migration', time() + 7200 );
+
 		$this->createtables();
 		$this->cron_register();
-		
 
 		// set some defaults for the widgets
 		if(!get_option('bsuite_related_posts'))
@@ -1772,7 +1903,7 @@ $engine = $this->get_search_engine( $ref );
 			update_option('bstat_pop_posts', array('title' => 'Popular Posts', 'number' => 5, 'days' => 7));
 
 		if(!get_option('bstat_pop_refs'))
-			update_option('bstat_pop_refs', array('title' => 'Popular Searches', 'number' => 5, 'days' => 7));
+			update_option('bstat_pop_refs', array('title' => 'Popular Searches', 'number' => 5));
 	}
 
 	function createtables() {
@@ -1822,7 +1953,7 @@ $engine = $this->get_search_engine( $ref );
 		dbDelta("
 			CREATE TABLE $this->hits_targets (
 				object_id bigint(20) unsigned NOT NULL default '0',
-				object_type int(11) NOT NULL,
+				object_type smallint(6) NOT NULL,
 				hit_count smallint(6) unsigned NOT NULL default '0',
 				hit_date date NOT NULL default '0000-00-00',
 				PRIMARY KEY  (object_id,object_type,hit_date)
@@ -1832,11 +1963,11 @@ $engine = $this->get_search_engine( $ref );
 		dbDelta("
 			CREATE TABLE $this->hits_searchwords (
 				object_id bigint(20) unsigned NOT NULL default '0',
-				object_type int(11) NOT NULL,
+				object_type smallint(6) NOT NULL,
 				term_id bigint(20) unsigned NOT NULL default '0',
 				hit_count smallint(6) unsigned NOT NULL default '0',
-				hit_date date NOT NULL default '0000-00-00',
-				PRIMARY KEY  (object_id,object_type,hit_date,term_id)
+				PRIMARY KEY  (object_id,object_type,term_id),
+				KEY term_id (term_id)
 			) ENGINE=MyISAM $charset_collate
 			");
 
@@ -1860,7 +1991,7 @@ $engine = $this->get_search_engine( $ref );
 			CREATE TABLE $this->hits_shistory (
 				sess_id bigint(20) NOT NULL auto_increment,
 				object_id bigint(20) NOT NULL,
-				object_type int(11) NOT NULL,
+				object_type smallint(6) NOT NULL,
 				KEY sess_id (sess_id),
 				KEY object_id (object_id,object_type)
 			) ENGINE=MyISAM $charset_collate
@@ -1878,13 +2009,13 @@ $engine = $this->get_search_engine( $ref );
 		$this->createtables();
 		$this->cron_register();
 
-		update_option('bsuite_doing_report', time() + 300 );
+		update_option('bsuite_doing_migration', time() + 300 );
 
 		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/bstat_reports.php');
 		
 		// disabled so that stats migrations can't run for a while after the report is complete.
 		// allows the system to cool down (Hokey, I know. Let's hope it works.)
-		//update_option('bsuite_doing_report', 0 );
+		//update_option('bsuite_doing_migration', 0 );
 	}
 	
 	function optionspage() {

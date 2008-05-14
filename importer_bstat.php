@@ -114,13 +114,14 @@ class bStat_Import {
 		set_time_limit( 0 );
 		global $wpdb, $bsuite; 
 
-		update_option('bsuite_doing_report', time() + 2400 );
+		update_option('bsuite_doing_migration', time() + 3000 );
 
 		echo '<div class="narrow">';
 		echo '<h3>Step 1 of 7.</h3>';
 		echo '<p>Importing post hits stats.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
-		
+		flush();
+
 		$wpdb->get_results( $this->query_get_targets );
 
 		echo '<p>Done!</p>';
@@ -133,13 +134,14 @@ class bStat_Import {
 		set_time_limit( 0 );
 		global $wpdb, $bsuite; 
 
-		update_option('bsuite_doing_report', time() + 2400 );
+		update_option('bsuite_doing_migration', time() + 3000 );
 
 		echo '<div class="narrow">';
 		echo '<h3>Step 2 of 7.</h3>';
 		echo '<p>Importing old search terms.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
-		
+		flush();
+
 		$wpdb->get_results( $this->query_get_terms );
 
 		echo '<p>Done!</p>';
@@ -152,13 +154,14 @@ class bStat_Import {
 		set_time_limit( 0 );
 		global $wpdb, $bsuite; 
 
-		update_option('bsuite_doing_report', time() + 2400 );
+		update_option('bsuite_doing_migration', time() + 6000 );
 
 		echo '<div class="narrow">';
 		echo '<h3>Step 3 of 7.</h3>';
 		echo '<p>Importing old search targets.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
-		
+		flush();
+
 		$wpdb->get_results( $this->query_get_searchwords );
 
 		echo '<p>Done!</p>';
@@ -171,7 +174,7 @@ class bStat_Import {
 		set_time_limit( 0 );
 		global $wpdb, $bsuite; 
 
-		update_option('bsuite_doing_report', time() + 2400 );
+		update_option('bsuite_doing_migration', time() + 3000 );
 
 		echo '<div class="narrow">';
 		echo '<h3>Step 4 of 7.</h3>';
@@ -190,13 +193,14 @@ class bStat_Import {
 		set_time_limit( 0 );
 		global $wpdb, $bsuite; 
 
-		update_option('bsuite_doing_report', time() + 2400 );
+		update_option('bsuite_doing_migration', time() + 3000 );
 
 		echo '<div class="narrow">';
 		echo '<h3>Step 5 of 7.</h3>';
 		echo '<p>Cleaning up WordPress&#8217; terms table.</p>';
 		echo '<p>Please be patient, this could take a long time.</p>';
-		
+		flush();
+
 		$wpdb->get_results( $this->query_delete_terms );
 
 		echo '<p>Done!</p>';
@@ -209,13 +213,15 @@ class bStat_Import {
 		set_time_limit( 0 );
 		global $wpdb, $bsuite; 
 
-		update_option('bsuite_doing_report', time() + 2400 );
+		update_option('bsuite_doing_migration', time() + 3000 );
 
 		echo '<div class="narrow">';
 		echo '<h3>Step 6 of 7.</h3>';
 		echo '<p>Optimizing WordPress&#8217; terms and term_taxonomies tables.</p>';
-		
-		$wpdb->get_results( $this->query_optimize_wptables );
+		flush();
+
+		foreach( explode( ';', $this->query_optimize_wptables ) as $query )
+			$wpdb->get_results( $query  );
 
 		echo '<p>Done!</p>';
 		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=7" method="post">';
@@ -227,13 +233,15 @@ class bStat_Import {
 		set_time_limit( 0 );
 		global $wpdb, $bsuite; 
 
-		update_option('bsuite_doing_report', time() + 2400 );
+		update_option('bsuite_doing_migration', time() + 3000 );
 
 		echo '<div class="narrow">';
 		echo '<h3>Step 7 of 7.</h3>';
 		echo '<p>Deleting old bSuite3 tables.</p>';
-		
-		$wpdb->get_results( $this->query_delete_oldtables );
+		flush();
+
+		foreach( explode( ';', $this->query_delete_oldtables ) as $query )
+			$wpdb->get_results( $query  );
 
 		echo '<p>Done!</p>';
 
@@ -261,7 +269,7 @@ class bStat_Import {
 	function bStat_Import() { 
 		global $wpdb, $bsuite; 
 
-
+		// the queries we use
 		$this->query_checktables = 'SHOW TABLES LIKE "'. $wpdb->prefix .'bsuite3%"';
 
 		$this->query_get_targets = 'INSERT IGNORE
@@ -279,11 +287,12 @@ WHERE tt.taxonomy = "bsuite_search"';
 
 		$this->query_get_searchwords = 'INSERT IGNORE
 INTO '. $bsuite->hits_searchwords .'
-SELECT a.post_id AS object_id, 0 AS object_type, c.term_id AS term_id, a.hit_count AS hit_count, a.hit_date AS hit_date
+SELECT a.post_id AS object_id, 0 AS object_type, c.term_id AS term_id, SUM(a.hit_count) AS hit_count
 FROM '. $wpdb->prefix .'bsuite3_refs_terms a
 LEFT JOIN '. $wpdb->terms .' b ON a.term_id = b.term_id
 LEFT JOIN '. $bsuite->hits_terms .' c ON b.name = c.name
 WHERE a.post_id != 0
+GROUP BY a.object_id, a.object_type, a.term_id
 ORDER BY a.hit_date, a.post_id';
 
 		$this->query_delete_taxonomies = 'DELETE QUICK
@@ -302,6 +311,11 @@ OPTIMIZE TABLE '. $wpdb->term_taxonomy .';';
 		$this->query_delete_oldtables = 'DROP TABLE '. $wpdb->prefix .'bsuite3_hits;
 DROP TABLE '. $wpdb->prefix .'bsuite3_refs_terms;
 DROP TABLE '. $wpdb->prefix .'bsuite3_search;';
+
+		// options we don't need anymore
+		delete_option( 'bstat_import_refs' );
+		delete_option( 'bstat_import_hits' );
+
 	} 
 } 
 
