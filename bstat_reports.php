@@ -90,12 +90,14 @@ if(!empty($result)){
 </ol></td>
 
 <?php
+/*
 $posts = $wpdb->get_results("SELECT object_id, object_type, AVG(hit_count) AS hit_avg
 		FROM $this->hits_targets
 		WHERE hit_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
 		AND object_type IN (0,1)
 		GROUP BY object_id
 		ORDER BY object_id ASC", ARRAY_A);
+
 $avg = array();
 foreach($posts as $post)
 	$avg[$post['object_type'] .'_'. $post['object_id']] = $post['hit_avg'];
@@ -119,6 +121,7 @@ $lose = count($diff) - $win;
 
 $sort = array_flip($diff);
 ksort($sort);
+*/
 ?>
 
 <td><h4>Top Climbers<?php if($win) echo " ($win)" ?></h4><ol>
