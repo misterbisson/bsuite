@@ -1113,7 +1113,7 @@ $engine = $this->get_search_engine( $ref );
 	// Searchsmart
 	//
 	function searchsmart_query($query){
-		global $wp_query, $wp_rewrite, $wpdb;
+		global $wp_query, $wpdb;
 
 		if($wp_query->is_admin)
 			return($query);
