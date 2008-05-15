@@ -705,6 +705,9 @@ bsuite.log();
 	
 	function bstat_is_term( $term ) {
 		global $wpdb;
+
+//$cache_key = md5( serialize( $this->search_terms ) . $paged );
+//$cache = wp_cache_get( $cache_key , 'scrib_search_'. $cache_key{1} );
 	
 		return( (int) $wpdb->get_var("SELECT term_id FROM $this->hits_terms WHERE ". $wpdb->prepare( "name = %s", substr( $term, 0, 255 ))) );
 	}
@@ -725,7 +728,13 @@ bsuite.log();
 
 	function bstat_is_session( $session_cookie ) {
 		global $wpdb;
-		return $wpdb->get_var("SELECT sess_id FROM $this->hits_sessions WHERE ". $wpdb->prepare( "sess_cookie = %s", $session_cookie ));
+
+		if ( !$sess_id = wp_cache_get( $session_cookie, 'bsuite_sessioncookies' )) {
+			$sess_id = $wpdb->get_var("SELECT sess_id FROM $this->hits_sessions WHERE ". $wpdb->prepare( "sess_cookie = %s", $session_cookie ));
+			wp_cache_add( $session_cookie, $sess_id, 'bsuite_sessioncookies', 10800 );
+		}
+
+		return($sess_id);
 	}
 	
 	function bstat_insert_session( $session ) {
@@ -750,6 +759,8 @@ bsuite.log();
 				return( FALSE );
 			}
 			$session_id = (int) $wpdb->insert_id;
+			
+			wp_cache_add($session->in_session, $session_id, 'bsuite_sessioncookies', 10800 );
 		}
 
 		return( $session_id );
