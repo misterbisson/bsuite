@@ -139,6 +139,9 @@ class bSuite {
 		$this->hits_searchwords = $wpdb->prefix . 'bsuite4_hits_searchwords';
 		$this->hits_sessions = $wpdb->prefix . 'bsuite4_hits_sessions';
 		$this->hits_shistory = $wpdb->prefix . 'bsuite4_hits_shistory';
+
+		$this->lock_migrator = $wpdb->prefix . 'bsuite4_lock_migrator';
+		$this->lock_ftindexer = $wpdb->prefix . 'bsuite4_lock_ftindexer';
 		
 		$this->loadavg = $this->get_loadavg();
 
@@ -187,7 +190,7 @@ class bSuite {
 		// searchsmart
 		add_filter('posts_request', array(&$this, 'searchsmart_query'), 10);
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
-		add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
+//		add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
 		
 		// bstat
 		add_action('get_footer', array(&$this, 'bstat_js'));
@@ -772,6 +775,13 @@ bsuite.log();
 	function bstat_migrator(){
 		global $wpdb;
 
+		// use a named mysql lock to prevent simultaneous execution
+		// locks automatically drop when the connection is dropped
+		// http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_get-lock
+		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $this->lock_migrator .'", 2)' ))
+			return( TRUE );
+
+		// also use the options table
 		if ( get_option( 'bsuite_doing_migration') > time() )
 			return( TRUE );
 
@@ -1219,6 +1229,13 @@ $engine = $this->get_search_engine( $ref );
 	function searchsmart_upindex_passive(){
 		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
 
+		// use a named mysql lock to prevent simultaneous execution
+		// locks automatically drop when the connection is dropped
+		// http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_get-lock
+		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $this->lock_ftindexer .'", 2)' ))
+			return( TRUE );
+
+		// also use the options table
 		if ( get_option('bsuite_doing_ftindex') > time() )
 			return( TRUE );
 
@@ -1446,7 +1463,7 @@ $engine = $this->get_search_engine( $ref );
 			}else{
 				$content = $item['description'];
 			}
-			$list .= str_replace(array('%%title%%','%%content%%','%%link%%'), array($title, $content, $link), $template);
+			$list .= str_replace( array( '%%title%%','%%content%%','%%link%%' ), array( $title, $content, $link ), $template );
 //echo $template;
 
 		}

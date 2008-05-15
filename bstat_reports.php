@@ -34,6 +34,30 @@ $bstat_period = 90;
 $date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, date("Y")));
 
 ?>
+<table><tr valign='top'><td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul>
+
+<h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE object_type IN (0,1)"); ?></ul>
+
+<h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $this->hits_targets WHERE hit_date > '$date' AND object_type IN (0,1)"); ?></ul>
+
+<h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
+
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
+
+<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, hit_date FROM $this->hits_targets WHERE hit_date < CURDATE() AND object_type IN (0,1) GROUP BY hit_date ORDER BY hit_date DESC LIMIT $best_num"); ?>
+
+<td><h4>Previous <?php echo $best_num; ?> Days</h4><ul><?php foreach($rows as $row){ echo '<li>'. $row->hit_count .' ('. $row->hit_date .')</li>'; } ?></ul></td>
+
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
+
+<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, SUM(hit_count) AS sort_order, hit_date FROM $this->hits_targets WHERE hit_date < CURDATE() AND object_type IN (0,1) GROUP BY hit_date ORDER BY sort_order DESC LIMIT $best_num"); ?>
+
+<td><h4>Best <?php echo $best_num; ?> Days</h4><ul><?php foreach($rows as $row){ echo '<li>'. $row->hit_count .' ('. $row->hit_date .')</li>'; } ?></ul></td>
+
+</tr></table>
+
+<strong>Complied:</strong> <?php echo date('F j, Y, g:i a'); ?> | <strong>System Load Average:</strong> <?php echo $bsuite->get_loadavg(); ?>
+
 </div>
 
 
@@ -210,6 +234,6 @@ if ( isset($rss->items) && 1 < count($rss->items) ) {
 #bstat_pulse img	{ display:inline; vertical-align: middle; background-color: #999999; border: solid 0px #000000; margin: 0px 0px 0px 0px; padding: 0px 0px 0px 0px; border-top: solid 2px #000000; } 
 -->
 </style>
-<div id="bstat_pulse"><?php bstat_pulse(0, 800, 1, 0); ?></div>
+<div id="bstat_pulse"><?php //bstat_pulse(0, 800, 1, 0); ?></div>
 
 </div>
