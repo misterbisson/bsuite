@@ -954,23 +954,28 @@ $engine = $this->get_search_engine( $ref );
 		$query_array = array();
 		switch ($engine) {
 		case 'google':
-			$query_array = explode(' ', urldecode( $query_vars['q'] ));
+			if( $query_vars['q'] )
+				$query_array = explode(' ', urldecode( $query_vars['q'] ));
 			break;
 	
 		case 'yahoo':
-			$query_array = explode(' ', urldecode( $query_vars['p'] ));
+			if( $query_vars['p'] )
+				$query_array = explode(' ', urldecode( $query_vars['p'] ));
 			break;
 			
 		case 'windowslive':
-			$query_array = explode(' ', urldecode( $query_vars['q'] ));
+			if( $query_vars['q'] )
+				$query_array = explode(' ', urldecode( $query_vars['q'] ));
 			break;
 	
 		case 'msn':
-			$query_array = explode(' ', urldecode( $query_vars['q'] ));
+			if( $query_vars['q'] )
+				$query_array = explode(' ', urldecode( $query_vars['q'] ));
 			break;
 	
 		case 'lycos':
-			$query_array = explode(' ', urldecode( $query_vars['query'] ));
+			if( $query_vars['query'] )
+				$query_array = explode(' ', urldecode( $query_vars['query'] ));
 			break;
 	
 		case 'internal':
