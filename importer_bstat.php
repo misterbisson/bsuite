@@ -108,6 +108,10 @@ class bStat_Import {
 			echo '</form>';
 		}
 		echo '</div>';
+
+		// options we don't need anymore
+		delete_option( 'bstat_import_refs' );
+		delete_option( 'bstat_import_hits' );
 	}
 
 	function get_targets() { 
@@ -311,11 +315,6 @@ OPTIMIZE TABLE '. $wpdb->term_taxonomy .';';
 		$this->query_delete_oldtables = 'DROP TABLE '. $wpdb->prefix .'bsuite3_hits;
 DROP TABLE '. $wpdb->prefix .'bsuite3_refs_terms;
 DROP TABLE '. $wpdb->prefix .'bsuite3_search;';
-
-		// options we don't need anymore
-		delete_option( 'bstat_import_refs' );
-		delete_option( 'bstat_import_hits' );
-
 	} 
 } 
 
