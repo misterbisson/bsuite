@@ -136,7 +136,8 @@ class bSuite {
 		$this->hits_incoming = $wpdb->prefix . 'bsuite4_hits_incoming';
 		$this->hits_terms = $wpdb->prefix . 'bsuite4_hits_terms';
 		$this->hits_targets = $wpdb->prefix . 'bsuite4_hits_targets';
-		$this->hits_searchwords = $wpdb->prefix . 'bsuite4_hits_searchwords';
+		$this->hits_searchphrases = $wpdb->prefix . 'bsuite4_hits_searchphrases';
+//		$this->hits_searchwords = $wpdb->prefix . 'bsuite4_hits_searchwords';
 		$this->hits_sessions = $wpdb->prefix . 'bsuite4_hits_sessions';
 		$this->hits_shistory = $wpdb->prefix . 'bsuite4_hits_shistory';
 
@@ -853,7 +854,7 @@ bsuite.log();
 		}
 		
 		if( count( $searchwords ) && !$status['did_searchwords'] ){
-			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchwords (object_id, object_type, term_id, hit_count) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
+			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchphrases (object_id, object_type, term_id, hit_count) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_searchword into the database'), $wpdb->last_error);
 
 			$status['did_searchwords'] = 1;
@@ -1997,7 +1998,7 @@ $engine = $this->get_search_engine( $ref );
 			");
 
 		dbDelta("
-			CREATE TABLE $this->hits_searchwords (
+			CREATE TABLE $this->hits_searchphrases (
 				object_id bigint(20) unsigned NOT NULL default '0',
 				object_type smallint(6) NOT NULL,
 				term_id bigint(20) unsigned NOT NULL default '0',

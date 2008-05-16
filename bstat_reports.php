@@ -4,7 +4,7 @@
 	This file displays the report/status screens for bSuite bStat
 
 
-	Copyright 2005 - 2007  Casey Bisson
+	Copyright 2004 - 2008  Casey Bisson
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@ require_once (ABSPATH . WPINC . '/rss.php');
 
 <div class="wrap">
 <h2><?php _e('Quick Stats') ?></h2>
-
 <?php
 
 $best_num = 10;
@@ -34,37 +33,108 @@ $bstat_period = 90;
 $date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, date("Y")));
 
 ?>
-<table><tr valign='top'><td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul>
-
-<h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE object_type IN (0,1)"); ?></ul>
-
-<h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $this->hits_targets WHERE hit_date > '$date' AND object_type IN (0,1)"); ?></ul>
-
-<h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
-
+<table><tr valign='top'>
+<td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, hit_date FROM $this->hits_targets WHERE hit_date < CURDATE() AND object_type IN (0,1) GROUP BY hit_date ORDER BY hit_date DESC LIMIT $best_num"); ?>
-
-<td><h4>Previous <?php echo $best_num; ?> Days</h4><ul><?php foreach($rows as $row){ echo '<li>'. $row->hit_count .' ('. $row->hit_date .')</li>'; } ?></ul></td>
-
+<td><h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $this->hits_targets WHERE hit_date > '$date' AND object_type IN (0,1)"); ?></ul></td>
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<?php $rows = $wpdb->get_results("SELECT FORMAT(SUM(hit_count), 0) AS hit_count, SUM(hit_count) AS sort_order, hit_date FROM $this->hits_targets WHERE hit_date < CURDATE() AND object_type IN (0,1) GROUP BY hit_date ORDER BY sort_order DESC LIMIT $best_num"); ?>
+<td><h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<td><h4>Best <?php echo $best_num; ?> Days</h4><ul><?php foreach($rows as $row){ echo '<li>'. $row->hit_count .' ('. $row->hit_date .')</li>'; } ?></ul></td>
-
+<td><h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE object_type IN (0,1)"); ?></ul></td>
 </tr></table>
+<?php
 
-<strong>Complied:</strong> <?php echo date('F j, Y, g:i a'); ?> | <strong>System Load Average:</strong> <?php echo $bsuite->get_loadavg(); ?>
+$dates = $wpdb->get_col( "SELECT sess_date
+	FROM (
+		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
+		FROM $this->hits_sessions
+		ORDER BY sess_id DESC
+		LIMIT 7500
+	) a
+	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
+	GROUP BY sess_date, sess_hour" );
+
+$hours = $wpdb->get_col( "SELECT sess_hour
+	FROM (
+		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
+		FROM $this->hits_sessions
+		ORDER BY sess_id DESC
+		LIMIT 7500
+	) a
+	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
+	GROUP BY sess_date, sess_hour" );
+
+$sessions = $wpdb->get_col( "SELECT COUNT(*) AS hit_count
+	FROM (
+		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
+		FROM $this->hits_sessions
+		ORDER BY sess_id DESC
+		LIMIT 7500
+	) a
+	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
+	GROUP BY sess_date, sess_hour" );
+
+$pageloads = $wpdb->get_col( "SELECT COUNT(*) AS hit_count
+	FROM (
+		SELECT sess_id, sess_date, sess_hour
+		FROM (
+			SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
+			FROM $this->hits_sessions
+			ORDER BY sess_id DESC
+			LIMIT 7500
+		) a
+		WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
+	) s
+	LEFT JOIN $this->hits_shistory h ON h.sess_id = s.sess_id
+	WHERE h.object_type IN (0,1)
+	GROUP BY sess_date, sess_hour" );
+?>
+<h4><?php echo number_format( array_sum( $pageloads )) ?> page loads and <?php echo number_format( array_sum( $sessions )) ?> unique visitors in last 24 hours:</h4>
+<?php
+echo '<img src="http://chart.apis.google.com/chart?chs=550x150&cht=lc&chco=0077CC&chm=B,E6F2FA,0,0,0&chls=1,0,0&chds='. min( $sessions ) .','. max( $pageloads ) .'&chd=t:'. implode( $sessions, ',' ) .'|'. implode( $pageloads, ',' ) .'&chxt=x,x,y&chxl=0:|'. implode( $hours, '|' ) .'|1:| |'. $dates[0] .'| | | | | | | | | |'. array_pop( $dates ) .'| |2:|'. min( $sessions ) .'|'. max( $pageloads ) .'" width="550" height="150" alt="Graph of pageloads and unique visitors in last 24 hours.">';
+
+
+$months = $wpdb->get_col( "SELECT DATE_FORMAT( MAKEDATE( YEAR( hit_date ) ,DAYOFYEAR( hit_date ) ) , '%M' )
+	FROM (
+		SELECT SUM(hit_count) AS hit_count, hit_date
+		FROM $this->hits_targets
+		GROUP BY hit_date DESC
+		LIMIT 31
+	) a" );
+
+$days = $wpdb->get_col( "SELECT DAY( hit_date )
+	FROM ( 
+		SELECT SUM(hit_count) AS hit_count, hit_date
+		FROM $this->hits_targets
+		GROUP BY hit_date DESC
+		LIMIT 31
+	) a" );
+
+$pageloads = $wpdb->get_col( "SELECT hit_count
+	FROM ( 
+		SELECT SUM(hit_count) AS hit_count, hit_date
+		FROM $this->hits_targets
+		GROUP BY hit_date DESC
+		LIMIT 31
+	) a" );
+?>
+<h4><?php echo number_format( array_sum( $pageloads )) ?> page loads in last month:</h4>
+<?php
+echo '<img src="http://chart.apis.google.com/chart?chs=550x150&cht=lc&chco=0077CC&chm=B,E6F2FA,0,0,0&chls=1,0,0&chds='. min( $pageloads ) .','. max( $pageloads ) .'&chd=t:'. implode( array_reverse( $pageloads ), ',' ) .'&chxt=x,x,y&chxl=0:|'. implode( array_reverse( $days ), '|' ) .'|1:| |'. array_pop( $months ) .'| | | | | | | | | |'. $months[0] .'| |2:|'. min( $pageloads ) .'|'. max( $pageloads ) .'" width="550" height="150" alt="Graph of pageloads in last 31 days.">';
+?>
+
+<h4>&nbsp;</h4>
+<strong>Complied:</strong><?php echo date('F j, Y, g:i a'); ?> | <strong>System Load Average:</strong> <?php echo $bsuite->get_loadavg(); ?>
+
+<h4>&nbsp;</h4>
 
 </div>
-
-
-
 <div class="wrap">
 <h2><?php _e('Page Loads') ?></h2>
-<table><tr valign='top'><td><h4>Most Reads</h4><ol>
+<table><tr valign='top'><td width="33%"><h4>Most Reads</h4><ol>
 <?php
 
 $request = "SELECT object_id, object_type, FORMAT(SUM(hit_count), 0) AS hit_count, FORMAT((SUM(hit_count)) / ((TO_DAYS(NOW()) - TO_DAYS(MIN(hit_date))) + 1), 0) AS hit_avg, FORMAT(MAX(hit_count), 0) AS hit_max, SUM(hit_count) AS sort_order 
@@ -79,9 +149,9 @@ $result = $wpdb->get_results($request, ARRAY_A);
 if(!empty($result)){
 	foreach($result as $post){
 		if( 0 == $post['object_type'] )
-			echo '<li><a href="'. get_permalink($post['object_id']) .'">'. get_the_title($post['object_id']) .'</a><br><small>Tot: '. $post['hit_count'] .' Avg: '. $post['hit_avg'] .' Max: '. $post['hit_max'] ."</small></li>\n";
+			echo '<li><a href="'. get_permalink($post['object_id']) .'">'. wordwrap( get_the_title($post['object_id']), 35, "\n", TRUE ).'</a><br><small>Tot: '. $post['hit_count'] .' Avg: '. $post['hit_avg'] .' Max: '. $post['hit_max'] ."</small></li>\n";
 		else
-			echo '<li><a href="'. $this->bstat_get_term($post['object_id']) .'">'. $this->bstat_get_term($post['object_id']) .'</a><br><small>Tot: '. $post['hit_count'] .' Avg: '. $post['hit_avg'] .' Max: '. $post['hit_max'] ."</small></li>\n";
+			echo '<li><a href="'. $this->bstat_get_term($post['object_id']) .'">'. wordwrap( $this->bstat_get_term($post['object_id']), 35, "\n", TRUE ).'</a><br><small>Tot: '. $post['hit_count'] .' Avg: '. $post['hit_avg'] .' Max: '. $post['hit_max'] ."</small></li>\n";
 	}
 }else{
 	echo '<li>No Data Yet.</li>';
@@ -122,16 +192,16 @@ $sort = array_flip($diff);
 ksort($sort);
 ?>
 
-<td><h4>Top Climbers<?php if($win) echo " ($win)" ?></h4><ol>
+<td width="33%"><h4>Top Climbers<?php if($win) echo " ($win)" ?></h4><ol>
 <?php
 
 if(!empty($sort)){
 	foreach(array_slice(array_reverse($sort), 0, $detail_lines) as $object){
 		$post = explode('_', $object);
 		if( 0 == $post[0] )
-			echo '<li><a href="'. get_permalink($post[1]) .'">'. get_the_title($post[1]) .'</a><br><small>Up: '. number_format($diff[$object] / 1000, 0) .' Avg: '. number_format($avg[$object], 0) .' Today: '. number_format($now[$object], 0) ."</small></li>\n";
+			echo '<li><a href="'. get_permalink($post[1]) .'">'. wordwrap( get_the_title($post[1]), 35, "\n", TRUE ) .'</a><br><small>Up: '. number_format($diff[$object] / 1000, 0) .' Avg: '. number_format($avg[$object], 0) .' Today: '. number_format($now[$object], 0) ."</small></li>\n";
 		else
-			echo '<li><a href="'. $this->bstat_get_term($post[1]) .'">'. $this->bstat_get_term($post[1]) .'</a><br><small>Up: '. number_format($diff[$object] / 1000, 0) .' Avg: '. number_format($avg[$object], 0) .' Today: '. number_format($now[$object], 0) ."</small></li>\n";
+			echo '<li><a href="'. $this->bstat_get_term($post[1]) .'">'. wordwrap( $this->bstat_get_term($post[1]), 35, "\n", TRUE ) .'</a><br><small>Up: '. number_format($diff[$object] / 1000, 0) .' Avg: '. number_format($avg[$object], 0) .' Today: '. number_format($now[$object], 0) ."</small></li>\n";
 	}
 }else{
 	echo '<li>No Data Yet.</li>';
@@ -139,16 +209,16 @@ if(!empty($sort)){
 ?>
 </ol></td>
 
-<td><h4>Biggest Losers<?php if($lose) echo " ($lose)" ?></h4><ol>
+<td width="33%"><h4>Biggest Losers<?php if($lose) echo " ($lose)" ?></h4><ol>
 <?php
 
 if(!empty($sort)){
 	foreach(array_slice($sort, 0, $detail_lines) as $object){
 		$post = explode('_', $object);
 		if( 0 == $post[0] )
-			echo '<li><a href="'. get_permalink($post[1]) .'">'. get_the_title($post[1]) .'</a><br><small>Down: '. number_format($diff[$object] / 1000, 0) .' Avg: '. number_format($avg[$object], 0) .' Today: '. number_format($now[$object], 0) ."</small></li>\n";
+			echo '<li><a href="'. get_permalink($post[1]) .'">'. wordwrap( get_the_title($post[1]), 35, "\n", TRUE ) .'</a><br><small>Down: '. number_format($diff[$object] / 1000, 0) .' Avg: '. number_format($avg[$object], 0) .' Today: '. number_format($now[$object], 0) ."</small></li>\n";
 		else
-			echo '<li><a href="'. $this->bstat_get_term($post[1]) .'">'. $this->bstat_get_term($post[1]) .'</a><br><small>Down: '. number_format($diff[$object] / 1000, 0) .' Avg: '. number_format($avg[$object], 0) .' Today: '. number_format($now[$object], 0) ."</small></li>\n";
+			echo '<li><a href="'. $this->bstat_get_term($post[1]) .'">'. wordwrap( $this->bstat_get_term($post[1]), 35, "\n", TRUE ) .'</a><br><small>Down: '. number_format($diff[$object] / 1000, 0) .' Avg: '. number_format($avg[$object], 0) .' Today: '. number_format($now[$object], 0) ."</small></li>\n";
 	}
 }else{
 	echo '<li>No Data Yet.</li>';
@@ -163,7 +233,7 @@ if(!empty($sort)){
 <div class="wrap">
 <h2><?php _e('Referrers') ?></h2>
 
-<table><tr valign='top'><td><h4>Incoming Search Terms</h4><ol>
+<table><tr valign='top'><td width="33%"><h4>Incoming Search Terms</h4><ol>
 <?php
 //
 // Incoming Search Terms
@@ -184,7 +254,7 @@ else
 $rss_feed = 'http://blogsearch.google.com/blogsearch_feeds?hl=en&scoring=d&ie=utf-8&num='. $detail_lines .'&output=rss&partner=bsuite&q=link:' . trailingslashit( get_option('home') );
 $more_link = apply_filters( 'dashboard_incoming_links_link', 'http://blogsearch.google.com/blogsearch?hl=en&scoring=d&partner=bsuite&q=link:' . trailingslashit( get_option('home') ) );
 
-echo '<td><h4>Referrers from <a href="'. htmlspecialchars( $more_link ) .'">Google Blog Search</a></h4><ol>';
+echo '<td width="33%"><h4>Referrers from <a href="'. htmlspecialchars( $more_link ) .'">Google Blog Search</a></h4><ol>';
 
 $rss = @fetch_rss( $rss_feed );
 if ( isset($rss->items) && 1 < count($rss->items) ) {
@@ -207,7 +277,7 @@ if ( isset($rss->items) && 1 < count($rss->items) ) {
 $rss_feed = 'http://feeds.technorati.com/cosmos/rss/?url='. trailingslashit(get_option('home')) .'&partner=bsuite';
 $more_link = 'http://www.technorati.com/cosmos/search.html?url=' . urlencode(trailingslashit( get_option('home') ) ) .'&partner=bsuite';
 
-echo '<td><h4>Referrers from <a href="'. htmlspecialchars( $more_link ) .'">Technorati</a></h4><ol>';
+echo '<td width="33%"><h4>Referrers from <a href="'. htmlspecialchars( $more_link ) .'">Technorati</a></h4><ol>';
 
 $rss = @fetch_rss( $rss_feed );
 if ( isset($rss->items) && 1 < count($rss->items) ) {
@@ -222,18 +292,4 @@ if ( isset($rss->items) && 1 < count($rss->items) ) {
 }
 ?>
 </ol></td></tr></table>
-</div>
-
-<div class="wrap">
-<h2><?php _e('Pulse') ?></h2>
-
-<style type="text/css">
-<!--
-#bstat_pulse	{ height: 130px; margin: 2px 0px 2px 0px; text-align:center; } 
-#bstat_pulse p	{ text-align: center; line-height: 1em; text-shadow: #ffffff 1px 1px 4px; margin-top: 0px; } 
-#bstat_pulse img	{ display:inline; vertical-align: middle; background-color: #999999; border: solid 0px #000000; margin: 0px 0px 0px 0px; padding: 0px 0px 0px 0px; border-top: solid 2px #000000; } 
--->
-</style>
-<div id="bstat_pulse"><?php //bstat_pulse(0, 800, 1, 0); ?></div>
-
 </div>
