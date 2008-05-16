@@ -2042,9 +2042,6 @@ $engine = $this->get_search_engine( $ref );
 	function hitsreports() {
 		global $wpdb, $bsuite;
 
-		$this->createtables();
-		$this->cron_register();
-
 		update_option('bsuite_doing_migration', time() + 300 );
 
 		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/bstat_reports.php');
@@ -2056,9 +2053,6 @@ $engine = $this->get_search_engine( $ref );
 	
 	function optionspage() {
 		global $wpdb;
-
-		$this->createtables();
-		$this->cron_register();
 
 		//require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_admin.php');
 
