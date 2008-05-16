@@ -1385,7 +1385,7 @@ $engine = $this->get_search_engine( $ref );
 		// take a look at Glenn Slaven's tutorial on WP's psudo-cron:
 		// http://blog.slaven.net.au/archives/2007/02/01/timing-is-everything
 		wp_clear_scheduled_hook('bsuite_interval');
-		wp_schedule_event( 0, 'bsuite_interval', 'bsuite_interval' );
+		wp_schedule_event( time() + 120, 'bsuite_interval', 'bsuite_interval' );
 	}
 	// end cron functions
 
@@ -2044,6 +2044,9 @@ $engine = $this->get_search_engine( $ref );
 
 		update_option('bsuite_doing_migration', time() + 300 );
 
+		$this->createtables();
+		$this->cron_register();
+
 		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/bstat_reports.php');
 		
 		// disabled so that stats migrations can't run for a while after the report is complete.
@@ -2053,6 +2056,9 @@ $engine = $this->get_search_engine( $ref );
 	
 	function optionspage() {
 		global $wpdb;
+
+		$this->createtables();
+		$this->cron_register();
 
 		//require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_admin.php');
 
