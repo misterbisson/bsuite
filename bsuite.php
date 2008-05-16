@@ -2044,9 +2044,6 @@ $engine = $this->get_search_engine( $ref );
 
 		update_option('bsuite_doing_migration', time() + 300 );
 
-		$this->createtables();
-		$this->cron_register();
-
 		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/bstat_reports.php');
 		
 		// disabled so that stats migrations can't run for a while after the report is complete.
