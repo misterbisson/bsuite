@@ -1105,7 +1105,7 @@ $engine = $this->get_search_engine( $ref );
 	
 		$limit = 'LIMIT '. (int) $args['count'];
 	
-		$request = "SELECT COUNT(*) AS hit_count, object_id AS term_id
+		$request = "SELECT COUNT(*) AS hit_count, name
 			FROM (
 				SELECT object_id
 				FROM $this->hits_shistory
@@ -1113,6 +1113,7 @@ $engine = $this->get_search_engine( $ref );
 				ORDER BY sess_id DESC
 				LIMIT 1000
 			) a
+			LEFT JOIN $this->hits_terms t ON a.object_id = t.term_id
 			GROUP BY object_id
 			ORDER BY hit_count DESC
 			$limit";
@@ -1128,8 +1129,7 @@ $engine = $this->get_search_engine( $ref );
 		if($args['return'] == 'formatted'){
 			$list = '';
 			foreach($result as $row){
-				$term = $this->bstat_get_term( $row['term_id'] );
-				$list .= str_replace(array('%%title%%','%%hits%%'), array($term, $row['hit_count']), $args['template']);
+				$list .= str_replace(array('%%title%%','%%hits%%'), array($row['name'], $row['hit_count']), $args['template']);
 			}		
 			return($list);
 		}
