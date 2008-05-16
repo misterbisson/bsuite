@@ -1114,7 +1114,7 @@ $engine = $this->get_search_engine( $ref );
 				LIMIT 1000
 			) a
 			GROUP BY object_id
-			ORDER BY hits DESC
+			ORDER BY hit_count DESC
 			$limit";
 
 		$result = $wpdb->get_results($request, ARRAY_A);
@@ -1412,7 +1412,7 @@ $engine = $this->get_search_engine( $ref );
 		// http://php.net/manual/en/function.sys-getloadavg.php
 		$str = substr(strrchr(shell_exec('uptime'),':'),1);
 		$avs = array_map('trim',explode(',',$str));
-		return $avs;
+		return( $avs );
 	}
 	// end load average related functions
 
