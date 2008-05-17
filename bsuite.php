@@ -140,6 +140,7 @@ class bSuite {
 //		$this->hits_searchwords = $wpdb->prefix . 'bsuite4_hits_searchwords';
 		$this->hits_sessions = $wpdb->prefix . 'bsuite4_hits_sessions';
 		$this->hits_shistory = $wpdb->prefix . 'bsuite4_hits_shistory';
+		$this->hits_pop = $wpdb->prefix . 'bsuite4_hits_pop';
 
 		$this->lock_migrator = $wpdb->prefix . 'bsuite4_lock_migrator';
 		$this->lock_ftindexer = $wpdb->prefix . 'bsuite4_lock_ftindexer';
@@ -874,6 +875,37 @@ bsuite.log();
 				return new WP_Error('db_insert_error', __('Could not clean up the incoming stats table'), $wpdb->last_error);
 			if( $getcount > count( $res ))
 				$wpdb->query( "OPTIMIZE TABLE $this->hits_incoming;");
+		}
+
+		if ( get_option( 'bsuite_doing_migration_popr') < time() ){
+			if ( get_option( 'bsuite_doing_migration_popd') < time() ){
+				$wpdb->query( "TRUNCATE $this->hits_pop" );
+				$wpdb->query( "INSERT INTO $this->hits_pop (post_id, date_start, hits_total)
+					SELECT object_id AS post_id, MIN(hit_date) AS date_start, SUM(hit_count) AS hits_total
+					FROM $this->hits_targets
+					WHERE object_type = 0
+					GROUP BY object_id" );
+				update_option( 'bsuite_doing_migration_popd', time() + 64800 );
+			}
+			$wpdb->query( "UPDATE $this->hits_pop p
+				LEFT JOIN (
+					SELECT object_id, COUNT(*) AS hit_count
+					FROM (
+						SELECT sess_id, sess_date
+						FROM (
+							SELECT sess_id, sess_date
+							FROM $this->hits_sessions
+							ORDER BY sess_id DESC
+							LIMIT 7500
+						) a
+						WHERE sess_date >= DATE_SUB( NOW(), INTERVAL 1 DAY )
+					) s
+					LEFT JOIN $this->hits_shistory h ON h.sess_id = s.sess_id
+					WHERE h.object_type = 0
+					GROUP BY object_id
+				) h ON h.object_id = p.post_id
+				SET hits_recent = h.hit_count" );
+			update_option( 'bsuite_doing_migration_popr', time() + 1500 );
 		}
 
 /*		
@@ -2031,6 +2063,15 @@ $engine = $this->get_search_engine( $ref );
 				object_type smallint(6) NOT NULL,
 				KEY sess_id (sess_id),
 				KEY object_id (object_id,object_type)
+			) ENGINE=MyISAM $charset_collate
+			");
+
+		dbDelta("
+			CREATE TABLE $this->hits_pop (
+				post_id bigint(20) NOT NULL,
+				date_start date NOT NULL,
+				hits_total bigint(20) NOT NULL,
+				hits_recent int(10) NOT NULL
 			) ENGINE=MyISAM $charset_collate
 			");
 	}
