@@ -269,7 +269,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 		FROM (
 			SELECT object_id, SUM(hit_count) AS hit_count
 			FROM $this->hits_targets
-			WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 8 hours ))
+			WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 3 DAY ))
 			AND object_type = 0
 			GROUP BY object_id
 			ORDER BY hit_count DESC
