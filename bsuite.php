@@ -151,10 +151,11 @@ class bSuite {
 		$this->path_web = '/'. PLUGINDIR .'/'. plugin_basename( dirname( __FILE__ ));
 
 		// register and queue javascripts
-		wp_register_script( 'scrib-linktome_selectall', $this->path_web . '/js/linktome_selectall.js', array('jquery'), '20080422' );
-		wp_register_script( 'scrib-bstat', $this->path_web . '/js/bstat.js', array('jquery'), '200805026' );
-		wp_enqueue_script( 'scrib-linktome_selectall' );	
-		wp_enqueue_script( 'scrib-bstat' );	
+		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
+		wp_enqueue_script( 'highlight' );	
+
+		wp_register_script( 'bsuite', $this->path_web . '/js/bsuite.js', array('jquery'), '20080503' );
+		wp_enqueue_script( 'bsuite' );	
 
 
 		//
@@ -190,7 +191,7 @@ class bSuite {
 		add_filter('publish_page', array(&$this, 'bsuggestive_delete_cache'));
 
 		// searchsmart
-		add_filter('posts_request', array(&$this, 'searchsmart_query'), 10);
+		add_filter('posts_request', array(&$this, 'searchsmart_posts_request'), 10);
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
 //		add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
 		
@@ -762,6 +763,8 @@ bsuite.log();
 			$s['sess_bb'] = $se['bb'];
 			$s['sess_bl'] = $se['bl'];
 			$s['sess_ba'] = urldecode( $se['ba'] );
+// could use INET_ATON and INET_NTOA to reduce storage requirements for the IP address,
+// but it's not human readable when browsing the table
 
 			if ( false === $wpdb->insert( $this->hits_sessions, $s )){
 				new WP_Error('db_insert_error', __('Could not insert session into the database'), $wpdb->last_error);
@@ -1174,7 +1177,7 @@ $engine = $this->get_search_engine( $ref );
 	//
 	// Searchsmart
 	//
-	function searchsmart_query($query){
+	function searchsmart_posts_request( $query ){
 		global $wp_query, $wpdb;
 
 		if($wp_query->is_admin)
@@ -1196,22 +1199,40 @@ $engine = $this->get_search_engine( $ref );
 				$limit = explode('LIMIT', $query);
 				if(!$limit[1])
 					$limit[1] = ($paged - 1) * $posts_per_page .', '. $posts_per_page;
-			
 			}
 
-			$query = "SELECT SQL_CALC_FOUND_ROWS $wpdb->posts.*, MATCH (content, title) AGAINST ('". $wpdb->escape( stripslashes( $wp_query->query_vars['s'] )) ."') AS relevance 
-				FROM $wpdb->posts 
-				LEFT JOIN $this->search_table ON ( post_id = ID )  
-				WHERE 1=1 
-				AND (MATCH (content, title) AGAINST ('". $wpdb->escape( stripslashes( $wp_query->query_vars['s'] )) ."'))
-				AND (post_type IN ('post', 'page') AND (post_status IN ('publish', 'private')))
-				ORDER BY relevance DESC LIMIT $limit[1]
-				";
-
 //print_r($wp_query);			
-//echo "<pre>$query</pre>";
+//echo '<h2>'. $this->searchsmart_query( $wp_query->query_vars['s'], 'LIMIT '. $limit[1] ) .'</h2>';
+			return( $this->searchsmart_query( $wp_query->query_vars['s'], 'LIMIT '. $limit[1] ));
 		}
-		return($query);
+		return( $query );
+	}
+
+	function searchsmart_query( $searchphrase, $limit = 'LIMIT 0,5' ){
+		global $wpdb;
+
+		if( 3 < strlen( trim( $searchphrase ))){
+			return("SELECT SQL_CALC_FOUND_ROWS $wpdb->posts.* 
+				FROM (
+					SELECT post_id, MATCH (content, title) AGAINST (". $wpdb->prepare( '%s', $searchphrase ) .") AS score 
+					FROM $this->search_table
+					WHERE MATCH (content, title) AGAINST (". $wpdb->prepare( '%s', $searchphrase ) .")
+					ORDER BY score DESC
+					LIMIT 1000
+				) s
+				LEFT JOIN $wpdb->posts ON ( s.post_id = $wpdb->posts.ID ) 
+				WHERE 1=1 
+				AND post_status IN ('publish', 'private')
+				ORDER BY score DESC 
+				$limit");
+		}else{
+			return("SELECT SQL_CALC_FOUND_ROWS $wpdb->posts.*
+				FROM $wpdb->posts 
+				WHERE 1=1 
+				AND post_content LIKE ". $wpdb->prepare( '%s', '%'. $searchphrase .'%' ) ."
+				AND post_status IN ('publish', 'private')
+				ORDER BY post_date_gmt DESC $limit");
+		}
 	}
 
 	function searchsmart_direct(){
@@ -2258,12 +2279,12 @@ $engine = $this->get_search_engine( $ref );
 			}
 			print "</ul>";
 			?>
-			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/bsuite.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
 			<script language='javascript'>
 			<!--
 
 			function nextpage() {
-				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>";
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/bsuite.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>";
 			}
 			setTimeout( "nextpage()", 250 );
 
@@ -2277,7 +2298,7 @@ $engine = $this->get_search_engine( $ref );
 			<!--
 
 			function nextpage() {
-				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/core.php";
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/bsuite.php";
 			}
 			setTimeout( "nextpage()", 3000 );
 

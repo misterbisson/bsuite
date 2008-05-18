@@ -127,3 +127,36 @@ var bsuite={
 	},
 	'log':function(){var args=arguments;if(args[0]){this.img(args[0]);}else{this.img();}}
 };
+
+
+
+/********************************************
+a small function to select all text in the linktome text boxes on click
+********************************************/
+function bsuite_linktome_selectall() {
+	jQuery('input.linktome_input').click( function() { 
+		jQuery(this).select();
+	} );
+}
+jQuery(document).ready(bsuite_linktome_selectall);
+
+
+function bsuite_highlight( words ) {
+	jQuery('div').each( function() {
+		for( var i in words ) {
+			jQuery.highlight(this, words[i].toUpperCase() );
+		}
+	} );
+}
+
+/* this works
+jQuery(document).ready( function(){ 
+	var words = new Array();
+	words[0] = "the";
+	words[1] = "word";
+	words[2] = "to";
+	words[3] = "highlight";
+
+	bsuite_highlight( words );
+} );
+*/
