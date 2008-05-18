@@ -25,8 +25,8 @@ $wpdb->insert( $bsuite->hits_incoming, array( 'in_type' => '0', 'in_session' => 
 // output useful data
 if(function_exists( 'json_encode' )){
 	if( $searchterms = $bsuite->get_search_terms( $_REQUEST['pr'] )){
-		echo 'bsuite_highlight('. json_encode( array( 'history', 'sniper' ) ) .");\n";
-//		echo 'bsuite_highlight('. json_encode( $searchterms ) .");\n";
+//		echo 'bsuite_highlight('. json_encode( array( 'history', 'book' ) ) .");\n";
+		echo 'bsuite_highlight('. json_encode( $searchterms ) .");\n";
 
 		foreach( $wpdb->get_col( $bsuite->searchsmart_query( implode( $searchterms, ' ' ))) as $post)
 			$related_posts[] = '<a href="'. get_permalink( $post ) .'" title="Permalink to related post: '. get_the_title( $post ) .'">'.  get_the_title( $post ) .'</a>';
