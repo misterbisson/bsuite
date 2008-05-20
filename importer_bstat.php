@@ -296,8 +296,7 @@ FROM '. $wpdb->prefix .'bsuite3_refs_terms a
 LEFT JOIN '. $wpdb->terms .' b ON a.term_id = b.term_id
 LEFT JOIN '. $bsuite->hits_terms .' c ON b.name = c.name
 WHERE a.post_id != 0
-GROUP BY a.object_id, a.object_type, a.term_id
-ORDER BY a.hit_date, a.post_id';
+GROUP BY a.object_id, a.object_type, a.term_id';
 
 		$this->query_delete_taxonomies = 'DELETE QUICK
 FROM '. $wpdb->term_taxonomy .'

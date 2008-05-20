@@ -38,4 +38,9 @@ if(function_exists( 'json_encode' )){
 
 }
 //phpinfo();
+/*
+print_r($wpdb->queries);
+echo '<h2>queries: '. $wpdb->num_queries .'</h2>';
+echo '<h2>seconds: '. timer_stop(1) .'</h2>';
+*/
 ?>

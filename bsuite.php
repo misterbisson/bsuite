@@ -151,11 +151,12 @@ class bSuite {
 		$this->path_web = '/'. PLUGINDIR .'/'. plugin_basename( dirname( __FILE__ ));
 
 		// register and queue javascripts
-		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
-		wp_enqueue_script( 'highlight' );	
-
 		wp_register_script( 'bsuite', $this->path_web . '/js/bsuite.js', array('jquery'), '20080503' );
 		wp_enqueue_script( 'bsuite' );	
+
+		// jQuery text highlighting plugin http://johannburkard.de/blog/programming/javascript/highlight-javascript-text-higlighting-jquery-plugin.html
+		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
+		wp_enqueue_script( 'highlight' );	
 
 
 		//
@@ -700,6 +701,7 @@ class bSuite {
 bsuite.api_location='<?php echo substr( get_settings( 'siteurl' ), strpos( get_settings( 'siteurl' ), ':' ) + 3 ) . $this->path_web . '/worker.php' ?>';
 bsuite.log();
 </script>
+<noscript><img src="<?php echo substr( get_settings( 'siteurl' ), strpos( get_settings( 'siteurl' ), ':' ) + 3 ) . $this->path_web . '/worker.php' ?>" width="1" height="1" alt="stat counter" /></noscript>
 <?php
 	}
 	
