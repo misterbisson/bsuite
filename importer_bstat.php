@@ -290,13 +290,13 @@ LEFT JOIN '. $wpdb->term_taxonomy .' tt ON t.term_id = tt.term_id
 WHERE tt.taxonomy = "bsuite_search"';
 
 		$this->query_get_searchwords = 'INSERT IGNORE
-INTO '. $bsuite->hits_searchwords .'
+INTO '. $bsuite->hits_searchphrases .'
 SELECT a.post_id AS object_id, 0 AS object_type, c.term_id AS term_id, SUM(a.hit_count) AS hit_count
 FROM '. $wpdb->prefix .'bsuite3_refs_terms a
 LEFT JOIN '. $wpdb->terms .' b ON a.term_id = b.term_id
 LEFT JOIN '. $bsuite->hits_terms .' c ON b.name = c.name
 WHERE a.post_id != 0
-GROUP BY a.object_id, a.object_type, a.term_id';
+GROUP BY object_id, object_type, term_id';
 
 		$this->query_delete_taxonomies = 'DELETE QUICK
 FROM '. $wpdb->term_taxonomy .'

@@ -23,24 +23,22 @@ $in_extra = array(  'ip' => $_SERVER["REMOTE_ADDR"], 'br' => $_REQUEST['br'],  '
 $wpdb->insert( $bsuite->hits_incoming, array( 'in_type' => '0', 'in_session' => $session, 'in_to' => $_SERVER['HTTP_REFERER'] , 'in_from' => $_REQUEST['pr'], 'in_extra' => serialize( $in_extra )));
 
 // output useful data
-if(function_exists( 'json_encode' )){
-	if( $searchterms = $bsuite->get_search_terms( $_REQUEST['pr'] )){
-//		echo 'bsuite_highlight('. json_encode( array( 'history', 'book' ) ) .");\n";
-		echo 'bsuite_highlight('. json_encode( $searchterms ) .");\n";
+if( $searchterms = $bsuite->get_search_terms( $_REQUEST['pr'] )){
+	// output a json object to highlight search terms
+	echo "var bsuite_json = {terms:['". implode("','", array_map('htmlentities',$searchterms) ) ."']};";
+	echo "jQuery(function(){bsuite_highlight(bsuite_json);});";
 
-		foreach( $wpdb->get_col( $bsuite->searchsmart_query( implode( $searchterms, ' ' ))) as $post)
-			$related_posts[] = '<a href="'. get_permalink( $post ) .'" title="Permalink to related post: '. get_the_title( $post ) .'">'.  get_the_title( $post ) .'</a>';
 /*
-		if( count( $related_posts ))
-			echo 'bsuite_related_posts('. json_encode( $related_posts ) .");\n";
+	foreach( $wpdb->get_col( $bsuite->searchsmart_query( implode( $searchterms, ' ' ))) as $post)
+		$related_posts[] = '<a href="'. get_permalink( $post ) .'" title="Permalink to related post: '. get_the_title( $post ) .'">'.  get_the_title( $post ) .'</a>';
+	if( count( $related_posts ))
+		echo 'bsuite_related_posts('. json_encode( $related_posts ) .");\n";
 */
-	}
-
 }
+
 //phpinfo();
 /*
 print_r($wpdb->queries);
-echo '<h2>queries: '. $wpdb->num_queries .'</h2>';
-echo '<h2>seconds: '. timer_stop(1) .'</h2>';
+print_r( array( 'count_queries' => $wpdb->num_queries , 'count_seconds' => timer_stop(1) ));
 */
 ?>

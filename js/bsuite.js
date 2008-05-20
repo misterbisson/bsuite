@@ -130,9 +130,9 @@ var bsuite={
 
 
 
-/********************************************
-a small function to select all text in the linktome text boxes on click
-********************************************/
+/*
+** select all text in the link-to-me text boxes on click
+*/
 function bsuite_linktome_selectall() {
 	jQuery('input.linktome_input').click( function() { 
 		jQuery(this).select();
@@ -141,22 +141,14 @@ function bsuite_linktome_selectall() {
 jQuery(document).ready(bsuite_linktome_selectall);
 
 
+
+/*
+** the search word highlighting callback
+*/
 function bsuite_highlight( words ) {
-	jQuery('div').each( function() {
-		for( var i in words ) {
-			jQuery.highlight(this, words[i].toUpperCase() );
+	jQuery('body').each( function() {
+		for( var i in words.terms ) {
+			jQuery.highlight(this, words.terms[i].toUpperCase() );
 		}
 	} );
 }
-
-/* this works
-jQuery(document).ready( function(){ 
-	var words = new Array();
-	words[0] = "the";
-	words[1] = "word";
-	words[2] = "to";
-	words[3] = "highlight";
-
-	bsuite_highlight( words );
-} );
-*/
