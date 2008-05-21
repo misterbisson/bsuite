@@ -119,10 +119,18 @@ var bsuite={
 			//tack on browser info
 			src+=this.gb();
 			//build image
+			var script = document.createElement('script');
+			script.src = src;
+			script.type = 'text/javascript';
+			script.defer = true;
+			var head = document.getElementsByTagName('head').item(0);
+			head.appendChild(script);
+/*
 			var i=new Image(1,1);
 			i.src=src;
 
 			i.onload=function(){return;};
+*/
 		}
 	},
 	'log':function(){var args=arguments;if(args[0]){this.img(args[0]);}else{this.img();}}
