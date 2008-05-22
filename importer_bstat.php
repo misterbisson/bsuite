@@ -127,7 +127,6 @@ class bStat_Import {
 		flush();
 
 		$wpdb->get_results( $this->query_get_targets );
-		$wpdb->get_results( $this->query_get_targets2 );
 
 		echo '<p>Done!</p>';
 		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=2" method="post">';
