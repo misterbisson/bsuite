@@ -126,7 +126,8 @@ class bStat_Import {
 		echo '<p>Please be patient, this could take a long time.</p>';
 		flush();
 
-		$wpdb->get_results( $this->query_get_targets );
+		foreach( explode( ';', $this->query_delete_oldtables ) as $query )
+			$wpdb->get_results( $query  );
 
 		echo '<p>Done!</p>';
 		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=2" method="post">';
