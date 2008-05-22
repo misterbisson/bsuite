@@ -275,9 +275,6 @@ class bStat_Import {
 
 		$home = $bsuite->bstat_insert_term( get_settings( 'siteurl' ));
 
-echo '<h2>'. get_settings( 'siteurl' ) .'</h2>';
-echo '<h2>'. $bsuite->bstat_is_term( get_settings( 'siteurl' )) .'</h2>';
-
 		// the queries we use
 		$this->query_checktables = 'SHOW TABLES LIKE "'. $wpdb->prefix .'bsuite3%"';
 
