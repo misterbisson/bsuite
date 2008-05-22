@@ -127,6 +127,7 @@ class bStat_Import {
 		flush();
 
 		$wpdb->get_results( $this->query_get_targets );
+		$wpdb->get_results( $this->query_get_targets2 );
 
 		echo '<p>Done!</p>';
 		echo '<form action="admin.php?import='. $this->importer_code .'&amp;step=2" method="post">';
@@ -273,6 +274,8 @@ class bStat_Import {
 	function bStat_Import() { 
 		global $wpdb, $bsuite; 
 
+		$home = $bsuite->bstat_is_term( get_settings( 'siteurl' ));
+
 		// the queries we use
 		$this->query_checktables = 'SHOW TABLES LIKE "'. $wpdb->prefix .'bsuite3%"';
 
@@ -281,6 +284,12 @@ INTO '. $bsuite->hits_targets .'
 SELECT post_id AS object_id, 0 AS object_type, hit_count, hit_date
 FROM '. $wpdb->prefix .'bsuite3_hits
 WHERE post_id != 0';
+
+		$this->query_get_targets2 = 'INSERT IGNORE
+INTO '. $bsuite->hits_targets .'
+SELECT '. $home .' AS object_id, 1 AS object_type, hit_count, hit_date
+FROM '. $wpdb->prefix .'bsuite3_hits
+WHERE post_id = 0';
 
 		$this->query_get_terms = 'INSERT IGNORE
 INTO '. $bsuite->hits_terms .' (name)
