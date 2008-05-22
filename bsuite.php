@@ -2134,7 +2134,7 @@ $engine = $this->get_search_engine( $ref );
 			print_r( $wp_rewrite->rewrite_rules() );
 			echo '</pre>';
 		}else if($_REQUEST['Options'] == __('Force Stats Migration', 'bsuite')){
-			this->bstat_migrator();
+			$this->bstat_migrator();
 		}else if($_REQUEST['Options'] == __('PHP Info', 'bsuite')){
 			phpinfo();
 		}
