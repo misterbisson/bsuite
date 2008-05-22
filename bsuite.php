@@ -2133,6 +2133,8 @@ $engine = $this->get_search_engine( $ref );
 			$wp_rewrite->flush_rules();
 			print_r( $wp_rewrite->rewrite_rules() );
 			echo '</pre>';
+		}else if($_REQUEST['Options'] == __('Force Stats Migration', 'bsuite')){
+			this->bstat_migrator();
 		}else if($_REQUEST['Options'] == __('PHP Info', 'bsuite')){
 			phpinfo();
 		}
@@ -2149,6 +2151,7 @@ $engine = $this->get_search_engine( $ref );
 		<tr valign="top">
 			<div class="submit"><input type="submit" name="Options" value="<?php _e('Rebuild bSuite search index', 'bsuite') ?>" /> &nbsp; 
 			<input type="submit" name="Options" value="<?php _e('Show rewrite rules', 'bsuite') ?>" /> &nbsp; 
+			<input type="submit" name="Options" value="<?php _e('Force Stats Migration', 'bsuite') ?>" /> &nbsp; 
 			<input type="submit" name="Options" value="<?php _e('PHP Info', 'bsuite') ?>" /> &nbsp; 
 			</div>
 		</tr>
