@@ -283,20 +283,19 @@ class bStat_Import {
 INTO '. $bsuite->hits_targets .'
 SELECT post_id AS object_id, 0 AS object_type, hit_count, hit_date
 FROM '. $wpdb->prefix .'bsuite3_hits
-WHERE post_id != 0';
-
-		$this->query_get_targets2 = 'INSERT IGNORE
+WHERE post_id != 0 ;
+INSERT IGNORE
 INTO '. $bsuite->hits_targets .'
 SELECT '. $home .' AS object_id, 1 AS object_type, hit_count, hit_date
 FROM '. $wpdb->prefix .'bsuite3_hits
-WHERE post_id = 0';
+WHERE post_id = 0 ;';
 
 		$this->query_get_terms = 'INSERT IGNORE
 INTO '. $bsuite->hits_terms .' (name)
 SELECT t.name AS name
 FROM '. $wpdb->terms .' t
 LEFT JOIN '. $wpdb->term_taxonomy .' tt ON t.term_id = tt.term_id
-WHERE tt.taxonomy = "bsuite_search"';
+WHERE tt.taxonomy = "bsuite_search";';
 
 		$this->query_get_searchwords = 'INSERT IGNORE
 INTO '. $bsuite->hits_searchphrases .'
@@ -305,17 +304,17 @@ FROM '. $wpdb->prefix .'bsuite3_refs_terms a
 LEFT JOIN '. $wpdb->terms .' b ON a.term_id = b.term_id
 LEFT JOIN '. $bsuite->hits_terms .' c ON b.name = c.name
 WHERE a.post_id != 0
-GROUP BY object_id, object_type, term_id';
+GROUP BY object_id, object_type, term_id;';
 
 		$this->query_delete_taxonomies = 'DELETE QUICK
 FROM '. $wpdb->term_taxonomy .'
-WHERE taxonomy = "bsuite_search"';
+WHERE taxonomy = "bsuite_search";';
 
 		$this->query_delete_terms = 'DELETE QUICK
 FROM '. $wpdb->terms .'
 USING '. $wpdb->terms .'
 LEFT JOIN '. $wpdb->term_taxonomy .' ON '. $wpdb->terms .'.term_id = '. $wpdb->term_taxonomy .'.term_id
-WHERE '. $wpdb->term_taxonomy .'.term_id IS NULL';
+WHERE '. $wpdb->term_taxonomy .'.term_id IS NULL;';
 
 		$this->query_optimize_wptables = 'OPTIMIZE TABLE '. $wpdb->terms .';
 OPTIMIZE TABLE '. $wpdb->term_taxonomy .';';
