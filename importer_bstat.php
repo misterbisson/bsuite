@@ -273,7 +273,7 @@ class bStat_Import {
 	function bStat_Import() { 
 		global $wpdb, $bsuite; 
 
-		$home = $bsuite->bstat_is_term( get_settings( 'siteurl' ));
+		$home = $bsuite->bstat_insert_term( get_settings( 'siteurl' ));
 
 echo '<h2>'. get_settings( 'siteurl' ) .'</h2>';
 echo '<h2>'. $bsuite->bstat_is_term( get_settings( 'siteurl' )) .'</h2>';
