@@ -48,6 +48,17 @@ $date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, d
 </tr></table>
 <?php
 
+$now = $wpdb->get_var( 'SELECT UNIX_TIMESTAMP( CONCAT( DATE( NOW()), " ", HOUR( NOW()), ":00:00" ))' );
+
+$sessions = $pageloads = $hours = array();
+for($i = 0; $i <= 23; $i++)
+	$sessions[ $now - ( $i * 60 * 60 ) ] = $pageloads[ $now - ( $i * 60 * 60 ) ] = 0;
+ksort( $sessions );
+ksort( $pageloads );
+
+foreach( $pageloads as $key => $val )
+	$hours[] = date('H', $key);
+
 $dates = $wpdb->get_col( "SELECT sess_date
 	FROM (
 		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
@@ -58,7 +69,7 @@ $dates = $wpdb->get_col( "SELECT sess_date
 	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	GROUP BY sess_date, sess_hour" );
 
-$hours = $wpdb->get_col( "SELECT sess_hour
+$sessions_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAMP( CONCAT( sess_date, ' ', sess_hour, ':00:00' )) AS sess_timestamp
 	FROM (
 		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
 		FROM $this->hits_sessions
@@ -68,17 +79,10 @@ $hours = $wpdb->get_col( "SELECT sess_hour
 	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	GROUP BY sess_date, sess_hour" );
 
-$sessions = $wpdb->get_col( "SELECT COUNT(*) AS hit_count
-	FROM (
-		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
-		FROM $this->hits_sessions
-		ORDER BY sess_id DESC
-		LIMIT 7500
-	) a
-	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
-	GROUP BY sess_date, sess_hour" );
+foreach( $sessions_db as $session )
+	$sessions[$session->sess_timestamp] = $session->hit_count;
 
-$pageloads = $wpdb->get_col( "SELECT COUNT(*) AS hit_count
+$pageloads_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAMP( CONCAT( sess_date, ' ', sess_hour, ':00:00' )) AS sess_timestamp
 	FROM (
 		SELECT sess_id, sess_date, sess_hour
 		FROM (
@@ -92,6 +96,11 @@ $pageloads = $wpdb->get_col( "SELECT COUNT(*) AS hit_count
 	LEFT JOIN $this->hits_shistory h ON h.sess_id = s.sess_id
 	WHERE h.object_type IN (0,1)
 	GROUP BY sess_date, sess_hour" );
+
+
+foreach( $pageloads_db as $pageload )
+	$pageloads[$pageload->sess_timestamp] = $pageload->hit_count;
+
 ?>
 <h4><?php echo number_format( array_sum( $pageloads )) ?> page loads and <?php echo number_format( array_sum( $sessions )) ?> visitors in last 24 hours:</h4>
 <?php
