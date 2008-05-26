@@ -1693,7 +1693,7 @@ $engine = $this->get_search_engine( $ref );
 			return(NULL);
 		
 		$id = (int) $post->ID; // needs an ID of that page/post
-		if(!id)
+		if(!$id)
 			return(NULL);
 		
 		extract($args, EXTR_SKIP);
@@ -1706,7 +1706,7 @@ $engine = $this->get_search_engine( $ref );
 		else if ( $number > 15 )
 			$number = 15;
 
-		if ( $related_posts = array_slice($this->bsuggestive_getposts(), 0, $number) ) {
+		if ( $related_posts = array_slice( $this->bsuggestive_getposts( $id ), 0, $number )) {
 ?>
 	
 			<?php echo $before_widget; ?>
