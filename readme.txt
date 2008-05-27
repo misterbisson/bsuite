@@ -51,3 +51,4 @@ Full documentation and usage examples are available at <a href="http://maisonbis
 7. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bSuite bStat popular posts widget.
 8. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bSuite Recently Commented widget. This widget differs from the built in Recent Comments widget in that it only shows posts, not individual comments.
 9. The <a href="http://maisonbisson.com/blog/bsuite/machine-tags">machine tag</a> input field in the edit post and edit page screen. 
+10. The bSuite options panel.
