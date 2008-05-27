@@ -5,6 +5,7 @@ global $wpdb, $bsuite;
 
 // send headers
 //@header( 'Content-Type: application/json; charset='. get_option('blog_charset') );
+@header( 'Content-Type: text/javascript; charset='. get_option('blog_charset') );
 nocache_headers();
 
 // get or start a session
@@ -23,7 +24,7 @@ $in_extra = array(  'ip' => $_SERVER["REMOTE_ADDR"], 'br' => $_REQUEST['br'],  '
 $wpdb->insert( $bsuite->hits_incoming, array( 'in_type' => '0', 'in_session' => $session, 'in_to' => $_SERVER['HTTP_REFERER'] , 'in_from' => $_REQUEST['pr'], 'in_extra' => serialize( $in_extra )));
 
 // output useful data
-if( $searchterms = $bsuite->get_search_terms( $_REQUEST['pr'] )){
+if( get_option('bsuite_swhl') && ( $searchterms = $bsuite->get_search_terms( $_REQUEST['pr'] ))){
 	// output a json object to highlight search terms
 	echo "var bsuite_json = {terms:['". implode("','", array_map('htmlentities',$searchterms) ) ."']};";
 	echo "jQuery(function(){bsuite_highlight(bsuite_json);});";

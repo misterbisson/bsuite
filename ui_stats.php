@@ -20,9 +20,14 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
+if( !isset( $wpdb ) || !isset( $bsuite ) )
+	exit;
+
 require_once (ABSPATH . WPINC . '/rss.php');
 
+update_option('bsuite_doing_migration', time() + 300 );
 ?>
+
 
 <div class="wrap">
 <h2><?php _e('Quick Stats') ?></h2>
@@ -35,16 +40,16 @@ $date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, d
 
 ?>
 <table><tr valign='top'>
-<td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
+<td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $bsuite->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<td><h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $this->hits_targets WHERE hit_date > '$date' AND object_type IN (0,1)"); ?></ul></td>
+<td><h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $bsuite->hits_targets WHERE hit_date > '$date' AND object_type IN (0,1)"); ?></ul></td>
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<td><h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $this->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
+<td><h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $bsuite->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<td><h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $this->hits_targets WHERE object_type IN (0,1)"); ?></ul></td>
+<td><h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $bsuite->hits_targets WHERE object_type IN (0,1)"); ?></ul></td>
 </tr></table>
 <?php
 
@@ -62,7 +67,7 @@ foreach( $pageloads as $key => $val )
 $dates = $wpdb->get_col( "SELECT sess_date
 	FROM (
 		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
-		FROM $this->hits_sessions
+		FROM $bsuite->hits_sessions
 		ORDER BY sess_id DESC
 		LIMIT 7500
 	) a
@@ -72,7 +77,7 @@ $dates = $wpdb->get_col( "SELECT sess_date
 $sessions_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAMP( CONCAT( sess_date, ' ', sess_hour, ':00:00' )) AS sess_timestamp
 	FROM (
 		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
-		FROM $this->hits_sessions
+		FROM $bsuite->hits_sessions
 		ORDER BY sess_id DESC
 		LIMIT 7500
 	) a
@@ -87,13 +92,13 @@ $pageloads_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAM
 		SELECT sess_id, sess_date, sess_hour
 		FROM (
 			SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
-			FROM $this->hits_sessions
+			FROM $bsuite->hits_sessions
 			ORDER BY sess_id DESC
 			LIMIT 7500
 		) a
 		WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	) s
-	LEFT JOIN $this->hits_shistory h ON h.sess_id = s.sess_id
+	LEFT JOIN $bsuite->hits_shistory h ON h.sess_id = s.sess_id
 	WHERE h.object_type IN (0,1)
 	GROUP BY sess_date, sess_hour" );
 
@@ -110,7 +115,7 @@ echo '<img src="http://chart.apis.google.com/chart?chs=550x150&cht=lc&chco=0077C
 $months = $wpdb->get_col( "SELECT DATE_FORMAT( MAKEDATE( YEAR( hit_date ) ,DAYOFYEAR( hit_date ) ) , '%M' )
 	FROM (
 		SELECT SUM(hit_count) AS hit_count, hit_date
-		FROM $this->hits_targets
+		FROM $bsuite->hits_targets
 		GROUP BY hit_date DESC
 		LIMIT 31
 	) a" );
@@ -118,7 +123,7 @@ $months = $wpdb->get_col( "SELECT DATE_FORMAT( MAKEDATE( YEAR( hit_date ) ,DAYOF
 $days = $wpdb->get_col( "SELECT DAY( hit_date )
 	FROM ( 
 		SELECT SUM(hit_count) AS hit_count, hit_date
-		FROM $this->hits_targets
+		FROM $bsuite->hits_targets
 		GROUP BY hit_date DESC
 		LIMIT 31
 	) a" );
@@ -126,7 +131,7 @@ $days = $wpdb->get_col( "SELECT DAY( hit_date )
 $pageloads = $wpdb->get_col( "SELECT hit_count
 	FROM ( 
 		SELECT SUM(hit_count) AS hit_count, hit_date
-		FROM $this->hits_targets
+		FROM $bsuite->hits_targets
 		GROUP BY hit_date DESC
 		LIMIT 31
 	) a" );
@@ -147,7 +152,7 @@ echo '<img src="http://chart.apis.google.com/chart?chs=550x150&cht=lc&chco=0077C
 <table width="100%"><tr valign='top'><td width="33%"><h4>Most Daily Reads</h4><ol>
 <?php
 $results = $wpdb->get_results("SELECT post_id, hits_total, ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) )) AS hits_average, hits_recent
-	FROM $this->hits_pop
+	FROM $bsuite->hits_pop
 	ORDER BY hits_average DESC
 	LIMIT $detail_lines", ARRAY_A);
 
@@ -162,7 +167,7 @@ else
 <td width="33%"><h4>Top Climbers</h4><ol>
 <?php
 $results = $wpdb->get_results("SELECT post_id, ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) )) AS hits_average, hits_recent, ( hits_recent - ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) ))) AS hits_diff
-	FROM $this->hits_pop
+	FROM $bsuite->hits_pop
 	ORDER BY hits_diff DESC
 	LIMIT $detail_lines", ARRAY_A);
 
@@ -177,7 +182,7 @@ else
 <td width="33%"><h4>Biggest Losers<?php if($lose) echo " ($lose)" ?></h4><ol>
 <?php
 $results = $wpdb->get_results("SELECT post_id, ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) )) AS hits_average, hits_recent, ( hits_recent - ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) ))) AS hits_diff
-	FROM $this->hits_pop
+	FROM $bsuite->hits_pop
 	ORDER BY hits_diff ASC
 	LIMIT $detail_lines", ARRAY_A);
 
@@ -209,7 +214,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 		SELECT term_taxonomy_id, SUM(hit_count) AS hit_count
 		FROM (
 			SELECT object_id, SUM(hit_count) AS hit_count
-			FROM $this->hits_targets
+			FROM $bsuite->hits_targets
 			WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 1 MONTH ))
 			AND object_type = 0
 			GROUP BY object_id
@@ -243,7 +248,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 		SELECT term_taxonomy_id, SUM(hit_count) AS hit_count
 		FROM (
 			SELECT object_id, SUM(hit_count) AS hit_count
-			FROM $this->hits_targets
+			FROM $bsuite->hits_targets
 			WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 1 DAY ))
 			AND object_type = 0
 			GROUP BY object_id
@@ -277,7 +282,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 		SELECT term_taxonomy_id, SUM(hit_count) AS hit_count
 		FROM (
 			SELECT object_id, SUM(hit_count) AS hit_count
-			FROM $this->hits_targets
+			FROM $bsuite->hits_targets
 			WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 3 DAY ))
 			AND object_type = 0
 			GROUP BY object_id
@@ -323,7 +328,7 @@ else
 // Incoming Search Terms
 //
 
-$refs = $this->pop_refs("count=$detail_lines&days=$bstat_period");
+$refs = $bsuite->pop_refs("count=$detail_lines&days=$bstat_period");
 if(!empty($refs))
 	echo $refs;
 else

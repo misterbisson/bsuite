@@ -186,24 +186,37 @@ class bSuite {
 		add_filter('publish_page', array(&$this, 'innerindex_delete_cache'));
 		$this->kses_allowedposttags(); // allow IDs on H1-H6 tags
 
-		// bsuggestive
+		// bsuggestive related posts
 		add_filter('save_post', array(&$this, 'bsuggestive_delete_cache'));
 		add_filter('publish_post', array(&$this, 'bsuggestive_delete_cache'));
 		add_filter('publish_page', array(&$this, 'bsuggestive_delete_cache'));
+		if( get_option( 'bsuite_insert_related' ))
+			add_filter('the_content', array(&$this, 'bsuggestive_the_content'), 5);
+
+		// sharelinks
+		if( get_option( 'bsuite_insert_sharelinks' ))
+			add_filter('the_content', array(&$this, 'sharelinks_the_content'), 6);
 
 		// searchsmart
-		add_filter('posts_request', array(&$this, 'searchsmart_posts_request'), 10);
+		if( get_option( 'bsuite_searchsmart' )){
+			add_filter('posts_request', array(&$this, 'searchsmart_posts_request'), 10);
+			add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
+		}
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
-//		add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
-		
+
+		// default CSS
+		if( get_option( 'bsuite_insert_css' ))
+			add_action('wp_head', array(&$this, 'css_default' ));
+
 		// bstat
 		add_action('get_footer', array(&$this, 'bstat_js'));
 
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
-		if( $this->loadavg < 4 ){ // only do cron if load is low-ish
+		if( $this->loadavg < get_option( 'bsuite_load_max' )){ // only do cron if load is low-ish
 			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
-			add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
+			if( get_option( 'bsuite_searchsmart' ))
+				add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
 
 		// machine tags
@@ -653,6 +666,12 @@ class bSuite {
 		return( $content );
 		//return(array('the_id' => $post_id, 'the_title' => urldecode($the_title), 'the_permalink' => urldecode($the_permalink), 'the_content' => $content, ));
 	}
+
+	function sharelinks_the_content( $content ) {
+		if( $sharelinks = $this->sharelinks() )
+			return( $content . $sharelinks);
+		return( $content );
+	}
 	// end sharelinks related functions
 
 
@@ -795,7 +814,7 @@ bsuite.log();
 		update_option( 'bsuite_doing_migration', time() + 250 );
 		$status = get_option ( 'bsuite_doing_migration_status' );
 
-		$getcount = 100;
+		$getcount = get_option( 'bsuite_migration_count' );
 		$since = date('Y-m-d H:i:s', strtotime('-1 minutes'));
 		
 		$res = $targets = $searchwords = $shistory = array();
@@ -1086,9 +1105,6 @@ $engine = $this->get_search_engine( $ref );
 	function pop_posts( $args = '' ) {
 		global $wpdb, $bsuite;
 
-		if( $bsuite->get_loadavg() > 10 )
-			return( FALSE );
-
 		$defaults = array(
 			'count' => 15,
 			'return' => 'formatted',
@@ -1130,9 +1146,6 @@ $engine = $this->get_search_engine( $ref );
 
 	function pop_refs( $args = '' ) {
 		global $wpdb, $bsuite;
-
-		if( $bsuite->get_loadavg() > 10 )
-			return( FALSE );
 
 		$defaults = array(
 			'count' => 15,
@@ -1250,6 +1263,11 @@ $engine = $this->get_search_engine( $ref );
 		return(TRUE);
 	}
 
+	function searchsmart_delpost( $post_id ){		
+		global $wpdb;
+		$wpdb->get_results( "DELETE FROM $this->search_table WHERE post_id = $post_id" );
+	}
+
 	function searchsmart_upindex($post_id, $content, $title = ''){
 		// put content in the keyword search index
 		global $wpdb;
@@ -1320,9 +1338,9 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	function searchsmart_upindex_onedit($content){
-		// called when posts are saved
-		if($_POST['post_ID'])
-			$this->searchsmart_upindex(ereg_replace('[^0-9]', '', $_POST['post_ID']), $content);
+		// called when posts are edited or saved
+		if( (int) $_POST['post_ID'] )
+			$this->searchsmart_delpost( (int) $_POST['post_ID'] );
 		return($content);
 	}
 	// end Searchsmart
@@ -1400,6 +1418,12 @@ $engine = $this->get_search_engine( $ref );
 		}
 		return($report);
 	}
+
+	function bsuggestive_the_content( $content ) {
+		if( $related = $this->bsuggestive_the_related() )
+			return( $content . '<h3 class="bsuite_related">Related items</h3><ul class="bsuite_related">'. $related .'</ul>' );
+		return( $content );
+	}
 	// end bSuggestive
 
 
@@ -1433,7 +1457,7 @@ $engine = $this->get_search_engine( $ref );
 	// cron utility functions
 	//
 	function cron_reccurences( $schedules ) {
-		$schedules['bsuite_interval'] = array('interval' => 93, 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
+		$schedules['bsuite_interval'] = array('interval' => get_option( 'bsuite_migration_interval' ), 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
 		return( $schedules );
 	}
 
@@ -1682,6 +1706,74 @@ $engine = $this->get_search_engine( $ref );
 	}
 	// end adding tools to edit screens
 
+
+
+	function css_default() {
+?>
+<style type="text/css">
+/* 
+** bSuite default styles
+**
+** more information at http://maisonbisson.com/blog/bsuite/
+*/
+
+/* the search word highlight */
+.highlight { 
+	background-color: #FFFF00;
+	padding: .2em;
+	border-top: 1px solid #FAFAD2;
+	border-right: 1px solid #FF8C00;
+	border-bottom: 1px solid #FF8C00;
+	border-left: 1px solid #FAFAD2;
+	-moz-border-radius: 5px;
+	-khtml-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	color: black;
+}
+
+/* related posts */
+.bsuite_related h3 {
+	margin-top: 1em;
+	clear: both;
+}
+
+/* sharelinks */
+.bsuite_sharelinks h3 {
+	margin-top: 1em;
+	clear: both;
+}
+
+.bsuite_sharelinks ul {
+	margin:0 0 0 1em;
+}
+
+.bsuite_sharelinks ul li {
+	float: left;
+	list-style-image:none;
+	list-style-position:outside;
+	list-style-type:none;
+	margin:0 1em 0 0;
+}
+
+.bsuite_sharelinks ul li:before{
+	content: "";
+}
+
+.bsuite_sharelinks input {
+	width: 10em;
+}
+
+.bsuite_sharelinks .bsuite_share_bsuitetag {
+	padding: 1em 0 1em 0;
+	clear: both;
+	text-align: right;
+	font-family:"lucida grande", verdana, arial, sans-serif;
+	font-size: .6em
+}
+</style>
+<?php
+	}
 
 
 
@@ -1984,6 +2076,32 @@ $engine = $this->get_search_engine( $ref );
 		$this->createtables();
 		$this->cron_register();
 
+		// set some defaults for the plugin
+		if(!get_option('bsuite_insert_related'))
+			update_option('bsuite_insert_related', TRUE);
+
+		if(!get_option('bsuite_insert_sharelinks'))
+			update_option('bsuite_insert_sharelinks', TRUE);
+
+		if(!get_option('bsuite_searchsmart'))
+			update_option('bsuite_searchsmart', TRUE);
+
+		if(!get_option('bsuite_swhl'))
+			update_option('bsuite_swhl', TRUE);
+
+		if(!get_option('bsuite_insert_css'))
+			update_option('bsuite_insert_css', TRUE);
+
+		if(!get_option('bsuite_migration_interval'))
+			update_option('bsuite_migration_interval', 90);
+
+		if(!get_option('bsuite_migration_count'))
+			update_option('bsuite_migration_count', 100);
+
+		if(!get_option('bsuite_load_max'))
+			update_option('bsuite_load_max', 4);
+
+
 		// set some defaults for the widgets
 		if(!get_option('bsuite_related_posts'))
 			update_option('bsuite_related_posts', array('title' => 'Related Posts', 'number' => 7));
@@ -2100,69 +2218,10 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	function addmenus() {
-		add_options_page('bSuite Settings', 'bSuite', 8, __FILE__, array(&$this, 'optionspage'));
-		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 2, __FILE__, array(&$this, 'hitsreports'));
-	}
-
-	function hitsreports() {
-		global $wpdb, $bsuite;
-
-		update_option('bsuite_doing_migration', time() + 300 );
-
-		require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/bstat_reports.php');
+		add_options_page('bSuite Settings', 'bSuite', 8, plugin_basename( dirname( __FILE__ )) .'/ui_options.php' );
 		
-		// disabled so that stats migrations can't run for a while after the report is complete.
-		// allows the system to cool down (Hokey, I know. Let's hope it works.)
-		//update_option('bsuite_doing_migration', 0 );
-	}
-	
-	function optionspage() {
-		global $wpdb;
-
-		$this->createtables();
-		$this->cron_register();
-
-		//require(ABSPATH . PLUGINDIR .'/'. plugin_basename(dirname(__FILE__)) .'/core_admin.php');
-
-		//  apply new settings if form submitted
-		if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){		
-			$this->rebuildmetatables();
-		}else if($_REQUEST['Options'] == __('Show rewrite rules', 'bsuite')){
-			echo 'The current rewrite rules (permlink settings):<pre>';
-			global $wp_rewrite;
-			$wp_rewrite->flush_rules();
-			print_r( $wp_rewrite->rewrite_rules() );
-			echo '</pre>';
-		}else if($_REQUEST['Options'] == __('Force Stats Migration', 'bsuite')){
-			update_option( 'bsuite_doing_migration', 0 );
-			$this->bstat_migrator();
-			echo '<p>Completed stats migration.</p>';
-		}else if($_REQUEST['Options'] == __('PHP Info', 'bsuite')){
-			phpinfo();
-		}
-
-
-		//  output settings/configuration form
-?>
-<div class="wrap">
-<h2><?php _e('Commands') ?></h2>
-<form method="post">
-
-<fieldset name="bsuite_general" class="options">
-	<table width="100%" cellspacing="2" cellpadding="5" class="editform">
-		<tr valign="top">
-			<div class="submit"><input type="submit" name="Options" value="<?php _e('Rebuild bSuite search index', 'bsuite') ?>" /> &nbsp; 
-			<input type="submit" name="Options" value="<?php _e('Show rewrite rules', 'bsuite') ?>" /> &nbsp; 
-			<input type="submit" name="Options" value="<?php _e('Force Stats Migration', 'bsuite') ?>" /> &nbsp; 
-			<input type="submit" name="Options" value="<?php _e('PHP Info', 'bsuite') ?>" /> &nbsp; 
-			</div>
-		</tr>
-	</table>
-</fieldset>
-
-</form>
-</div>
-<?php
+		// the bstat reports are handled in a seperate file
+		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 2, plugin_basename( dirname( __FILE__ )) .'/ui_stats.php' );
 	}
 
 	function kses_allowedposttags() {
@@ -2286,12 +2345,12 @@ $engine = $this->get_search_engine( $ref );
 			}
 			print "</ul>";
 			?>
-			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/bsuite.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/ui_options.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
 			<script language='javascript'>
 			<!--
 
 			function nextpage() {
-				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/bsuite.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>";
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/ui_options.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>";
 			}
 			setTimeout( "nextpage()", 250 );
 
@@ -2305,7 +2364,7 @@ $engine = $this->get_search_engine( $ref );
 			<!--
 
 			function nextpage() {
-				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/bsuite.php";
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/ui_options.php";
 			}
 			setTimeout( "nextpage()", 3000 );
 
