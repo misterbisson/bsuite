@@ -668,7 +668,7 @@ class bSuite {
 	}
 
 	function sharelinks_the_content( $content ) {
-		if( $sharelinks = $this->sharelinks() )
+		if( is_single() && $sharelinks = $this->sharelinks() )
 			return( $content . $sharelinks);
 		return( $content );
 	}
@@ -908,6 +908,7 @@ bsuite.log();
 					SELECT object_id AS post_id, MIN(hit_date) AS date_start, SUM(hit_count) AS hits_total
 					FROM $this->hits_targets
 					WHERE object_type = 0
+					AND hit_date >= DATE_SUB( NOW(), INTERVAL 15 DAY )
 					GROUP BY object_id" );
 				update_option( 'bsuite_doing_migration_popd', time() + 64800 );
 			}
@@ -920,7 +921,7 @@ bsuite.log();
 							SELECT sess_id, sess_date
 							FROM $this->hits_sessions
 							ORDER BY sess_id DESC
-							LIMIT 7500
+							LIMIT 12500
 						) a
 						WHERE sess_date >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 					) s
@@ -1257,7 +1258,7 @@ $engine = $this->get_search_engine( $ref );
 			wp_redirect(get_option('siteurl') .'/'. $wp_rewrite->search_base .'/'. urlencode( $_GET['s'] ), '301');
 
 		// redirects the search to the single page if the search returns only one item
-		if($wp_query->is_search && $wp_query->post_count == 1)
+		if( !$wp_query->is_singular && 1 === $wp_query->post_count )
 			wp_redirect( get_permalink( $wp_query->post->ID ) , '302');
 
 		return(TRUE);

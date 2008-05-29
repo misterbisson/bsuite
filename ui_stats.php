@@ -69,7 +69,7 @@ $dates = $wpdb->get_col( "SELECT sess_date
 		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
 		FROM $bsuite->hits_sessions
 		ORDER BY sess_id DESC
-		LIMIT 7500
+		LIMIT 12500
 	) a
 	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	GROUP BY sess_date, sess_hour" );
@@ -79,7 +79,7 @@ $sessions_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAMP
 		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
 		FROM $bsuite->hits_sessions
 		ORDER BY sess_id DESC
-		LIMIT 7500
+		LIMIT 12500
 	) a
 	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	GROUP BY sess_date, sess_hour" );
@@ -94,7 +94,7 @@ $pageloads_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAM
 			SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
 			FROM $bsuite->hits_sessions
 			ORDER BY sess_id DESC
-			LIMIT 7500
+			LIMIT 12500
 		) a
 		WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	) s
@@ -158,7 +158,7 @@ $results = $wpdb->get_results("SELECT post_id, hits_total, ROUND( hits_total / (
 
 if( count( $results ) )
 	foreach( $results as $res )
-		echo '<li><a href="'. get_permalink($res['post_id']) .'">'. wordwrap( get_the_title($res['post_id']), 25, "\n", TRUE ).'</a><br><small>Avg: '. number_format( $res['hits_average'] ) .' Recent: '. number_format( $res['hits_recent'] ) .' Tot: '. number_format( $res['hits_total'] ) ."</small></li>\n";
+		echo '<li><a href="'. get_permalink($res['post_id']) .'">'. wordwrap( get_the_title($res['post_id']), 25, "\n", TRUE ).'</a><br><small>Avg: '. number_format( $res['hits_average'] ) .' Recent: '. number_format( $res['hits_recent'] ) .'<!-- Tot: '. number_format( $res['hits_total'] ) ." --></small></li>\n";
 else
 	echo '<li>No Data Yet.</li>';
 ?>
@@ -168,6 +168,7 @@ else
 <?php
 $results = $wpdb->get_results("SELECT post_id, ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) )) AS hits_average, hits_recent, ( hits_recent - ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) ))) AS hits_diff
 	FROM $bsuite->hits_pop
+	HAVING hits_diff > 0
 	ORDER BY hits_diff DESC
 	LIMIT $detail_lines", ARRAY_A);
 
@@ -183,6 +184,7 @@ else
 <?php
 $results = $wpdb->get_results("SELECT post_id, ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) )) AS hits_average, hits_recent, ( hits_recent - ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) ))) AS hits_diff
 	FROM $bsuite->hits_pop
+	HAVING hits_diff < 0
 	ORDER BY hits_diff ASC
 	LIMIT $detail_lines", ARRAY_A);
 
@@ -296,7 +298,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 	LEFT JOIN $wpdb->term_taxonomy tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
 	LEFT JOIN $wpdb->terms t ON tt.term_id = t.term_id
 	WHERE taxonomy = 'post_tag'
-	ORDER BY normalized_hit_count DESC
+	ORDER BY hit_count DESC
 	LIMIT $detail_lines");
 
 if( count( $results ) )
