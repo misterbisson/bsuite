@@ -2,8 +2,8 @@
 /*
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/blog/bsuite/
-Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/blog/bsuite/core">Documentation here</a>.
-Version: 4.0 a 
+Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/blog/bsuite/">Documentation here</a>.
+Version: 4.0 beta1 
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -908,7 +908,7 @@ bsuite.log();
 					SELECT object_id AS post_id, MIN(hit_date) AS date_start, SUM(hit_count) AS hits_total
 					FROM $this->hits_targets
 					WHERE object_type = 0
-					AND hit_date >= DATE_SUB( NOW(), INTERVAL 15 DAY )
+					AND hit_date >= DATE_SUB( NOW(), INTERVAL 45 DAY )
 					GROUP BY object_id" );
 				update_option( 'bsuite_doing_migration_popd', time() + 64800 );
 			}
