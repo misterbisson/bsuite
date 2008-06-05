@@ -158,6 +158,13 @@ class bSuite {
 		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
 		wp_enqueue_script( 'highlight' );	
 
+		// is this wpmu?
+		if( function_exists( 'is_site_admin' ))
+			$this->is_mu = TRUE;
+		else
+			$this->is_mu = FALSE;
+
+
 
 		//
 		// register hooks
@@ -229,6 +236,9 @@ class bSuite {
 		add_action('edit_page_form', array(&$this, 'edit_page_form'));
 
 		add_action('widgets_init', array(&$this, 'widgets_register'));
+
+		add_filter( 'whitelist_options', array(&$this, 'mu_options' ));
+
 
 		// activation and menu hooks
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
@@ -2216,6 +2226,14 @@ $engine = $this->get_search_engine( $ref );
 				hits_recent int(10) NOT NULL
 			) ENGINE=MyISAM $charset_collate
 			");
+	}
+
+	function mu_options( $options ) {
+		$added = array( 'bsuite' => array( 'bsuite_insert_related', 'bsuite_insert_sharelinks', 'bsuite_searchsmart', 'bsuite_swhl' ));
+
+		$options = add_option_whitelist( $added, $options );
+	
+		return( $options );
 	}
 
 	function addmenus() {
