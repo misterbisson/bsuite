@@ -29,7 +29,9 @@ $bsuite->cron_register();
 
 //  apply new settings if form submitted
 if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){		
-	$bsuite->rebuildmetatables();
+	$bsuite->command_rebuild_searchsmart();
+}else if($_REQUEST['Options'] == __('Add post_excerpt to all posts', 'bsuite')){		
+	$bsuite->command_rebuild_autoksum();
 }else if($_REQUEST['Options'] == __('Show rewrite rules', 'bsuite')){
 	echo '<div class="updated"><p><strong>' . __('The current rewrite rules (permlink settings)', 'bsuite') . ':</strong></p></div><div class="wrap" style="overflow:auto;"><pre>';
 	global $wp_rewrite;
@@ -166,6 +168,7 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 <th scope="row" class="th-full">
 <form method="post">
 <input type="submit" name="Options" value="<?php _e('Rebuild bSuite search index', 'bsuite') ?>" /> &nbsp; 
+<input type="submit" name="Options" value="<?php _e('Add post_excerpt to all posts', 'bsuite') ?>" /> &nbsp; 
 <input type="submit" name="Options" value="<?php _e('Force Stats Migration', 'bsuite') ?>" />
 </th>
 </tr>

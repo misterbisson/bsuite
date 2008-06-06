@@ -207,7 +207,7 @@ class bSuite {
 		// searchsmart
 		if( get_option( 'bsuite_searchsmart' )){
 			add_filter('posts_request', array(&$this, 'searchsmart_posts_request'), 10);
-			add_filter('content_save_pre', array(&$this, 'searchsmart_upindex_onedit'));
+			add_filter('content_save_pre', array(&$this, 'searchsmart_edit'));
 		}
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
 
@@ -725,6 +725,7 @@ class bSuite {
 	// Stats Related
 	//
 	function bstat_js() {
+		if( !$this->didstats ){
 ?>
 <script type="text/javascript">
 bsuite.api_location='<?php echo substr( get_settings( 'siteurl' ), strpos( get_settings( 'siteurl' ), ':' ) + 3 ) . $this->path_web . '/worker.php' ?>';
@@ -732,6 +733,7 @@ bsuite.log();
 </script>
 <noscript><img src="<?php echo substr( get_settings( 'siteurl' ), strpos( get_settings( 'siteurl' ), ':' ) + 3 ) . $this->path_web . '/worker.php' ?>" width="1" height="1" alt="stat counter" /></noscript>
 <?php
+		}
 	}
 	
 	function bstat_get_term( $id ) {
@@ -1263,6 +1265,11 @@ $engine = $this->get_search_engine( $ref );
 
 	function searchsmart_direct(){
 		global $wp_query, $wp_rewrite;
+
+		// redirect when there's a redirection order for the post
+		if( $wp_query->is_singular && get_post_meta( $wp_query->post->ID, 'redirect', TRUE ))
+			wp_redirect( get_post_meta( $wp_query->post->ID, 'redirect', TRUE ), '301');
+
 		// redirects ?s={search_term} to /search/{search_term} if permalinks are working
 		if( isset( $_GET['s'] ) && !empty( $wp_rewrite->permalink_structure ) )
 			wp_redirect(get_option('siteurl') .'/'. $wp_rewrite->search_base .'/'. urlencode( $_GET['s'] ), '301');
@@ -1274,45 +1281,88 @@ $engine = $this->get_search_engine( $ref );
 		return(TRUE);
 	}
 
+	function searchsmart_edit( $content ){
+		// called when posts are edited or saved
+		if( (int) $_POST['post_ID'] )
+			$this->searchsmart_delpost( (int) $_POST['post_ID'] );
+		return($content);
+	}
+
 	function searchsmart_delpost( $post_id ){		
 		global $wpdb;
 		$wpdb->get_results( "DELETE FROM $this->search_table WHERE post_id = $post_id" );
 	}
 
-	function searchsmart_upindex($post_id, $content, $title = ''){
-		// put content in the keyword search index
-		global $wpdb;
+	function searchsmart_content( $content ){
 
+		// remove bsuite tokens and html formatting
 		$content = preg_replace(
 			'/\[\[([^\]])*\]\]/',
 			'',
 			strip_tags(
-			str_ireplace(array('<br />', '<br/>', '<br>', '</p>', '</li>', '</h1>', '</h2>', '</h3>', '</h4>'), "\n", 
-			stripslashes(
-			html_entity_decode($content)))));
-		$content = trim(preg_replace(
-			'/([[:punct:]])*/',
-			'',
-			$content));
+				str_ireplace(array('<br />', '<br/>', '<br>', '</p>', '</li>', '</h1>', '</h2>', '</h3>', '</h4>'), "\n", 
+					stripslashes(
+						html_entity_decode( $content )
+					)
+				)
+			)
+		);
 
-		$content = apply_filters('bsuite_searchsmart_content', $content);
+		// shortcodes
+		$content = preg_replace( '/\[(.*?)\]/', '', $content );
 
-		$title = preg_replace(
-			'/([[:punct:]])*/',
-			'',
-			html_entity_decode($title, ENT_QUOTES, 'UTF-8'));
+		// find words with accented characters, create transliterated versions of them
+		$unaccented = array_diff( str_word_count( $content, 1 ), str_word_count( remove_accents( $content ), 1 ));
 
-		$request = "REPLACE INTO $this->search_table
-					(post_id, content, title) 
-					VALUES ($post_id, '$content', '$title')";
-		
-		$wpdb->get_results($request);
+//		// remove punctuation
+//		$content = trim(preg_replace(
+//			'/([[:punct:]])*/',
+//			'',
+//			$content));
 
-		return(TRUE);
+		// apply filters
+		return( apply_filters('bsuite_searchsmart_content', $content .' '. implode( ' ', $unaccented )));
+
+	}
+
+	function searchsmart_upindex(){
+		// put content in the keyword search index
+		global $wpdb;
+
+		update_option('bsuite_doing_ftindex', time() + 300 );
+
+		$posts = $wpdb->get_results("SELECT a.ID, a.post_content, a.post_title
+			FROM $wpdb->posts a
+			LEFT JOIN $this->search_table b ON a.ID = b.post_id
+			WHERE a.post_status = 'publish'
+			AND b.post_id IS NULL
+			LIMIT 25
+			");
+
+		if( count( $posts )) {
+			$insert = array();
+			foreach( $posts as $post ) {
+				$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( $this->searchsmart_content( $post->post_title ."\n\n". $post->post_content )) .'", "'. $wpdb->escape( $post->post_title ) .'")';
+			}
+		}else{
+			return( FALSE );
+		}
+
+		if( count( $insert )) {
+			$wpdb->get_results( 'REPLACE INTO '. $this->search_table .'
+						(post_id, content, title) 
+						VALUES '. implode( ',', $insert ));
+		}
+
+		// diabled so that the update runs less often.
+		//update_option('bsuite_doing_ftindex', 0 );
+
+		return( count( $posts ));
 	}
 
 	function searchsmart_upindex_passive(){
 		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
+		global $wpdb;
 
 		// use a named mysql lock to prevent simultaneous execution
 		// locks automatically drop when the connection is dropped
@@ -1324,35 +1374,9 @@ $engine = $this->get_search_engine( $ref );
 		if ( get_option('bsuite_doing_ftindex') > time() )
 			return( TRUE );
 
-		update_option('bsuite_doing_ftindex', time() + 330 );
-
-		global $wpdb;
-
-		$posts = $wpdb->get_results("SELECT a.ID, a.post_content, a.post_title
-			FROM $wpdb->posts a
-			LEFT JOIN $this->search_table b ON a.ID = b.post_id
-			WHERE a.post_status = 'publish'
-			AND b.post_id IS NULL
-			LIMIT 10
-			", ARRAY_A);
-
-		if( count( $posts )) {
-			foreach( $posts as $post ) {
-				$this->searchsmart_upindex($post['ID'], $post['post_content'],  $post['post_title']);
-			}
-		}
-
-		// diabled so that the update runs less often.
-		//update_option('bsuite_doing_ftindex', 0 );
+		$this->searchsmart_upindex();
 
 		return(TRUE);
-	}
-
-	function searchsmart_upindex_onedit($content){
-		// called when posts are edited or saved
-		if( (int) $_POST['post_ID'] )
-			$this->searchsmart_delpost( (int) $_POST['post_ID'] );
-		return($content);
 	}
 	// end Searchsmart
 
@@ -1574,7 +1598,7 @@ $engine = $this->get_search_engine( $ref );
 			foreach( $this->machtag_parse_tags( $_REQUEST['bsuite-machine-tags-input'] ) as $taxonomy => $tags ){
 
 				if( 'post_tag' == $taxonomy ){
-					wp_set_post_tags($post_id, $tags, true);
+					wp_set_post_tags($post_id, $tags, TRUE);
 					continue;
 				}
 	
@@ -1716,6 +1740,86 @@ $engine = $this->get_search_engine( $ref );
 		<?php
 	}
 	// end adding tools to edit screens
+
+
+
+	function autoksum_doapi( $text ){
+		// api: http://api.scriblio.net/docs/summarize
+
+		// The POST URL and parameters
+		$request = 'http://api.scriblio.net/v01b/summarize/';
+		$postargs = array( 
+			'text' => strip_tags( 
+				str_replace( array( '<','>' ), array( "\n\n<",">\n\n" ), 
+					strip_tags( 
+						preg_replace( '/\[(.*?)\]/', '', 
+							preg_replace( '!(<(?:h[1-6])[^>]*>[^<]*<(?:\/h[1-6])[^>]*>)!', '', 
+								$text )), 
+						'<p><ul><ol><li><tr><td><table>' 
+					)
+				)
+			), 
+			'wordcount' => 100 , 
+			'output' => 'php' 
+		);
+		
+		// Get the curl session object
+		$session = curl_init($request);
+		
+		// Set the POST options.
+		curl_setopt ($session, CURLOPT_POST, TRUE);
+		curl_setopt ($session, CURLOPT_POSTFIELDS, $postargs);
+		curl_setopt($session, CURLOPT_HEADER, FALSE);
+		curl_setopt($session, CURLOPT_RETURNTRANSFER, TRUE);
+		
+		// Do the POST and then close the session
+		$response = curl_exec($session);
+		curl_close($session);
+
+		// return
+		if( $response = unserialize( substr( $response, strpos( $response, 'a:' ))))
+			return( $response );
+		else
+			return( FALSE );
+	}
+
+	function autoksum_backfill(){
+		global $wpdb;
+
+		$posts = $wpdb->get_results( 'SELECT ID, post_content
+			FROM '. $wpdb->posts .'
+			WHERE post_status = "publish"
+			AND post_excerpt = ""
+			LIMIT 5' );
+
+		if( count( $posts )) {
+			$insert = array();
+			foreach( $posts as $post ) {
+				$api_result = $this->autoksum_doapi( $post->post_content );
+				if( $api_result['summary'] )
+					$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( $api_result['summary'] ) .'")';
+					$post_tags[ $post->ID ] = array_merge( $api_result['caps'], $api_result['keywords'] );
+			}
+		}else{
+			return( FALSE );
+		}
+
+		if( count( $insert )) {
+			$wpdb->get_results( 'INSERT INTO '. $wpdb->posts .'
+				(ID, post_excerpt) 
+				VALUES '. implode( ',', $insert ) .'
+				ON DUPLICATE KEY UPDATE post_excerpt = VALUES( post_excerpt )');
+
+			foreach( $post_tags as $post_id => $tags )
+				if( !get_the_terms( $post_id , 'post_tag' ))
+					wp_set_post_tags( $post_id, $tags , FALSE);
+		}
+
+// need to delete any affected post caches here
+
+		return( count( $posts ));
+	}
+
 
 
 
@@ -2092,7 +2196,7 @@ $engine = $this->get_search_engine( $ref );
 			update_option('bsuite_insert_related', TRUE);
 
 		if(!get_option('bsuite_insert_sharelinks'))
-			update_option('bsuite_insert_sharelinks', TRUE);
+			update_option('bsuite_insert_sharelinks', FALSE);
 
 		if(!get_option('bsuite_searchsmart'))
 			update_option('bsuite_searchsmart', TRUE);
@@ -2332,37 +2436,25 @@ $engine = $this->get_search_engine( $ref );
 	
 
 
-	function rebuildmetatables() {
+	function command_rebuild_searchsmart() {
 		// update search table with content from all posts
 		global $wpdb; 
 	
 		set_time_limit(0);
 		ignore_user_abort(TRUE);
-		$interval = 50;
+		$interval = 25;
 
 
 		if( !isset( $_REQUEST[ 'n' ] ) ) {
 			$n = 0;
-			$wpdb->hide_errors();
 			$this->createtables();		
-			$wpdb->show_errors();
+			$wpdb->get_results( 'TRUNCATE TABLE '. $this->search_table );
 		} else {
 			$n = (int) $_REQUEST[ 'n' ] ;
 		}
-		$posts = $wpdb->get_results("SELECT ID, post_content, post_title
-			FROM $wpdb->posts
-			ORDER BY ID
-			LIMIT $n, $interval
-			", ARRAY_A);
-		if( is_array( $posts ) ) {
-			echo '<div class="updated"><p><strong>' . __('Rebuilding bSuite search index. Please be patient.', 'bsuite') . '</strong></p></div><div class="narrow">';
-			print "<ul>";
-			foreach( $posts as $post ) {
-				$this->searchsmart_upindex($post['ID'], $post['post_content'],  $post['post_title']);
-				echo '<li><a href="'. get_permalink($post['ID']) .'">updated post '. $post['ID'] ."</a></li>\n ";
-				flush();
-			}
-			print "</ul>";
+		if( $count = $this->searchsmart_upindex() ) {
+			echo '<div class="updated"><p><strong>' . __('Rebuilding bSuite search index.', 'bsuite') . '</strong> Already did '. ( $n + $count ) .', be patient already!</p></div><div class="narrow">';
+
 			?>
 			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/ui_options.php&Options=<?php echo urlencode( __( 'Rebuild bSuite search index', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
 			<script language='javascript'>
@@ -2378,6 +2470,53 @@ $engine = $this->get_search_engine( $ref );
 			<?php
 		} else {
 			echo '<div class="updated"><p><strong>'. __('bSuite metdata index rebuilt.', 'bsuite') .'</strong></p></div>';
+			?>
+			<script language='javascript'>
+			<!--
+
+			function nextpage() {
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/ui_options.php";
+			}
+			setTimeout( "nextpage()", 3000 );
+
+			//-->
+			</script>
+			<?php
+		}
+	}
+
+	function command_rebuild_autoksum() {
+		// update search table with content from all posts
+		global $wpdb; 
+	
+		set_time_limit(0);
+		ignore_user_abort(TRUE);
+		$interval = 5;
+
+
+		if( !isset( $_REQUEST[ 'n' ] ) ) {
+			$n = 0;
+		} else {
+			$n = (int) $_REQUEST[ 'n' ] ;
+		}
+		if( $count = $this->autoksum_backfill() ) {
+			echo '<div class="updated"><p><strong>' . __('Generating excerpts.', 'bsuite') . '</strong> Already did '. ( $n + $count ) .', be patient already!</p></div><div class="narrow">';
+
+			?>
+			<p><?php _e("If your browser doesn't start loading the next page automatically click this link:"); ?> <a href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/ui_options.php&Options=<?php echo urlencode( __( 'Add post_excerpt to all posts', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>"><?php _e("Next Posts"); ?></a> </p></div>
+			<script language='javascript'>
+			<!--
+
+			function nextpage() {
+				location.href="?page=<?php echo plugin_basename(dirname(__FILE__)); ?>/ui_options.php&Options=<?php echo urlencode( __( 'Add post_excerpt to all posts', 'bsuite' )) ?>&n=<?php echo ($n + $interval) ?>";
+			}
+			setTimeout( "nextpage()", 250 );
+
+			//-->
+			</script>
+			<?php
+		} else {
+			echo '<div class="updated"><p><strong>'. __('All posts now have excerpts! All done.', 'bsuite') .'</strong></p></div>';
 			?>
 			<script language='javascript'>
 			<!--
