@@ -1759,7 +1759,7 @@ $engine = $this->get_search_engine( $ref );
 					)
 				)
 			), 
-			'wordcount' => 100 , 
+			'wordcount' => 35 , 
 			'output' => 'php' 
 		);
 		
