@@ -206,6 +206,89 @@ else
 
 
 
+
+<div class="wrap">
+<h2><?php _e('Other Access') ?></h2>
+
+<table width="100%"><tr valign='top'><td width="33%"><h4>Top non-Post URLs</h4><ol>
+<?php
+$results = $wpdb->get_results("SELECT hit_count, name
+	FROM (
+		SELECT object_id, SUM(hit_count) AS hit_count
+		FROM $bsuite->hits_targets
+		WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 5 DAY ))
+		AND object_type = 1
+		GROUP BY object_id
+		ORDER BY hit_count DESC
+		LIMIT $detail_lines
+	) a
+	LEFT JOIN $bsuite->hits_terms t ON a.object_id = t.term_id
+	GROUP BY object_id
+	ORDER BY hit_count DESC");
+
+if( count( $results ) )
+	foreach( $results as $res )
+		echo '<li><a href="'. $res->name .'">'. str_replace( get_settings( 'siteurl' ), '', $res->name ).'</a></li>';
+else
+	echo '<li>No Data Yet.</li>';
+
+
+?>
+</ol></td>
+
+<td width="33%"><h4>Top Entry URLs</h4><ol>
+<?php
+$results = $wpdb->get_results("SELECT name, object_id, object_type, COUNT(*) AS hit_count
+	FROM (
+		SELECT a.sess_id, b.object_id, b.object_type
+		FROM (
+			SELECT sess_id
+			FROM $bsuite->hits_sessions
+			ORDER BY sess_id DESC
+			LIMIT 25000
+		) a
+		INNER JOIN $bsuite->hits_shistory b ON a.sess_id = b.sess_id
+		WHERE b.object_type IN (0, 1)
+		GROUP BY sess_id
+		LIMIT $detail_lines
+	) c
+	LEFT JOIN $bsuite->hits_terms t ON c.object_id = t.term_id
+	GROUP BY t.term_id
+	ORDER BY hit_count DESC");
+
+if( count( $results ) )
+	foreach( $results as $res ){
+		if( 1 == $res->object_type )
+			echo '<li><a href="'. $res->name .'">'. str_replace( get_settings( 'siteurl' ), '', $res->name ).'</a></li>';
+		else
+			echo '<li><a href="'. get_permalink( $res->object_id ) .'">'. get_the_title( $res->object_id ) .'</a></li>';
+}else{
+	echo '<li>No Data Yet.</li>';
+}
+
+?>
+</ol></td>
+
+<td width="33%"><h4>Top Exit Destinations</h4><ol>
+<?php
+	echo '<li>coming soon.</li>';
+
+
+?>
+</ol></td></tr></table>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
 <div class="wrap">
 <h2><?php _e('Most Trafficked Categories and Tags') ?></h2>
 
@@ -231,7 +314,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 	LEFT JOIN $wpdb->terms t ON tt.term_id = t.term_id
 	WHERE taxonomy = 'category'
 	ORDER BY normalized_hit_count DESC
-	LIMIT $detail_lines");
+	LIMIT 10");
 
 if( count( $results ) )
 	foreach( $results as $res )
@@ -265,7 +348,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 	LEFT JOIN $wpdb->terms t ON tt.term_id = t.term_id
 	WHERE taxonomy = 'category'
 	ORDER BY normalized_hit_count DESC
-	LIMIT $detail_lines");
+	LIMIT 10");
 
 if( count( $results ) )
 	foreach( $results as $res )
@@ -299,7 +382,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 	LEFT JOIN $wpdb->terms t ON tt.term_id = t.term_id
 	WHERE taxonomy = 'post_tag'
 	ORDER BY hit_count DESC
-	LIMIT $detail_lines");
+	LIMIT 10");
 
 if( count( $results ) )
 	foreach( $results as $res )
@@ -311,6 +394,14 @@ else
 ?>
 </ol></td></tr></table>
 </div>
+
+
+
+
+
+
+
+
 
 
 
