@@ -1783,6 +1783,10 @@ $engine = $this->get_search_engine( $ref );
 			return( FALSE );
 	}
 
+//	function autoksum_excerpt_image(){
+//		return( apply_filters( 'bsuite_excerpt', $api_result['summary'] ));
+//	}
+
 	function autoksum_backfill(){
 		global $wpdb;
 
@@ -1796,9 +1800,12 @@ $engine = $this->get_search_engine( $ref );
 			$insert = array();
 			foreach( $posts as $post ) {
 				$api_result = $this->autoksum_doapi( $post->post_content );
-				if( $api_result['summary'] )
+				if( $api_result['summary'] ){
 					$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( $api_result['summary'] ) .'")';
 					$post_tags[ $post->ID ] = array_merge( $api_result['caps'], $api_result['keywords'] );
+				}else{
+					$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( wp_trim_excerpt( get_post_field( 'post_content', $post->ID )) .'")';
+				}
 			}
 		}else{
 			return( FALSE );
