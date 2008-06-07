@@ -1804,7 +1804,7 @@ $engine = $this->get_search_engine( $ref );
 					$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( $api_result['summary'] ) .'")';
 					$post_tags[ $post->ID ] = array_merge( $api_result['caps'], $api_result['keywords'] );
 				}else{
-					$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( wp_trim_excerpt( get_post_field( 'post_content', $post->ID )) .'")';
+					$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( wp_trim_excerpt( get_post_field( 'post_content', $post->ID ))) .'")';
 				}
 			}
 		}else{
