@@ -75,6 +75,7 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 </tr>
 <tr>
 
+<!--
 <tr>
 <th scope="row" class="th-full">
 <label for="bsuite_insert_sharelinks">
@@ -84,6 +85,7 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 </th>
 </tr>
 <tr>
+-->
 
 <tr>
 <th scope="row" class="th-full">
@@ -100,6 +102,22 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 <label for="bsuite_swhl">
 <input name="bsuite_swhl" type="checkbox" id="bsuite_swhl" value="1" <?php checked('1', get_option('bsuite_swhl')); ?> />
 <?php _e('Highlight search words for users who arrive at this site from recognized search engines', 'bsuite') ?>
+</label>
+</th>
+</tr>
+<tr>
+
+<tr>
+<th scope="row" class="th-full">
+<label for="bsuite_who_can_edit">
+<?php _e('Who can edit pages', 'bsuite') ?> 
+<select name="bsuite_who_can_edit" id="bsuite_who_can_edit" >
+<option value="anyone" <?php selected('anyone', get_settings('bsuite_who_can_edit')); ?>><?php _e('Anyone') ?></option>
+<option value="registered_users" <?php selected('registered_users', get_settings('bsuite_who_can_edit')); ?>><?php _e('Registered users') ?></option>
+<option value="authors" <?php selected('authors', get_settings('bsuite_who_can_edit')); ?>><?php _e('Authors and Editors') ?></option>
+<option value="editors" <?php selected('editors', get_settings('bsuite_who_can_edit')); ?>><?php _e('Just Editors') ?></option>
+</select>
+
 </label>
 </th>
 </tr>
@@ -147,7 +165,7 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 
 <p class="submit">
 <input type="hidden" name="action" value="update" />
-<input type="hidden" name="page_options" value="bsuite_insert_related,bsuite_insert_sharelinks,bsuite_searchsmart,bsuite_swhl,bsuite_insert_css,bsuite_migration_interval,bsuite_migration_count,bsuite_load_max" />
+<input type="hidden" name="page_options" value="bsuite_insert_related,bsuite_insert_sharelinks,bsuite_searchsmart,bsuite_swhl,bsuite_who_can_edit,bsuite_insert_css,bsuite_migration_interval,bsuite_migration_count,bsuite_load_max" />
 <input type="submit" name="Submit" value="<?php _e('Save Changes') ?>" class="button" />
 </p>
 </form>

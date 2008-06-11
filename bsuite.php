@@ -158,6 +158,16 @@ class bSuite {
 		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
 		wp_enqueue_script( 'highlight' );	
 
+		// add the sweet categories and tags JS from the post editor to the page editor
+		wp_register_script( 'edit_page', $this->path_web . '/js/edit_page.js', array('jquery'), '1' );
+		if( is_admin() && strpos( $_SERVER['REQUEST_URI'], 'admin/page' )){
+			wp_enqueue_script( 'edit_page' );
+			wp_enqueue_script( 'jquery-ui-tabs' );
+			wp_enqueue_script( 'suggest' );
+			wp_enqueue_script( 'ajaxcat' );
+		}
+
+
 		// is this wpmu?
 		if( function_exists( 'is_site_admin' ))
 			$this->is_mu = TRUE;
@@ -173,6 +183,7 @@ class bSuite {
 		// shortcodes
 		add_shortcode('pagemenu', array(&$this, 'shortcode_pagemenu'));
 		add_shortcode('innerindex', array(&$this, 'shortcode_innerindex'));
+		add_shortcode('include', array(&$this, 'shortcode_include'));
 		add_shortcode('feed', array(&$this, 'shortcode_feed'));
 //		add_shortcode('redirect', array(&$this, 'shortcode_redirect'));
 
@@ -189,14 +200,10 @@ class bSuite {
 		//innerindex
 		add_filter('content_save_pre', array(&$this, 'innerindex_nametags'));
 		add_filter('save_post', array(&$this, 'innerindex_delete_cache'));
-		add_filter('publish_post', array(&$this, 'innerindex_delete_cache'));
-		add_filter('publish_page', array(&$this, 'innerindex_delete_cache'));
 		$this->kses_allowedposttags(); // allow IDs on H1-H6 tags
 
 		// bsuggestive related posts
 		add_filter('save_post', array(&$this, 'bsuggestive_delete_cache'));
-		add_filter('publish_post', array(&$this, 'bsuggestive_delete_cache'));
-		add_filter('publish_page', array(&$this, 'bsuggestive_delete_cache'));
 		if( get_option( 'bsuite_insert_related' ))
 			add_filter('the_content', array(&$this, 'bsuggestive_the_content'), 5);
 
@@ -230,6 +237,8 @@ class bSuite {
 		add_action('save_post', array(&$this, 'machtag_save_post'), 2, 2);		
 
 		// cms goodies
+		add_filter('user_has_cap', array(&$this, 'edit_current_user_can'), 10, 3);
+		add_filter('save_post', array(&$this, 'edit_publish_page'));
 		add_action('dbx_page_advanced', array(&$this, 'edit_insert_excerpt_form'));
 		add_action('dbx_page_sidebar', array(&$this, 'edit_insert_category_form'));
 		add_action('edit_form_advanced', array(&$this, 'edit_post_form'));
@@ -245,13 +254,14 @@ class bSuite {
 		add_action('admin_menu', array(&$this, 'addmenus'));
 		// end register WordPress hooks
 
+/*
 		// set things up so authors can edit their own pages
 		$role = get_role('author');
 		if ( ! empty($role) ) {
 			$role->add_cap('edit_pages');
 			$role->add_cap('edit_published_pages');
 		}
-
+*/
 
 
 	}
@@ -336,12 +346,43 @@ class bSuite {
 
 		return( $prefix . str_replace( '%%the_permalink%%', get_permalink( $id ), $menu ) . $suffix );
 	}
-	
-	function shortcode_redirect($stuff){
-		// [[redirect|$url]]
-		if(!headers_sent())
-			header("Location: $stuff");
-		return('redirect: <a href="'. $stuff .'">'. $stuff .'</a>');
+
+	function shortcode_include( $arg ){
+		// [include ]
+		global $id, $post;
+		$arg = shortcode_atts( array(
+			'post_id' => FALSE,
+			'url' => FALSE,
+			'field' => 'post_excerpt',
+		), $arg );
+
+		if( !( $arg[ 'post_id' ] || $arg[ 'url' ] ))
+			return( FALSE );
+
+		if( isset( $arg[ 'url' ] ))
+			$include_id = url_to_postid( $arg[ 'url' ] );
+		
+		if( (int) $arg[ 'post_id' ] )
+			$include_id = (int) $arg[ 'post_id' ];
+
+		if( !$include_id || ( $id == $include_id ))
+			return( FALSE );
+
+		$post_orig = unserialize( serialize( $post )); // how else to prevent passing object by reference?
+		$id_orig = $id;
+
+		$post = get_post( $arg[ 'post_id' ] );
+		$id = $post->ID;
+
+		if( ( 'post_excerpt' == $arg[ 'field' ] ) && !( get_post_field( $arg[ 'field' ], $include_id )))
+			$arg[ 'field' ] = 'post_content';
+		
+		$content = apply_filters( 'the_content', get_post_field( $arg[ 'field' ], $include_id ));
+
+		$post = $post_orig;
+		$id = $id_orig;
+
+		return( $content );
 	}
 
 	function shortcode_feed( $arg ){
@@ -1656,8 +1697,94 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	// add tools to edit screens
+	function edit_current_user_can( $user_caps, $requested_caps, $cap_data ){
+		// this bit of code taken from Blicki and used under the terms of the GPL
+		// Blicki info: http://wordpress.org/extend/plugins/blicki/
+		// http://www.blicki.com/
+	
+		global $post;
+		
+		$requested_cap = $cap_data[0];
+		$user_id = $cap_data[1];
+		$post_id = '';
+		if ( isset($cap_data[2]) )
+			$post_id = $cap_data[2];
+		if ( !isset($post_id) && isset($post->ID) )
+			$post_id = $post->ID;
+		//$current_user = new WP_User($user_id);
+	
+		if ( 'edit_page' == $requested_cap ) {
+			foreach ($requested_caps as $req_cap)
+				$req_caps[$req_cap] = true;
+			$who_can_edit = get_post_meta($post_id, '_bsuite_who_can_edit', true);
+			if ( empty($who_can_edit) )
+				$who_can_edit = get_settings('bsuite_who_can_edit');
+			if ( 'anyone' == $who_can_edit ) {
+				$user_caps = array_merge($user_caps, $req_caps);
+			} else if ('registered_users' == $who_can_edit ) {
+				if ( is_user_logged_in() )
+					$user_caps = array_merge($user_caps, $req_caps);
+			} else if ('authors' == $who_can_edit ) {
+				if ( is_user_logged_in() && isset($user_caps['author']))
+					$user_caps = array_merge($user_caps, $req_caps);
+			} else {
+				$caps = map_meta_cap('edit_page', $user_id, $post_id);
+				foreach ($caps as $cap) {
+					if ( empty($user_caps[$cap]) || !$user_caps[$cap] )
+						return $user_caps;
+				}
+				$user_caps = array_merge($user_caps, $req_caps);
+			}
+		} else if ( 'edit_pages' == $requested_cap ||
+			'read' == $requested_cap ) {
+			foreach ($requested_caps as $req_cap)
+				$req_caps[$req_cap] = true;
+			$who_can_edit = get_option('bsuite_who_can_edit');
+			if ( 'anyone' == $who_can_edit ) {
+				$user_caps = array_merge($user_caps, $req_caps);
+			} else if ('registered_users' == $who_can_edit ) {
+				if ( is_user_logged_in() )
+					$user_caps = array_merge($user_caps, $req_caps);
+			}
+			return $user_caps;
+		} else if ( 'delete_page' == $requested_cap || 'delete_pages' == $requested_cap ) {
+			foreach ($requested_caps as $req_cap)
+				$req_caps[$req_cap] = true;
+			$who_can_delete = get_option('bsuite_who_can_delete');
+			if ( 'anyone' == $who_can_delete ) {
+				$user_caps = array_merge($user_caps, $req_caps);
+			} else if ('registered_users' == $who_can_delete ) {
+				if ( is_user_logged_in() )
+					$user_caps = array_merge($user_caps, $req_caps);
+			}
+			return $user_caps;
+		} else if ( 'bsuite_change_access' == $requested_cap ) {
+			$caps = map_meta_cap('edit_page', $user_id, $post_id);
+			foreach ($caps as $cap) {
+				if ( empty($user_caps[$cap]) || !$user_caps[$cap] )
+					return $user_caps;
+			}
+	
+			$user_caps['bsuite_change_access'] = true;
+		}
+		
+		return $user_caps;
+	}
+	
+	function edit_publish_page( $post_ID ) {
+		if ( !isset($_POST['bsuite_who_can_edit']) )
+			return;
+	
+		$who = $_POST['bsuite_who_can_edit'];
+		if ( ! update_post_meta($post_ID, '_bsuite_who_can_edit',  $who))
+			add_post_meta($post_ID, '_bsuite_who_can_edit',  $who, true);
+	}
+
 	function edit_page_form() {
+		$this->edit_insert_perms_form();
 		$this->edit_insert_tag_form();
+		$this->edit_insert_category_form();
+		$this->edit_insert_excerpt_form();
 //		$this->edit_insert_tools();
 		$this->edit_insert_machinetag_form();
 	}
@@ -1674,13 +1801,51 @@ $engine = $this->get_search_engine( $ref );
 		$this->edit_insert_machinetag_form();
 	}
 	
+	function edit_insert_perms_form() {
+		global $post_ID;
+		if ( !current_user_can( 'bsuite_change_access' ) )
+			return;
+	
+		$who = get_post_meta( $post_ID, '_bsuite_who_can_edit', TRUE );
+		if ( empty($who) )
+			$who = get_settings( 'bsuite_who_can_edit' );
+?>
+<div id="editpermsdiv" class="postbox if-js-closed">
+<h3><?php _e('Who can edit this page?'); ?></h3>
+<div class="inside">
+<select name="bsuite_who_can_edit" id="bsuite_who_can_edit">
+<option value="anyone" <?php selected('anyone', $who); ?>><?php _e('Anyone') ?></option>
+<option value="registered_users" <?php selected('registered_users', $who); ?>><?php _e('Registered users') ?></option>
+<option value="authors" <?php selected('authors', $who); ?>><?php _e('Authors and Editors') ?></option>
+<option value="editors" <?php selected('editors', $who); ?>><?php _e('Just Editors') ?></option>
+</select>
+</div>
+</div>
+<?php
+	}
+
 	function edit_insert_tag_form() {
 		global $post_ID;
 		?>
-		<fieldset id="tagdiv">
-			<legend>Tags (separate multiple tags with commas: cats, pet food, dogs)</legend>
-			<div><input type="text" name="tags_input" class="tags-input" id="tags-input" size="30" tabindex="3" value="<?php echo get_tags_to_edit( $post_ID ); ?>" /></div>
-		</fieldset>
+<script type='text/javascript'>
+/* <![CDATA[ */
+	postL10n = {
+		tagsUsed: "Tags used on this post:",
+		add: "Add",
+		addTag: "Add new tag",
+		separate: "Separate tags with commas",
+		cancel: "Cancel",
+		edit: "Edit"
+	}
+/* ]]> */
+</script>
+<div id="tagsdiv" class="postbox <?php echo postbox_classes('tagsdiv', 'post'); ?>">
+<h3><?php _e('Tags'); ?></h3>
+<div class="inside">
+<p id="jaxtag"><input type="text" name="tags_input" class="tags-input" id="tags-input" size="40" tabindex="3" value="<?php echo get_tags_to_edit( $post_ID ); ?>" /></p>
+<div id="tagchecklist"></div>
+</div>
+</div>
 		<?php
 	}
 
@@ -1706,37 +1871,64 @@ $engine = $this->get_search_engine( $ref );
 		}
 		natcasesort($tags_to_edit);
 		?>
-		<fieldset id="bsuite_machinetags">
-			<legend>bSuite Machine Tags (separate multiple tags with newlines, <a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">about machine tags</a>)</legend>
-			<div><textarea name="bsuite-machine-tags-input" id="bsuite-machine-tags-input" class="bsuite-machine-tags-input tags-input" style="width: 98%; height: 7em;"><?php echo implode($tags_to_edit, "\n"); ?></textarea></div>
-		</fieldset>
+<div id="bsuite_machinetags" class="postbox <?php echo postbox_classes('postexcerpt', 'post'); ?>">
+<h3><?php _e('bSuite Machine Tags') ?></h3>
+<div class="inside"><textarea name="bsuite-machine-tags-input" id="bsuite-machine-tags-input" class="bsuite-machine-tags-input tags-input" style="width: 98%; height: 7em;"><?php echo implode($tags_to_edit, "\n"); ?></textarea>
+<p>Separate multiple tags with newlines. <a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">About machine tags</a></p>
+</div>
+</div>
 		<?php
 	}
 
 	function edit_insert_excerpt_form() {
 		global $post_ID, $post;
 		?>
-		<div class="dbx-b-ox-wrapper">
-		<fieldset id="postexcerpt" class="dbx-box">
-		<div class="dbx-h-andle-wrapper">
-		<h3 class="dbx-handle">Optional Excerpt</h3>
-		</div>
-		<div class="dbx-c-ontent-wrapper">
-		<div class="dbx-content"><textarea rows="1" cols="40" name="excerpt" tabindex="6" id="excerpt"><?php echo $post->post_excerpt ?></textarea></div>
-		</div>
-		</fieldset>
-		</div>
+<div id="postexcerpt" class="postbox <?php echo postbox_classes('postexcerpt', 'post'); ?>">
+<h3><?php _e('Excerpt') ?></h3>
+<div class="inside"><textarea rows="1" cols="40" name="excerpt" tabindex="6" id="excerpt"><?php echo $post->post_excerpt ?></textarea>
+<p><?php _e('Excerpts are optional hand-crafted summaries of your content. You can <a href="http://codex.wordpress.org/Template_Tags/the_excerpt" target="_blank">use them in your template</a>'); ?></p>
+</div>
+</div>
 		<?php
 	}
 
 	function edit_insert_category_form() {
+		global $post_ID, $post;
 		?>
-		<fieldset id="categorydiv" class="dbx-box">
-		<h3 class="dbx-handle"><?php _e('Categories') ?></h3>
-		<div class="dbx-content">
-		<p id="jaxcat"></p>
-		<ul id="categorychecklist"><?php dropdown_categories(); ?></ul></div>
-		</fieldset>
+<div id="categorydiv" class="postbox <?php echo postbox_classes('categorydiv', 'post'); ?>">
+<h3><?php _e('Categories') ?></h3>
+<div class="inside">
+
+<div id="category-adder" class="wp-hidden-children">
+	<h4><a id="category-add-toggle" href="#category-add" class="hide-if-no-js" tabindex="3"><?php _e( '+ Add New Category' ); ?></a></h4>
+	<p id="category-add" class="wp-hidden-child">
+		<input type="text" name="newcat" id="newcat" class="form-required form-input-tip" value="<?php _e( 'New category name' ); ?>" tabindex="3" />
+		<?php wp_dropdown_categories( array( 'hide_empty' => 0, 'name' => 'newcat_parent', 'orderby' => 'name', 'hierarchical' => 1, 'show_option_none' => __('Parent category'), 'tab_index' => 3 ) ); ?>
+		<input type="button" id="category-add-sumbit" class="add:categorychecklist:category-add button" value="<?php _e( 'Add' ); ?>" tabindex="3" />
+		<?php wp_nonce_field( 'add-category', '_ajax_nonce', false ); ?>
+		<span id="category-ajax-response"></span>
+	</p>
+</div>
+
+<ul id="category-tabs">
+	<li class="ui-tabs-selected"><a href="#categories-all" tabindex="3"><?php _e( 'All Categories' ); ?></a></li>
+	<li class="wp-no-js-hidden"><a href="#categories-pop" tabindex="3"><?php _e( 'Most Used' ); ?></a></li>
+</ul>
+
+<div id="categories-pop" class="ui-tabs-panel" style="display: none;">
+	<ul id="categorychecklist-pop" class="categorychecklist form-no-clear" >
+		<?php $popular_ids = wp_popular_terms_checklist('category'); ?>
+	</ul>
+</div>
+
+<div id="categories-all" class="ui-tabs-panel">
+	<ul id="categorychecklist" class="list:category categorychecklist form-no-clear">
+		<?php wp_category_checklist($post_ID) ?>
+	</ul>
+</div>
+
+</div>
+</div>
 		<?php
 	}
 	// end adding tools to edit screens
@@ -2224,6 +2416,11 @@ $engine = $this->get_search_engine( $ref );
 			update_option('bsuite_load_max', 4);
 
 
+		// allow authors to edit their own pages by default
+		if(!get_option('bsuite_who_can_edit'))
+			update_option('bsuite_who_can_edit', 'authors');
+
+
 		// set some defaults for the widgets
 		if(!get_option('bsuite_related_posts'))
 			update_option('bsuite_related_posts', array('title' => 'Related Posts', 'number' => 7));
@@ -2340,7 +2537,7 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	function mu_options( $options ) {
-		$added = array( 'bsuite' => array( 'bsuite_insert_related', 'bsuite_insert_sharelinks', 'bsuite_searchsmart', 'bsuite_swhl' ));
+		$added = array( 'bsuite' => array( 'bsuite_insert_related', 'bsuite_insert_sharelinks', 'bsuite_searchsmart', 'bsuite_swhl', 'bsuite_who_can_edit' ));
 
 		$options = add_option_whitelist( $added, $options );
 	
