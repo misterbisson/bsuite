@@ -188,6 +188,13 @@ class bSuite {
 		add_shortcode('feed', array(&$this, 'shortcode_feed'));
 		add_shortcode('slideshare', array(&$this, 'shortcode_slideshare'));
 
+		// filter the_excerpt and x_rss through do_shortcode(). wish this was in core
+		// http://trac.wordpress.org/ticket/7093
+		add_filter('the_content_rss', 'do_shortcode', 11);
+		add_filter('the_excerpt', 'do_shortcode', 11);
+		add_filter('the_excerpt_rss', 'do_shortcode', 11);
+
+
 		// tokens
 		// tokens are deprecated. please use shortcode functionality instead.
 		add_filter('bsuite_tokens', array(&$this, 'tokens_default'));
