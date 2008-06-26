@@ -181,11 +181,12 @@ class bSuite {
 		//
 
 		// shortcodes
-		add_shortcode('pagemenu', array(&$this, 'shortcode_pagemenu'));
+		add_shortcode('pagemenu', array(&$this, 'shortcode_list_pages'));
+		add_shortcode('list_pages', array(&$this, 'shortcode_list_pages'));
 		add_shortcode('innerindex', array(&$this, 'shortcode_innerindex'));
 		add_shortcode('include', array(&$this, 'shortcode_include'));
 		add_shortcode('feed', array(&$this, 'shortcode_feed'));
-//		add_shortcode('redirect', array(&$this, 'shortcode_redirect'));
+		add_shortcode('slideshare', array(&$this, 'shortcode_slideshare'));
 
 		// tokens
 		// tokens are deprecated. please use shortcode functionality instead.
@@ -271,7 +272,7 @@ class bSuite {
 	//
 	// shortcode functions
 	//
-	function shortcode_pagemenu( $arg ){
+	function shortcode_list_pages( $arg ){
 		// [pagemenu ]
 		global $id;
 
@@ -280,6 +281,7 @@ class bSuite {
 			'div_class' => 'contents pagemenu',
 			'ul_class' => 'contents pagemenu',
 			'ol_class' => FALSE,
+			'excerpt'   => FALSE,
 			'echo' => 0,
 			'child_of' => $id,
 			'depth' => 1,
@@ -316,9 +318,31 @@ class bSuite {
 			}
 		}
 
+		if( $arg['excerpt'] )
+			return( $prefix . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_callback'), wp_list_pages( $arg )) . $suffix );
 		return( $prefix . wp_list_pages( $arg ) . $suffix );
 	}
+
+	function shortcode_list_pages_callback( $arg ){
+		global $id, $post;
 	
+		$post_orig = unserialize( serialize( $post )); // how else to prevent passing object by reference?
+		$id_orig = $id;
+	
+		$post = get_post( $arg[1] );
+		$id = $post->ID;
+		
+		$content = apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
+	
+		$post = $post_orig;
+		$id = $id_orig;
+
+		if( 5 < strlen( $content ))
+			return( $arg[0] .'<ul><li class="page_excerpt page_excerpt-'. $arg[1] .'">'. $content .'</li></ul>' );
+		return( $arg[0] );
+	}
+
+
 	function shortcode_innerindex( $arg ){
 		// [innerindex ]
 		global $id;
@@ -427,6 +451,19 @@ class bSuite {
 		}
 
 		return( $prefix . $this->get_feed( $arg['feed_url'], $arg['count'], $arg['template'], TRUE) . $suffix );
+	}
+
+	function shortcode_slideshare( $arg ){
+		// [slideshare id=211578&doc=misty-holland-1198496990903941-2&w=425]
+
+		$arg = shortcode_atts( array(
+			'id' => FALSE,
+		), $arg );
+
+		if( ! $arg['id'] )
+			return( FALSE );
+
+		return( str_replace( '%%id%%', $arg['id'], '<div class="embed slideshare" id="slideshare-%%id%%"><object type="application/x-shockwave-flash" wmode="transparent" data="https://s3.amazonaws.com:443/slideshare/ssplayer.swf?id=%%id%%" width="425" height="348"><param name="movie" value="https://s3.amazonaws.com:443/slideshare/ssplayer.swf?id=%%id%%" /></object></div>' ));
 	}
 
 
@@ -1781,6 +1818,7 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	function edit_page_form() {
+// must change hooks. example: http://planetozh.com/blog/2008/02/wordpress-snippet-add_meta_box/
 		$this->edit_insert_perms_form();
 		$this->edit_insert_tag_form();
 		$this->edit_insert_category_form();
@@ -1830,7 +1868,7 @@ $engine = $this->get_search_engine( $ref );
 <script type='text/javascript'>
 /* <![CDATA[ */
 	postL10n = {
-		tagsUsed: "Tags used on this post:",
+		tagsUsed: "Tags used on this page:",
 		add: "Add",
 		addTag: "Add new tag",
 		separate: "Separate tags with commas",
