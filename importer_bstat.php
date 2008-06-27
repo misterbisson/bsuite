@@ -126,7 +126,7 @@ class bStat_Import {
 		echo '<p>Please be patient, this could take a long time.</p>';
 		flush();
 
-		foreach( explode( ';', $this->query_delete_oldtables ) as $query )
+		foreach( explode( ';', $this->query_get_targets ) as $query )
 			$wpdb->get_results( $query  );
 
 		echo '<p>Done!</p>';

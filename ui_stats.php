@@ -212,9 +212,9 @@ else
 
 <table width="100%"><tr valign='top'><td width="33%"><h4>Top non-Post URLs</h4><ol>
 <?php
-$results = $wpdb->get_results("SELECT hit_count, name
+$results = $wpdb->get_results("SELECT hit_count, hit_avg, name
 	FROM (
-		SELECT object_id, SUM(hit_count) AS hit_count
+		SELECT object_id, SUM(hit_count) AS hit_count, AVG(hit_count) AS hit_avg
 		FROM $bsuite->hits_targets
 		WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 5 DAY ))
 		AND object_type = 1
@@ -228,7 +228,7 @@ $results = $wpdb->get_results("SELECT hit_count, name
 
 if( count( $results ) )
 	foreach( $results as $res )
-		echo '<li><a href="'. $res->name .'">'. str_replace( get_settings( 'siteurl' ), '', $res->name ).'</a></li>';
+		echo '<li><a href="'. $res->name .'">'. wordwrap( urldecode( str_replace( get_settings( 'siteurl' ), '', $res->name )), 25, "\n", TRUE ) .'</a><br><small>Avg: '. number_format( $res->hit_avg ) .' Total: '. number_format( $res->hit_count ) ."</small></li>\n";
 else
 	echo '<li>No Data Yet.</li>';
 
@@ -238,11 +238,11 @@ else
 
 <td width="33%"><h4>Top Entry URLs</h4><ol>
 <?php
-$results = $wpdb->get_results("SELECT name, object_id, object_type, COUNT(*) AS hit_count
+$results = $wpdb->get_results("SELECT name, object_id, object_type, COUNT(*) AS hit_count, MIN( sess_date ) AS date_min
 	FROM (
-		SELECT a.sess_id, b.object_id, b.object_type
+		SELECT a.sess_id, a.sess_date, b.object_id, b.object_type
 		FROM (
-			SELECT sess_id
+			SELECT sess_id, sess_date
 			FROM $bsuite->hits_sessions
 			ORDER BY sess_id DESC
 			LIMIT 25000
@@ -259,9 +259,9 @@ $results = $wpdb->get_results("SELECT name, object_id, object_type, COUNT(*) AS 
 if( count( $results ) )
 	foreach( $results as $res ){
 		if( 1 == $res->object_type )
-			echo '<li><a href="'. $res->name .'">'. str_replace( get_settings( 'siteurl' ), '', $res->name ).'</a></li>';
+			echo '<li><a href="'. $res->name .'">'. wordwrap( urldecode( str_replace( get_settings( 'siteurl' ), '', $res->name )), 25, "\n", TRUE ) .'</a><br><small>'. number_format( $res->hit_count ) .' hits since '. $res->date_min .'</small></li>';
 		else
-			echo '<li><a href="'. get_permalink( $res->object_id ) .'">'. get_the_title( $res->object_id ) .'</a></li>';
+			echo '<li><a href="'. get_permalink( $res->object_id ) .'">'. wordwrap( get_the_title( $res->object_id ), 25, "\n", TRUE ) .'</a><br><small>'. number_format( $res->hit_count ) .' hits since '. $res->date_min .'</small></li>';
 }else{
 	echo '<li>No Data Yet.</li>';
 }
