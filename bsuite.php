@@ -141,9 +141,6 @@ class bSuite {
 		$this->hits_sessions = $wpdb->prefix . 'bsuite4_hits_sessions';
 		$this->hits_shistory = $wpdb->prefix . 'bsuite4_hits_shistory';
 		$this->hits_pop = $wpdb->prefix . 'bsuite4_hits_pop';
-
-		$this->lock_migrator = $wpdb->prefix . 'bsuite4_lock_migrator';
-		$this->lock_ftindexer = $wpdb->prefix . 'bsuite4_lock_ftindexer';
 		
 		$this->loadavg = $this->get_loadavg();
 
@@ -898,10 +895,7 @@ bsuite.log();
 	function bstat_migrator(){
 		global $wpdb;
 
-		// use a named mysql lock to prevent simultaneous execution
-		// locks automatically drop when the connection is dropped
-		// http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_get-lock
-		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $this->lock_migrator .'", 2)' ))
+		if( !$this->get_lock( 'bsuite4_lock_migrator' ))
 			return( TRUE );
 
 		// also use the options table
@@ -998,8 +992,8 @@ bsuite.log();
 				$wpdb->query( "OPTIMIZE TABLE $this->hits_incoming;");
 		}
 
-		if ( get_option( 'bsuite_doing_migration_popr') < time() ){
-			if ( get_option( 'bsuite_doing_migration_popd') < time() ){
+		if ( get_option( 'bsuite_doing_migration_popr') < time() && $this->get_lock( 'bsuite4_lock_popr' )){
+			if ( get_option( 'bsuite_doing_migration_popd') < time() && $this->get_lock( 'bsuite4_lock_popd' ) ){
 				$wpdb->query( "TRUNCATE $this->hits_pop" );
 				$wpdb->query( "INSERT INTO $this->hits_pop (post_id, date_start, hits_total)
 					SELECT object_id AS post_id, MIN(hit_date) AS date_start, SUM(hit_count) AS hits_total
@@ -1449,10 +1443,7 @@ $engine = $this->get_search_engine( $ref );
 		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
 		global $wpdb;
 
-		// use a named mysql lock to prevent simultaneous execution
-		// locks automatically drop when the connection is dropped
-		// http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_get-lock
-		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $this->lock_ftindexer .'", 2)' ))
+		if( !$this->get_lock( 'bsuite4_lock_ftindexer' ))
 			return( TRUE );
 
 		// also use the options table
@@ -1591,6 +1582,20 @@ $engine = $this->get_search_engine( $ref );
 
 
 
+	function get_lock( $lock ){
+		global $wpdb;
+
+		if( !$lock = preg_replace( '/[^a-z|0-9|_]/i', '', str_replace( ' ', '_', $lock )))
+			return( FALSE );
+
+		// use a named mysql lock to prevent simultaneous execution
+		// locks automatically drop when the connection is dropped
+		// http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_get-lock
+		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $wpdb->prefix . 'bsuitelock_' .'", 2)' ))
+			return( FALSE );
+		return( TRUE );
+	}
+
 	//
 	// loadaverage related functions
 	//
@@ -1604,7 +1609,7 @@ $engine = $this->get_search_engine( $ref );
 		}else{
 			$load_avg = &$this->sys_getloadavg();
 		}
-		return($load_avg[0]);
+		return( round( $load_avg[0], 2 ));
 	}
 
 	function sys_getloadavg(){
