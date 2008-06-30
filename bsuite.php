@@ -895,7 +895,7 @@ bsuite.log();
 	function bstat_migrator(){
 		global $wpdb;
 
-		if( !$this->get_lock( 'bsuite4_lock_migrator' ))
+		if( !$this->get_lock( 'migrator' ))
 			return( TRUE );
 
 		// also use the options table
@@ -992,8 +992,8 @@ bsuite.log();
 				$wpdb->query( "OPTIMIZE TABLE $this->hits_incoming;");
 		}
 
-		if ( get_option( 'bsuite_doing_migration_popr') < time() && $this->get_lock( 'bsuite4_lock_popr' )){
-			if ( get_option( 'bsuite_doing_migration_popd') < time() && $this->get_lock( 'bsuite4_lock_popd' ) ){
+		if ( get_option( 'bsuite_doing_migration_popr') < time() && $this->get_lock( 'popr' )){
+			if ( get_option( 'bsuite_doing_migration_popd') < time() && $this->get_lock( 'popd' ) ){
 				$wpdb->query( "TRUNCATE $this->hits_pop" );
 				$wpdb->query( "INSERT INTO $this->hits_pop (post_id, date_start, hits_total)
 					SELECT object_id AS post_id, MIN(hit_date) AS date_start, SUM(hit_count) AS hits_total
@@ -1443,7 +1443,7 @@ $engine = $this->get_search_engine( $ref );
 		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
 		global $wpdb;
 
-		if( !$this->get_lock( 'bsuite4_lock_ftindexer' ))
+		if( !$this->get_lock( 'ftindexer' ))
 			return( TRUE );
 
 		// also use the options table
@@ -1591,7 +1591,7 @@ $engine = $this->get_search_engine( $ref );
 		// use a named mysql lock to prevent simultaneous execution
 		// locks automatically drop when the connection is dropped
 		// http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_get-lock
-		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $wpdb->prefix . 'bsuitelock_' .'", 2)' ))
+		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $wpdb->prefix . 'bsuitelock_'. $lock .'", 2)' ))
 			return( FALSE );
 		return( TRUE );
 	}
