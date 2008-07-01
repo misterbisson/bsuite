@@ -1197,6 +1197,9 @@ $engine = $this->get_search_engine( $ref );
 	function pop_posts( $args = '' ) {
 		global $wpdb, $bsuite;
 
+		if( !$this->get_lock( 'pop_posts' ))
+			return( FALSE );
+
 		$defaults = array(
 			'count' => 15,
 			'return' => 'formatted',
@@ -1238,6 +1241,9 @@ $engine = $this->get_search_engine( $ref );
 
 	function pop_refs( $args = '' ) {
 		global $wpdb, $bsuite;
+
+		if( !$this->get_lock( 'pop_refs' ))
+			return( FALSE );
 
 		$defaults = array(
 			'count' => 15,
@@ -1591,7 +1597,7 @@ $engine = $this->get_search_engine( $ref );
 		// use a named mysql lock to prevent simultaneous execution
 		// locks automatically drop when the connection is dropped
 		// http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_get-lock
-		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $wpdb->prefix . 'bsuitelock_'. $lock .'", 2)' ))
+		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $wpdb->prefix . 'bsuitelock_'. $lock .'", ".001")' ))
 			return( FALSE );
 		return( TRUE );
 	}
