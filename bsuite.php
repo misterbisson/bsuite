@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/blog/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/blog/bsuite/">Documentation here</a>.
-Version: 4.0 beta1 
+Version: 4.0 beta3 
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -1627,6 +1627,23 @@ $engine = $this->get_search_engine( $ref );
 	}
 	// end load average related functions
 
+
+	// timers
+	function timer_start( $name = 1 ) {
+		$mtime = microtime();
+		$mtime = explode(' ', $mtime);
+		$this->time_start[ $name ] = $mtime[1] + $mtime[0];
+		return true;
+	}
+
+	function timer_stop( $name = 1 ) {
+		$mtime = microtime();
+		$mtime = explode(' ', $mtime);
+		$time_end = $mtime[1] + $mtime[0];
+		$time_total = $time_end - $this->time_start[ $name ];
+		return $time_total;
+	}
+	// end timers
 
 
 	function trimquotes( $in ) {
