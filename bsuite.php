@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/blog/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/blog/bsuite/">Documentation here</a>.
-Version: 4.0 beta3 
+Version: 4.0 beta4 
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -157,11 +157,19 @@ class bSuite {
 
 		// add the sweet categories and tags JS from the post editor to the page editor
 		wp_register_script( 'edit_page', $this->path_web . '/js/edit_page.js', array('jquery'), '1' );
-		if( is_admin() && strpos( $_SERVER['REQUEST_URI'], 'admin/page' )){
-			wp_enqueue_script( 'edit_page' );
-			wp_enqueue_script( 'jquery-ui-tabs' );
-			wp_enqueue_script( 'suggest' );
-			wp_enqueue_script( 'ajaxcat' );
+		if( is_admin() ){
+
+			wp_register_script( 'bsuite-machtags', $this->path_web . '/js/bsuite-machtags.js', array('jquery-ui-sortable'), '1' );
+			wp_enqueue_script( 'bsuite-machtags' );	
+
+			add_action( 'admin_head', array(&$this, 'edit_admin_head_hook') );
+
+			if( strpos( $_SERVER['REQUEST_URI'], 'admin/page' )){
+				wp_enqueue_script( 'edit_page' );
+				wp_enqueue_script( 'jquery-ui-tabs' );
+				wp_enqueue_script( 'suggest' );
+				wp_enqueue_script( 'ajaxcat' );
+			}
 		}
 
 
@@ -1706,9 +1714,9 @@ $engine = $this->get_search_engine( $ref );
 	// machine tags
 	function machtag_save_post($post_id, $post) {
 		// Passed machine tags overwrite existing if not empty
-		if ( isset( $_REQUEST['bsuite-machine-tags-input'] ))
+		if ( isset( $_REQUEST['bsuite_machine_tags'] ))
 
-			foreach( $this->machtag_parse_tags( $_REQUEST['bsuite-machine-tags-input'] ) as $taxonomy => $tags ){
+			foreach( $this->machtag_parse_tags( $_REQUEST['bsuite_machine_tags'] ) as $taxonomy => $tags ){
 
 				if( 'post_tag' == $taxonomy ){
 					wp_set_post_tags($post_id, $tags, TRUE);
@@ -1723,13 +1731,17 @@ $engine = $this->get_search_engine( $ref );
 
 	function machtag_parse_tags( $tags_input ) {
 		$tags = $tags_parsed = array();
-		$tag_lines = explode( "\n", $tags_input );
-		foreach($tag_lines as $tag_line)
-			$tags_parsed[] = $this->machtag_parse_tag( $tag_line );
+		if( !is_array( $tags_input )){
+			$tag_lines = explode( "\n", $tags_input );
+			foreach($tag_lines as $tag_line)
+				$tags_parsed[] = $this->machtag_parse_tag( $tag_line );
+		}else{
+			$tags_parsed = $tags_input;
+		}
 
 		foreach( $tags_parsed as $tag_parsed )
-			$tags[$tag_parsed['taxonomy']][] = $tag_parsed['term'];
-
+			if( !empty( $tag_parsed['taxonomy'] ) && !empty( $tag_parsed['term'] ))
+				$tags[$tag_parsed['taxonomy']][] = $tag_parsed['term'];
 		return( $tags );
 	}
 
@@ -1843,6 +1855,12 @@ $engine = $this->get_search_engine( $ref );
 		return $user_caps;
 	}
 	
+	function edit_admin_head_hook() {
+?>
+<link rel='stylesheet' href='<?php echo $this->path_web ?>/css/machtags.css' type='text/css' media='all' />
+<?php
+	}
+
 	function edit_publish_page( $post_ID ) {
 		if ( !isset($_POST['bsuite_who_can_edit']) )
 			return;
@@ -1937,17 +1955,25 @@ $engine = $this->get_search_engine( $ref );
 		$tags = wp_get_object_terms($post_ID, get_object_taxonomies('post'));
 		
 		$tags_to_edit = array();
-		foreach($tags as $tag){
+		foreach($tags as $key => $tag){
 			if($tag->taxonomy == 'post_tag' || $tag->taxonomy == 'category')
 				continue;
-			$tags_to_edit[] = $tag->taxonomy .'='. $tag->name;
+			$tags_to_edit[] = '<li><input class="taxonomy" type="text" id="bsuite_machine_tags_'. $key .'_taxonomy" name="bsuite_machine_tags['. $key .'][taxonomy]" value="'. $tag->taxonomy .'" /> : <input class="term" type="text" id="bsuite_machine_tags_'. $key .'_term" name="bsuite_machine_tags['. $key .'][term]" value="'. $tag->name .'" /></li>';
 		}
 		natcasesort($tags_to_edit);
+
+		$key++;
+		$tags_to_edit[] = '<li><input class="taxonomy" type="text" id="bsuite_machine_tags_'. $key .'_taxonomy" name="bsuite_machine_tags['. $key .'][taxonomy]" value="" /> : <input class="term" type="text" id="bsuite_machine_tags_'. $key .'_term" name="bsuite_machine_tags['. $key .'][term]" value="" /></li>';
+
 		?>
 <div id="bsuite_machinetags" class="postbox <?php echo postbox_classes('postexcerpt', 'post'); ?>">
 <h3><?php _e('bSuite Machine Tags') ?></h3>
-<div class="inside"><textarea name="bsuite-machine-tags-input" id="bsuite-machine-tags-input" class="bsuite-machine-tags-input tags-input" style="width: 98%; height: 7em;"><?php echo implode($tags_to_edit, "\n"); ?></textarea>
-<p>Separate multiple tags with newlines. <a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">About machine tags</a></p>
+<div class="inside">
+<ul id="bsuite_machine_tags">
+<?php echo implode($tags_to_edit, "\n"); ?>
+</ul>
+
+<a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">About machine tags</a></p>
 </div>
 </div>
 		<?php
