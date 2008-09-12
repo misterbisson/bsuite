@@ -1,7 +1,7 @@
 <?php 
 /*
 Plugin Name: bStat Upgrader
-Plugin URI: http://maisonbisson.com/blog/bsuite
+Plugin URI: http://maisonbisson.com/bsuite
 Description: Upgrade from bSuite bStats. 3.x to bSuite 4
 Version: 4.0
 Author: Casey Bisson
