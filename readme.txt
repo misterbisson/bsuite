@@ -2,15 +2,17 @@
 Contributors: misterbisson
 Donate link: http://MaisonBisson.com/
 Tags: cms, content management, tags, stats, statistics, formatting, pages, widgets, related posts, sharelinks, keyword searching
-Requires at least: 2.5.1
-Tested up to: 2.5.1
-Stable tag: 3.0.5
+Requires at least: 2.6.0
+Tested up to: 2.6.2
+Stable tag: 4.0
 
 A suite of tools used to help surface interesting and popular stories as well as improve WordPress' CMS capabilities and usefulness as an application platform.
 
 == Description ==
 
-bSuite is a set of tools that help surface interesting and popular stories as well as improve WordPress' CMS capabilities and usefulness as an application platform. Included companion plugins include a universal tag importer, and an upgrader to help you move from bSuite 3.
+bSuite is a set of tools that help surface interesting and popular stories as well as improve WordPress' CMS capabilities and usefulness as an application platform. <a href="http://maisonbisson.com/bsuite/widgets/">Available widgets</a> can show most popular posts, recently commented posts, or related posts (can also add a listof related posts to the bottom of the post content). <a href="http://maisonbisson.com/bsuite/shortcodes/">Added shortcodes</a> help organize content, allowing you to list all sub-pages of the current page or list all headings within the page. Another shortcode will render RSS feeds into a page or post. See <a href="http://wordpress.org/extend/plugins/bsuite/screenshots/">the screenshots</a> for more.
+
+Included companion plugins include a <a href="http://maisonbisson.com/bsuite/tag-importer/">universal tag importer</a>, and an upgrader to help you move from bSuite 3.
 
 == Installation ==
 
@@ -38,17 +40,17 @@ Previous versions of bSuite and bStat counted hits using a different mechanism t
 
 = How do I...? =
 
-Full documentation and usage examples are available at <a href="http://maisonbisson.com/blog/bsuite/">MaisonBisson.com</a>.
+Full documentation and usage examples are available at <a href="http://maisonbisson.com/bsuite/">MaisonBisson.com</a>.
 
 == Screenshots ==
 
 1. Search word highlighting is back! Seen here in <a href="http://borkweb.com/">Matthew Batchelder</a>'s post on <a href="http://borkweb.com/story/faster-page-loads-with-image-concatenation">improving pade load times with concatenated images</a> (found via a search for <a href="http://www.google.com/search?q=image+concatenation+borkweb">image concatenation</a>).
 2. bSuite quick stats.
-3. <a href="http://borkweb.com/">Matthew Batchelder</a>'s <a href="http://borkweb.com/story/ajax-templating-and-the-separation-of-layout-and-logic">use of</a> the `[innerindex]` shortcode. <a href="http://maisonbisson.com/blog/bsuite/shortcodes/">Innerindex</a> automatically generates a list of headings in the page, with links to jump to them.
-4. <a href="http://www.plymouth.edu/library/">Lamson Library</a>'s <a href="http://www.plymouth.edu/library/by-subject/art-history">use of</a> the `[pagemenu]` shortcode. <a href="http://maisonbisson.com/blog/bsuite/shortcodes/">Pagemenu</a> automatically generates a list of child pages for a given page.
+3. <a href="http://borkweb.com/">Matthew Batchelder</a>'s <a href="http://borkweb.com/story/ajax-templating-and-the-separation-of-layout-and-logic">use of</a> the `[innerindex]` shortcode. <a href="http://maisonbisson.com/bsuite/shortcodes/">Innerindex</a> automatically generates a list of headings in the page, with links to jump to them.
+4. <a href="http://www.plymouth.edu/library/">Lamson Library</a>'s <a href="http://www.plymouth.edu/library/by-subject/art-history">use of</a> the `[pagemenu]` shortcode. <a href="http://maisonbisson.com/bsuite/shortcodes/">Pagemenu</a> automatically generates a list of child pages for a given page.
 5. The sharethis feature, as implemented at <a href="http://library.plymouth.edu/read/222334">Lamson Library</a>.
 6. <a href="http://spiralbound.net/">Cliff Pearson</a>'s page loads report.
 7. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bSuite bStat popular posts widget.
 8. <a href="http://spiralbound.net/">Cliff Pearson</a>'s use of the bSuite Recently Commented widget. This widget differs from the built in Recent Comments widget in that it only shows posts, not individual comments.
-9. The <a href="http://maisonbisson.com/blog/bsuite/machine-tags">machine tag</a> input field in the edit post and edit page screen. 
+9. The <a href="http://maisonbisson.com/bsuite/machine-tags">machine tag</a> input field in the edit post and edit page screen. 
 10. The bSuite options panel.
