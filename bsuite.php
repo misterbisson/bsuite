@@ -1693,7 +1693,7 @@ $engine = $this->get_search_engine( $ref );
 			if($i > $count)
 				break;
 			$link = $item['link'];
-			$title = '<a href="' . $item['link'] . '" title="' . $item['title'] . '">' . $item['title'] . '</a>';
+			$title = $item['title'];
 			if($item['content']['encoded']){
 				$content = $item['content']['encoded'];
 			}else{
@@ -1960,7 +1960,7 @@ $engine = $this->get_search_engine( $ref );
 				continue;
 			$tags_to_edit[] = '<li><input class="taxonomy" type="text" id="bsuite_machine_tags_'. $key .'_taxonomy" name="bsuite_machine_tags['. $key .'][taxonomy]" value="'. $tag->taxonomy .'" /> : <input class="term" type="text" id="bsuite_machine_tags_'. $key .'_term" name="bsuite_machine_tags['. $key .'][term]" value="'. $tag->name .'" /></li>';
 		}
-		natcasesort($tags_to_edit);
+//		natcasesort($tags_to_edit);
 
 		$key++;
 		$tags_to_edit[] = '<li><input class="taxonomy" type="text" id="bsuite_machine_tags_'. $key .'_taxonomy" name="bsuite_machine_tags['. $key .'][taxonomy]" value="" /> : <input class="term" type="text" id="bsuite_machine_tags_'. $key .'_term" name="bsuite_machine_tags['. $key .'][term]" value="" /></li>';
@@ -2353,7 +2353,7 @@ $engine = $this->get_search_engine( $ref );
 			$days = 30;
 
 		if ( !$pop_posts = wp_cache_get( 'bstat_pop_posts', 'widget' ) ) {
-			$pop_posts = $this->pop_posts("limit=$number&days=$days");
+			$pop_posts = $this->pop_posts("count=$number&days=$days");
 			wp_cache_add( 'bstat_pop_posts', $pop_posts, 'widget', 3600 );
 		}
 
@@ -2419,7 +2419,7 @@ $engine = $this->get_search_engine( $ref );
 			$days = 30;
 
 		if ( !$pop_refs = wp_cache_get( 'bstat_pop_refs', 'widget' ) ) {
-			$pop_refs = $this->pop_refs("limit=$number&days=$days");
+			$pop_refs = $this->pop_refs("count=$number&days=$days");
 			wp_cache_add( 'bstat_pop_refs', $pop_refs, 'widget', 3600 );
 		}
 
