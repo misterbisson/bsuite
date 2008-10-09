@@ -199,6 +199,9 @@ class bSuite {
 		add_filter('the_excerpt', 'do_shortcode', 11);
 		add_filter('the_excerpt_rss', 'do_shortcode', 11);
 
+		// bsuite post icons
+		add_action('wp_ajax_bsuite_icon_form', array( &$this, 'icon_ajax_form' ));
+		add_action('wp_ajax_bsuite_icon_upload', array( &$this, 'icon_ajax_upload' ));
 
 		// tokens
 		// tokens are deprecated. please use shortcode functionality instead.
@@ -677,6 +680,238 @@ class bSuite {
 
 
 	//
+	// post icons
+	//
+	function icon_is_editing( $post_id ) {
+		global $current_user;
+	
+		if ( !$post = get_post( $post_id ) )
+			return false;
+	
+		$lock = get_post_meta( $post->ID, '_edit_lock', true );
+		$last = get_post_meta( $post->ID, '_edit_last', true );
+
+		$time_window = apply_filters( 'wp_check_post_lock_window', AUTOSAVE_INTERVAL * 2 );
+	
+		if ( $lock && $lock > time() - $time_window && $last == $current_user->ID )
+			return( TRUE );
+		return( FALSE );
+	}
+
+	function icon_handle_upload() {
+		$_FILES['import']['name'] = substr( md5( uniqid( microtime())), 0, 4 ) . strrchr( $_FILES['import']['name'] , '.' );
+		$overrides = array( 'test_form' => false );
+		$file = wp_handle_upload( $_FILES['import'], $overrides );
+	
+		return( $file );
+	}
+
+	function icon_form( $post_id = 0 ) {
+		require_once( ABSPATH .'/wp-admin/includes/template.php');
+
+		if( 0 >= (int) $post_id )
+			return( FALSE );
+
+
+		$bytes = apply_filters( 'import_upload_size_limit', wp_max_upload_size() );
+		$size = wp_convert_bytes_to_hr( $bytes );
+	?>
+	<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
+<?php
+	if( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )){
+		echo '<img src="'. $img['s']['url'] .'" width="'. $img['s']['w'] .'" height="'. $img['s']['h'] .'" alt="the image for this record." style="float: left;" />'			
+?>
+		<input type="submit" class="button" value="<?php _e( 'Delete' ); ?>" /><br />
+<?php
+	}
+?>
+	<?php wp_nonce_field('bsuite-icon-upload'); ?>
+	<input type="file" id="upload" name="import" size="20" /> 
+	<input type="hidden" name="post_ID" value="<?php echo (int) $_REQUEST['post_ID'] ?>" />
+	<input type="hidden" name="action" value="bsuite_icon_upload" />
+	<input type="hidden" name="max_file_size" value="<?php echo $bytes; ?>" />
+	<input type="submit" class="button" value="<?php _e( 'Upload New' ); ?>" />
+	(<?php printf( __('%s max' ), $size ); ?>)
+	</form>
+	<?php
+	}	
+
+	function icon_ajax_form( ){
+		if (!current_user_can('upload_files'))
+			wp_die(__('You do not have permission to upload files.'));
+
+		if( 0 >= (int) $_REQUEST['post_ID'] )
+			die(0);
+
+		if( !$this->icon_is_editing( (int) $_REQUEST['post_ID'] ))
+			wp_die(__('You cannot add an icon to a post you`re not currently editing.'));
+
+		die( $this->icon_form( (int) $_REQUEST['post_ID'] ));
+	}
+
+	function icon_ajax_upload( ){
+		// security checks
+		check_admin_referer('bsuite-icon-upload');
+		if (!current_user_can('upload_files'))
+			wp_die(__('You do not have permission to upload files.'));
+
+		// make sure we have a post ID
+		if( 0 >= (int) $_REQUEST['post_ID'] )
+			die('form is incomplete');
+
+		if( !$this->icon_is_editing( (int) $_REQUEST['post_ID'] ))
+			wp_die(__('You cannot add an icon to a post you`re not currently editing.'));
+
+		// get the file that's being uploaded
+		$file = $this->icon_handle_upload();
+
+		// make sure that we've got an image
+		if( 'image' === strtolower( substr( $file['type'], 0, strpos( $file['type'], '/' )))){
+			// set a new directory for the file
+			$post_id = (int) $_REQUEST['post_ID'];
+			$uploads = wp_upload_dir( 'icon-'. substr( str_pad( $post_id, 2, '0', STR_PAD_LEFT ), -2) );
+			$uploads['path'] .= '/'. $post_id;
+	
+			// create the directory, remove any previous if existing
+			if(!is_dir( $uploads['path'] ))
+				mkdir( $uploads['path'], 0775, TRUE );
+			else
+				$bsuite->unlink_recursive($uploads['path']);
+	
+			// move the uploaded file into that directory, delete the old file (redundent, i know)
+			$uploads['path'] .= '/o'. strrchr( basename( $file['file'] ) , '.' );
+			rename( $file['file'], $uploads['path']);
+			unlink( $file['file'] );
+	
+			// set base paths and urls
+			$file['file'] = $uploads['path'];
+			$url_base = $uploads['url'] .'/'. $post_id .'/';
+	
+			// okay, let's process that image
+			$img = array();
+			// make the square version
+			if( $img_tmp = image_resize( $file['file'], 150, 150, TRUE, 's' )){
+				$img_dims = @getimagesize( $img_tmp );
+				$img_scale = wp_crop_image( $img_tmp, ( $img_dims[0] / 2 ) - 50 , ( $img_dims[1] / 2 ) - 50, 100, 100, 100, 100, FALSE, $img_tmp );
+
+				if( $img_tmp <> $img_scale )
+					unlink( $img_tmp );
+				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
+				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+
+				$img['s']['file'] = $img_scale;
+				$img['s']['url'] = $url_base . basename( $img_scale );
+				list( $img['s']['w'],$img['s']['h'] ) = getimagesize( $img_scale );
+			}
+
+			// make the medium version
+			if( $img_tmp = image_resize( $file['file'], 278, 278, FALSE, 'm' )){
+				$img_dims = @getimagesize( $img_tmp );
+				$img_scale = wp_crop_image( $img_tmp, $img_dims[0] * .05 , $img_dims[1] * .05, $img_dims[0] * .9, $img_dims[1] * .9, $img_dims[0] * .9, $img_dims[1] * .9, FALSE, $img_tmp );
+
+				if( $img_tmp <> $img_scale )
+					unlink( $img_tmp );
+				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
+				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+
+				$img['m']['file'] = $img_scale;
+				$img['m']['url'] = $url_base . basename( $img_scale );
+				list( $img['m']['w'],$img['m']['h'] ) = getimagesize( $img_scale );
+
+			}
+
+			// make the large version
+			if( $img_scale = image_resize( $file['file'], 500, 500, FALSE, 'l' )){
+
+				$img['l']['file'] = $img_scale;
+				$img['l']['url'] = $url_base . basename( $img_scale );
+				list( $img['l']['w'],$img['l']['h'] ) = getimagesize( $img_scale );
+
+				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
+				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+
+			}
+			
+			// make the big version
+			if( $img_scale = image_resize( $file['file'], 1280, 1280, FALSE, 'b' )){
+
+				$img['b']['file'] = $img_scale;
+				$img['b']['url'] = $url_base . basename( $img_scale );
+				list( $img['b']['w'],$img['b']['h'] ) = getimagesize( $img_scale );
+
+				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
+				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+
+			}
+			
+			// finally, delete the original
+			unlink( $file['file'] );
+
+			// the the image to the post_meta
+			add_post_meta( $post_id, 'bsuite_post_icon', $img, TRUE ) or update_post_meta( $post_id, 'bsuite_post_icon', $img);
+			sleep(1); // give the database a moment to process the input
+
+			// die with the editor form
+			die( $this->icon_form( $post_id ) );
+
+		}else{
+			// don't know what to do with it, so delete it and die
+			unlink( $file['file'] );
+			die(0);
+		}		
+	}
+
+	function icon_editor_iframe( ){
+		echo '<iframe id="bsuite_icon_iframe" width="100%" height="110px" scrolling="no" frameborder="0" src="'. $this->path_web .'/icon-upload.php"></iframe>';
+	}
+	// end post icon related functions
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	//
 	// sharelinks
 	//
 	function sharelinks(){
@@ -821,7 +1056,7 @@ class bSuite {
 bsuite.api_location='<?php echo substr( get_settings( 'siteurl' ), strpos( get_settings( 'siteurl' ), ':' ) + 3 ) . $this->path_web . '/worker.php' ?>';
 bsuite.log();
 </script>
-<noscript><img src="<?php echo substr( get_settings( 'siteurl' ), strpos( get_settings( 'siteurl' ), ':' ) + 3 ) . $this->path_web . '/worker.php' ?>" width="1" height="1" alt="stat counter" /></noscript>
+<noscript><img src="<?php echo get_settings( 'siteurl' ) . $this->path_web . '/worker.php' ?>" width="1" height="1" alt="stat counter" /></noscript>
 <?php
 		}
 	}
@@ -1635,6 +1870,31 @@ $engine = $this->get_search_engine( $ref );
 	}
 	// end load average related functions
 
+	
+	// A short but powerfull recursive function
+	// that works also if the dirs contain hidden files
+	//
+	// taken from http://us.php.net/manual/en/function.unlink.php
+	//
+	// contributions from:
+	// ayor at ayor dot biz (20-Dec-2007 09:02)
+	// ggarciaa at gmail dot com (04-July-2007 01:57)
+	// stefano at takys dot it (28-Dec-2005 11:57)
+	//
+	// $dir = the target directory
+	// $DeleteMe = if true delete also $dir, if false leave it alone
+	function unlink_recursive($dir, $DeleteMe = FALSE) {
+		if(!$dh = @opendir($dir)) return;
+		while (false !== ($obj = readdir($dh))) {
+			if($obj=='.' || $obj=='..') continue;
+			if (!@unlink($dir.'/'.$obj)) $this->unlink_recursive($dir.'/'.$obj, true);
+		}
+	
+		closedir($dh);
+		if ($DeleteMe){
+			@rmdir($dir);
+		}
+	}
 
 	// timers
 	function timer_start( $name = 1 ) {
@@ -2644,10 +2904,15 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	function addmenus() {
+		// add the options page
 		add_options_page('bSuite Settings', 'bSuite', 8, plugin_basename( dirname( __FILE__ )) .'/ui_options.php' );
 		
 		// the bstat reports are handled in a seperate file
 		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 2, plugin_basename( dirname( __FILE__ )) .'/ui_stats.php' );
+
+		// add the post icon widget to the editor
+		add_meta_box('bsuite_post_icon', __('bSuite Post Icon'), array( &$this, 'icon_editor_iframe' ), 'post', 'advanced', 'high');
+		add_meta_box('bsuite_post_icon', __('bSuite Post Icon'), array( &$this, 'icon_editor_iframe' ), 'page', 'advanced', 'high');
 	}
 
 	function kses_allowedposttags() {

@@ -14,6 +14,39 @@ jQuery.fn.renumber = function() {
 
 };
 
+// fetches the bsuite icon upload form and puts it in the iframe
+function bsuite_icon_getuploadform() {
+	if( 0 < jQuery('#post_ID').val()){
+		jQuery('#bsuite_icon_iframe').contents().find('body').load('admin-ajax.php', { 
+			action : 'bsuite_icon_form', 
+			post_ID : ( jQuery('#post_ID').val() ) 
+		});
+	}
+}
+
+// forces WP to put a real post ID on any new drafts
+function bsuite_icon_getrealpostid() {
+	if( 0 > jQuery('#post_ID').val()){
+		if( '' == jQuery('#title').val())
+			jQuery('#title').val(' '); // put a nearly empty post title in so that there's something to save
+	
+		autosave(); // do an autosave to generate a real post_ID
+	
+		setTimeout( function(){ // pause for a moment to let things simmer
+			bsuite_icon_getuploadform();
+		}, 1000 )
+	
+		if( ' ' == jQuery('#title').val())
+			jQuery('#title').val(''); // clear the dummy title
+
+		if( 0 < jQuery('#post_ID').val()) {
+			setTimeout( function(){ // pause for a moment to let things simmer
+				bsuite_icon_getrealpostid();
+			}, 5000 )
+		}
+	}
+}
+
 jQuery(document).ready(function(){
 
 	// make the list sortable
@@ -44,4 +77,11 @@ jQuery(document).ready(function(){
 		jQuery(this).parent().remove();
 		jQuery(this).renumber();
 	});
+
+	// prepares the bsuite icon upload/edit stuff
+	setTimeout( function(){
+		bsuite_icon_getuploadform(); //attempt to load the scrib upload form
+		bsuite_icon_getrealpostid();
+	}, 500 );
+
 });
