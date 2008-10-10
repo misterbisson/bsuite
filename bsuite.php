@@ -1,9 +1,9 @@
-<?php
+﻿<?php
 /*
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/bsuite/">Documentation here</a>.
-Version: 4.0.1
+Version: 4.0.2
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -202,6 +202,7 @@ class bSuite {
 		// bsuite post icons
 		add_action('wp_ajax_bsuite_icon_form', array( &$this, 'icon_ajax_form' ));
 		add_action('wp_ajax_bsuite_icon_upload', array( &$this, 'icon_ajax_upload' ));
+		add_action('wp_ajax_bsuite_icon_delete', array( &$this, 'icon_ajax_delete' ));
 
 		// tokens
 		// tokens are deprecated. please use shortcode functionality instead.
@@ -715,16 +716,19 @@ class bSuite {
 
 		$bytes = apply_filters( 'import_upload_size_limit', wp_max_upload_size() );
 		$size = wp_convert_bytes_to_hr( $bytes );
-	?>
-	<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
-<?php
 	if( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )){
 		echo '<img src="'. $img['s']['url'] .'" width="'. $img['s']['w'] .'" height="'. $img['s']['h'] .'" alt="the image for this record." style="float: left;" />'			
 ?>
+		<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
+		<?php wp_nonce_field('bsuite-icon-upload'); ?>
+		<input type="hidden" name="post_ID" value="<?php echo (int) $_REQUEST['post_ID'] ?>" />
+		<input type="hidden" name="action" value="bsuite_icon_delete" />
 		<input type="submit" class="button" value="<?php _e( 'Delete' ); ?>" /><br />
+		</form>
 <?php
 	}
 ?>
+	<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
 	<?php wp_nonce_field('bsuite-icon-upload'); ?>
 	<input type="file" id="upload" name="import" size="20" /> 
 	<input type="hidden" name="post_ID" value="<?php echo (int) $_REQUEST['post_ID'] ?>" />
@@ -735,6 +739,23 @@ class bSuite {
 	</form>
 	<?php
 	}	
+
+	function icon_ajax_delete( ){
+		if (!current_user_can('upload_files'))
+			wp_die(__('You do not have permission to upload files.'));
+
+		if( 0 >= (int) $_REQUEST['post_ID'] )
+			die(0);
+
+		if( !$this->icon_is_editing( (int) $_REQUEST['post_ID'] ))
+			wp_die(__('You cannot add an icon to a post you`re not currently editing.'));
+
+		$img = get_post_meta( (int) $_REQUEST['post_ID'], 'bsuite_post_icon', TRUE );
+		$this->unlink_recursive( dirname( $img['s']['file'] ), TRUE );
+		delete_post_meta( (int) $_REQUEST['post_ID'], 'bsuite_post_icon' );
+
+		die( $this->icon_form( (int) $_REQUEST['post_ID'] ));
+	}
 
 	function icon_ajax_form( ){
 		if (!current_user_can('upload_files'))
@@ -750,6 +771,7 @@ class bSuite {
 	}
 
 	function icon_ajax_upload( ){
+
 		// security checks
 		check_admin_referer('bsuite-icon-upload');
 		if (!current_user_can('upload_files'))
@@ -776,7 +798,7 @@ class bSuite {
 			if(!is_dir( $uploads['path'] ))
 				mkdir( $uploads['path'], 0775, TRUE );
 			else
-				$bsuite->unlink_recursive($uploads['path']);
+				$this->unlink_recursive($uploads['path']);
 	
 			// move the uploaded file into that directory, delete the old file (redundent, i know)
 			$uploads['path'] .= '/o'. strrchr( basename( $file['file'] ) , '.' );
