@@ -3,7 +3,7 @@
 Plugin Name: bSuite Tag Importer
 Plugin URI: http://maisonbisson.com/bsuite
 Description: Import bSuite tags and metadata to WordPress tags and taxonomy. <a href="http://maisonbisson.com/bsuite/tag-importer">Documentation here</a>
-Version: 4.0.1
+Version: 4.0.2
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */

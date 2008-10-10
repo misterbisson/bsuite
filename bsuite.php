@@ -520,14 +520,14 @@ class bSuite {
 		return($content);
 	}
 
-	public function tokens_the_content($content) {
+	function tokens_the_content($content) {
 		$this->is_content = TRUE;
 		$content = $this->tokens($content);
 		$this->is_content = FALSE;
 		return($content);
 	}
 
-	public function tokens_the_content_rss($content) {
+	function tokens_the_content_rss($content) {
 		$this->is_content = TRUE;
 		$this->is_rss = TRUE;
 		$content = $this->tokens($content);
@@ -536,14 +536,14 @@ class bSuite {
 		return($content);
 	}
 
-	public function tokens_the_excerpt($content) {
+	function tokens_the_excerpt($content) {
 		$this->is_excerpt = TRUE;
 		$content = $this->tokens($content);
 		$this->is_excerpt = FALSE;
 		return($content);
 	}
 
-	public function tokens_the_excerpt_rss($content) {
+	function tokens_the_excerpt_rss($content) {
 		$this->is_excerpt = TRUE;
 		$this->is_rss = TRUE;
 		$content = $this->tokens($content);
