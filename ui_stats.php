@@ -1,5 +1,5 @@
 <?php
-/*  bstat_reports.php
+/*  ui_stats.php
 
 	This file displays the report/status screens for bSuite bStat
 

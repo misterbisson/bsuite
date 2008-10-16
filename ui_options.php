@@ -121,11 +121,27 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 </label>
 </th>
 </tr>
-<tr>
+</table>
 
 <?php if( !$bsuite->is_mu ) {?>
 
+<table class="form-table">
+<tr valign="top">
+<th scope="row"><?php _e('Management focus', 'bsuite') ?></th>
+<td>
+<label for="bsuite_managefocus_author">
+<input name="bsuite_managefocus_author" type="checkbox" id="bsuite_managefocus_author" value="1" <?php checked('1', get_option('bsuite_managefocus_author')); ?> />
+<?php _e('Focus default management view on current user', 'bsuite') ?>
+</label> &nbsp; 
+<label for="bsuite_managefocus_month">
+<input name="bsuite_managefocus_month" type="checkbox" id="bsuite_managefocus_month" value="1" <?php checked('1', get_option('bsuite_managefocus_month')); ?> />
+<?php _e('Focus default management view on current month', 'bsuite') ?>
+</label>
+</td>
+</tr>
+</table>
 
+<table class="form-table">
 <tr>
 <th scope="row" class="th-full">
 <label for="bsuite_insert_css">
@@ -134,7 +150,6 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 </label>
 </th>
 </tr>
-<tr>
 </table>
 
 <table class="form-table">
@@ -165,7 +180,7 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 
 <p class="submit">
 <input type="hidden" name="action" value="update" />
-<input type="hidden" name="page_options" value="bsuite_insert_related,bsuite_insert_sharelinks,bsuite_searchsmart,bsuite_swhl,bsuite_who_can_edit,bsuite_insert_css,bsuite_migration_interval,bsuite_migration_count,bsuite_load_max" />
+<input type="hidden" name="page_options" value="bsuite_insert_related,bsuite_insert_sharelinks,bsuite_searchsmart,bsuite_swhl,bsuite_who_can_edit,bsuite_managefocus_month,bsuite_managefocus_author,bsuite_insert_css,bsuite_migration_interval,bsuite_migration_count,bsuite_load_max" />
 <input type="submit" name="Submit" value="<?php _e('Save Changes') ?>" class="button" />
 </p>
 </form>
