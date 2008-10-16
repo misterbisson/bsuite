@@ -190,6 +190,7 @@ class bSuite {
 		add_shortcode('list_pages', array(&$this, 'shortcode_list_pages'));
 		add_shortcode('innerindex', array(&$this, 'shortcode_innerindex'));
 		add_shortcode('include', array(&$this, 'shortcode_include'));
+		add_shortcode('icon', array(&$this, 'shortcode_icon'));
 		add_shortcode('feed', array(&$this, 'shortcode_feed'));
 		add_shortcode('slideshare', array(&$this, 'shortcode_slideshare'));
 
@@ -203,7 +204,8 @@ class bSuite {
 		add_action('wp_ajax_bsuite_icon_form', array( &$this, 'icon_ajax_form' ));
 		add_action('wp_ajax_bsuite_icon_upload', array( &$this, 'icon_ajax_upload' ));
 		add_action('wp_ajax_bsuite_icon_delete', array( &$this, 'icon_ajax_delete' ));
-
+		$this->icon_sizes_default(); // initialize default icons
+	
 		// tokens
 		// tokens are deprecated. please use shortcode functionality instead.
 		add_filter('bsuite_tokens', array(&$this, 'tokens_default'));
@@ -358,6 +360,20 @@ class bSuite {
 		return( $arg[0] );
 	}
 
+
+	function shortcode_icon( $arg ){
+		// [innerindex ]
+		global $id;
+
+		$arg = shortcode_atts( array(
+			'post_id' => $id,
+			'size' => 's',
+			'width' => 0,
+			'height' => 0,
+		), $arg );
+
+		return( $this->icon_get_h( $arg['post_id'], $arg['size'], $arg['width'], $arg['height'] ));
+	}
 
 	function shortcode_innerindex( $arg ){
 		// [innerindex ]
@@ -683,6 +699,35 @@ class bSuite {
 	//
 	// post icons
 	//
+	function icon_sizes_default(){
+		$this->icon_sizes = array( 
+			's' => array( 
+				'file' => dirname( __FILE__ ) .'/img/post_icon_default/s.jpg',
+				'url' => plugins_url( basename( dirname( __FILE__ )) .'/img/post_icon_default/s.jpg' ),
+				'w' => '100',
+				'h' => '100',
+				), 
+			'm' => array( 
+				'file' => dirname( __FILE__ ) .'/img/post_icon_default/m.jpg',
+				'url' => plugins_url( basename( dirname( __FILE__ )) .'/img/post_icon_default/m.jpg' ),
+				'w' => '250',
+				'h' => '200',
+				), 
+			'l' => array( 
+				'file' => dirname( __FILE__ ) .'/img/post_icon_default/l.jpg',
+				'url' => plugins_url( basename( dirname( __FILE__ )) .'/img/post_icon_default/l.jpg' ),
+				'w' => '500',
+				'h' => '375',
+				), 
+			'b' => array( 
+				'file' => dirname( __FILE__ ) .'/img/post_icon_default/b.jpg',
+				'url' => plugins_url( basename( dirname( __FILE__ )) .'/img/post_icon_default/b.jpg' ),
+				'w' => '1280',
+				'h' => '975',
+				), 
+			);
+	}
+
 	function icon_is_editing( $post_id ) {
 		global $current_user;
 	
@@ -886,6 +931,71 @@ class bSuite {
 	function icon_editor_iframe( ){
 		echo '<iframe id="bsuite_icon_iframe" width="100%" height="110px" scrolling="no" frameborder="0" src="'. $this->path_web .'/icon-upload.php"></iframe>';
 	}
+
+	function icon_get_default( $post_id, $size = 's' ){
+		if( is_array( $this->icon_sizes[ $size ] ))
+			return( $this->icon_sizes[ $size ] );
+		else
+			return( $this->icon_sizes['s'] );
+	}
+
+	function icon_get_tofit( $post_id, $size = 's' ){
+		if( is_array( $this->icon_sizes[ $size ] )){
+			if( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )){
+
+				// what area are we looking for?
+				$area_expected = $this->icon_sizes[ $size ]['w'] * $this->icon_sizes[ $size ]['h'];
+
+				// what areas do we have?
+				$larger = $smaller = array();
+				foreach( $img as $key => $val ){
+					$area = $val['w'] * $val['h'];
+					if( $area >= ( $area_expected * .8))
+						$larger[ $key ] = $area; 
+					if( $area <= ( $area_expected * 1.2))
+						$smaller[ $key ] = $area; 
+				}
+
+				// which of those is closest? (biased toward larger size)
+				if( count( $larger ) ){
+					asort( $larger, SORT_NUMERIC );
+					$nearest = key( $larger );
+				}else if( count( $smaller ) ){
+					asort( $smaller, SORT_NUMERIC );
+					$nearest = key( array_slice( $smaller, -1, 1, TRUE ));
+				}
+
+				// okay, we got one, let's use it
+				$return = $img[ $nearest ];
+				$return['w'] = $this->icon_sizes[ $size ]['w'];
+				$return['h'] = $this->icon_sizes[ $size ]['h'];
+
+				return( $return );
+			}
+		}else{
+			// we don't know what size you're looking for
+			// we'll try the 's' size instead
+			return( $this->icon_get_tofit( $post_id, 's' )); 
+		}
+	}
+
+	function icon_get_a( $post_id, $size = 's' ){
+		if(( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )) && ( is_array( $img[ $size ] )))
+			return( $img[ $size ] );
+		else if( is_array( $img ))
+			return( $this->icon_get_tofit( $post_id, $size ));
+		else
+			return( $this->icon_get_default( $post_id, $size ));
+	}
+
+	function icon_get_h( $post_id, $size = 's', $ow = 0, $oh = 0 ){
+		if( $img = $this->icon_get_a( $post_id, $size )){
+			return( '<div class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" style="width:'. ( $ow ? $ow : $img['w'] ) .'px; height:'. ( $oh ? $oh : $img['h'] ) .'px; background-image: url( \''. $img['url'] .'\' );"><a href="'. get_permalink( $post_id ) .'" title="'. attribute_escape( get_the_title( $post_id )) .'" style="display: block; width:'. ( $ow ? $ow : $img['w'] ) .'px; height:'. ( $oh ? $oh : $img['h'] ) .'px;" ></a></div>' );
+		}
+		return( FALSE );
+	}
+
+
 	// end post icon related functions
 	
 
@@ -1468,7 +1578,8 @@ $engine = $this->get_search_engine( $ref );
 		$defaults = array(
 			'count' => 15,
 			'return' => 'formatted',
-			'template' => '<li><a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)</li>'
+			'template' => '<li>%%icon%%<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)</li>',
+			'icon_size' => 0,
 		);
 		$args = wp_parse_args( $args, $defaults );
 	
@@ -1498,7 +1609,7 @@ $engine = $this->get_search_engine( $ref );
 		if($args['return'] == 'formatted'){
 			$list = '';
 			foreach($result as $post){
-				$list .= str_replace(array('%%title%%','%%hits%%','%%link%%'), array(get_the_title($post['object_id']), $post['hit_count'], get_permalink($post['object_id'])), $args['template']);
+				$list .= str_replace(array('%%title%%','%%hits%%','%%link%%', '%%icon%%'), array(get_the_title($post['object_id']), $post['hit_count'], get_permalink($post['object_id']), ( $args['icon_size'] ? $this->icon_get_h( $post['object_id'], $args['icon_size'] ) : '' )), $args['template']);
 			}
 			return($list);
 		}
@@ -2571,7 +2682,7 @@ $engine = $this->get_search_engine( $ref );
 				<?php echo $before_title . $title . $after_title; ?>
 				<ul id="recentcomments"><?php
 				if ( $commented_posts ) : foreach ($commented_posts as $comment) :
-				echo  '<li class="recentcomments"><a href="'. get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>&nbsp;('. $comment->comment_count .')</li>';
+				echo  '<li class="recentcomments">'. ( $options['icon_size'] ? $this->icon_get_h( $comment->comment_post_ID, $options['icon_size'] ) : '' ) .'<a href="'. get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>&nbsp;('. $comment->comment_count .')</li>';
 				endforeach; endif;?></ul>
 			<?php echo $after_widget; ?>
 	<?php
@@ -2586,6 +2697,7 @@ $engine = $this->get_search_engine( $ref );
 		if ( $_POST['bsuite-recently-commented-posts-submit'] ) {
 			$newoptions['title'] = strip_tags(stripslashes($_POST['bsuite-recently-commented-posts-title']));
 			$newoptions['number'] = (int) $_POST['bsuite-recently-commented-posts-number'];
+			$newoptions['icon_size'] = $_POST['bsuite-recently-commented-posts-icon'] ? 's' : 0;
 		}
 		if ( $options != $newoptions ) {
 			$options = $newoptions;
@@ -2595,9 +2707,14 @@ $engine = $this->get_search_engine( $ref );
 		$title = attribute_escape($options['title']);
 		if ( !$number = (int) $options['number'] )
 			$number = 5;
+		$icon = $options['icon_size'] ? 'checked="checked"' : '';
 	?>
 				<p><label for="bsuite-recently-commented-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bsuite-recently-commented-posts-title" name="bsuite-recently-commented-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
+
 				<p><label for="bsuite-recently-commented-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-recently-commented-posts-number" name="bsuite-recently-commented-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
+
+				<p><label for="bsuite-recently-commented-posts-icon"><?php _e('Include post icon:'); ?> <input class="checkbox" type="checkbox" <?php echo $icon; ?> id="bsuite-recently-commented-posts-icon" name="bsuite-recently-commented-posts-icon" /></label></p>
+
 				<input type="hidden" id="bsuite-recently-commented-posts-submit" name="bsuite-recently-commented-posts-submit" value="1" />
 	<?php
 	}
@@ -2619,23 +2736,25 @@ $engine = $this->get_search_engine( $ref );
 
 		extract($args, EXTR_SKIP);
 		$options = get_option('bstat_pop_posts');
-		$title = empty($options['title']) ? __('Popular Posts') : $options['title'];
-		if ( !$number = (int) $options['number'] )
-			$number = 5;
-		else if ( $number < 1 )
-			$number = 1;
-		else if ( $number > 15 )
-			$number = 15;
 
-		if ( !$days = (int) $options['days'] )
-			$days = 7;
-		else if ( $days < 1 )
-			$days = 1;
-		else if ( $days > 30 )
-			$days = 30;
+		$opt = array( 'icon_size' => $options['icon_size'] );
+		$title = empty($options['title']) ? __('Popular Posts') : $options['title'];
+		if ( !$opt['count'] = (int) $options['number'] )
+			$opt['count'] = 5;
+		else if ( $opt['count'] < 1 )
+			$opt['count'] = 1;
+		else if ( $opt['count'] > 15 )
+			$opt['count'] = 15;
+
+		if ( !$opt['days'] = (int) $options['days'] )
+			$opt['days'] = 7;
+		else if ( $opt['days'] < 1 )
+			$opt['days'] = 1;
+		else if ( $opt['days'] > 30 )
+			$opt['days'] = 30;
 
 		if ( !$pop_posts = wp_cache_get( 'bstat_pop_posts', 'widget' ) ) {
-			$pop_posts = $this->pop_posts("count=$number&days=$days");
+			$pop_posts = $this->pop_posts( $opt );
 			wp_cache_add( 'bstat_pop_posts', $pop_posts, 'widget', 3600 );
 		}
 
@@ -2661,6 +2780,7 @@ $engine = $this->get_search_engine( $ref );
 			$newoptions['title'] = strip_tags(stripslashes($_POST['bstat-pop-posts-title']));
 			$newoptions['number'] = (int) $_POST['bstat-pop-posts-number'];
 			$newoptions['days'] = (int) $_POST['bstat-pop-posts-days'];
+			$newoptions['icon_size'] = $_POST['bstat-pop-posts-icon'] ? 's' : 0;
 		}
 		if ( $options != $newoptions ) {
 			$options = $newoptions;
@@ -2672,10 +2792,16 @@ $engine = $this->get_search_engine( $ref );
 			$number = 5;
 		if ( !$days = (int) $options['days'] )
 			$days = 7;
+		$icon = $options['icon_size'] ? 'checked="checked"' : '';
 	?>
 				<p><label for="bstat-pop-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bstat-pop-posts-title" name="bstat-pop-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
+
 				<p><label for="bstat-pop-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-number" name="bstat-pop-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
+
 				<p><label for="bstat-pop-posts-days"><?php _e('In past x days (1 = today only):'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-days" name="bstat-pop-posts-days" type="text" value="<?php echo $days; ?>" /></label> <?php _e('(at most 30)'); ?></p>
+
+				<p><label for="bstat-pop-posts-icon"><?php _e('Include post icon:'); ?> <input class="checkbox" type="checkbox" <?php echo $icon; ?> id="bstat-pop-posts-icon" name="bstat-pop-posts-icon" /></label></p>
+
 				<input type="hidden" id="bstat-pop-posts-submit" name="bstat-pop-posts-submit" value="1" />
 	<?php
 	}
