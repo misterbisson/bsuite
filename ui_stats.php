@@ -250,11 +250,12 @@ $results = $wpdb->get_results("SELECT name, object_id, object_type, COUNT(*) AS 
 		INNER JOIN $bsuite->hits_shistory b ON a.sess_id = b.sess_id
 		WHERE b.object_type IN (0, 1)
 		GROUP BY sess_id
-		LIMIT $detail_lines
+		LIMIT 2500
 	) c
 	LEFT JOIN $bsuite->hits_terms t ON c.object_id = t.term_id
 	GROUP BY t.term_id
-	ORDER BY hit_count DESC");
+	ORDER BY hit_count DESC
+	LIMIT $detail_lines");
 
 if( count( $results ) )
 	foreach( $results as $res ){
