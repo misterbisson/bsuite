@@ -1,1 +1,1 @@
-<html><body><img src="img/throbber.gif" width="20" height="20" alt="loading..." /></body></html>
+<html><body><img id="throbber" src="img/throbber.gif" width="20" height="20" alt="loading..." /></body></html>

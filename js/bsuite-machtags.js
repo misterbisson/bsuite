@@ -22,6 +22,12 @@ function bsuite_icon_getuploadform() {
 			post_ID : ( jQuery('#post_ID').val() ) 
 		});
 	}
+
+	if( jQuery('#bsuite_icon_iframe').contents().find('#throbber') ){
+		setTimeout( function(){ // pause for a moment to let things simmer
+			bsuite_icon_getuploadform();
+		}, 1000 )
+	}
 }
 
 // forces WP to put a real post ID on any new drafts
@@ -80,7 +86,6 @@ jQuery(document).ready(function(){
 
 	// prepares the bsuite icon upload/edit stuff
 	setTimeout( function(){
-		bsuite_icon_getuploadform(); //attempt to load the scrib upload form
 		bsuite_icon_getrealpostid();
 	}, 500 );
 

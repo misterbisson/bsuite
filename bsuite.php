@@ -2605,7 +2605,7 @@ $engine = $this->get_search_engine( $ref );
 
 				<p><label for="bsuite-recently-commented-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-recently-commented-posts-number" name="bsuite-recently-commented-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
 
-				<p><label for="bsuite-recently-commented-posts-icon"><?php _e('Include post icon:'); ?> <input class="checkbox" type="checkbox" <?php echo $icon; ?> id="bsuite-recently-commented-posts-icon" name="bsuite-recently-commented-posts-icon" /></label></p>
+				<p><label for="bsuite-recently-commented-posts-icon"><?php _e('Include post icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $icon; ?> id="bsuite-recently-commented-posts-icon" name="bsuite-recently-commented-posts-icon" /></label></p>
 
 				<input type="hidden" id="bsuite-recently-commented-posts-submit" name="bsuite-recently-commented-posts-submit" value="1" />
 	<?php
@@ -2692,7 +2692,7 @@ $engine = $this->get_search_engine( $ref );
 
 				<p><label for="bstat-pop-posts-days"><?php _e('In past x days (1 = today only):'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-days" name="bstat-pop-posts-days" type="text" value="<?php echo $days; ?>" /></label> <?php _e('(at most 30)'); ?></p>
 
-				<p><label for="bstat-pop-posts-icon"><?php _e('Include post icon:'); ?> <input class="checkbox" type="checkbox" <?php echo $icon; ?> id="bstat-pop-posts-icon" name="bstat-pop-posts-icon" /></label></p>
+				<p><label for="bstat-pop-posts-icon"><?php _e('Include post icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $icon; ?> id="bstat-pop-posts-icon" name="bstat-pop-posts-icon" /></label></p>
 
 				<input type="hidden" id="bstat-pop-posts-submit" name="bstat-pop-posts-submit" value="1" />
 	<?php
