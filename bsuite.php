@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /*
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
@@ -37,12 +37,11 @@ class bSuite {
 		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
 		wp_enqueue_script( 'highlight' );	
 
-		// add the sweet categories and tags JS from the post editor to the page editor
-		wp_register_script( 'edit_page', $this->path_web . '/js/edit_page.js', array('jquery'), '1' );
 		if( is_admin() ){
 			if( ( 'edit.php' == basename( $_SERVER['PHP_SELF'] )) || ( 'edit-pages.php' == basename( $_SERVER['PHP_SELF'] )) )
 				add_filter('posts_where', array(&$this, 'searchsmart_posts_where_admin'), 1);
 
+			wp_register_script( 'edit_page', $this->path_web . '/js/edit_page.js', array('jquery'), '1' ); // add the sweet categories and tags JS from the post editor to the page editor
 			wp_register_script( 'bsuite-machtags', $this->path_web . '/js/bsuite-machtags.js', array('jquery-ui-sortable'), '1' );
 			wp_enqueue_script( 'bsuite-machtags' );	
 
@@ -3588,7 +3587,5 @@ if(!function_exists('str_ireplace')){
 	function str_ireplace($a, $b, $c){
 		return str_replace($a, $b, $c);
 	}
-}
-
-
+} 
 ?>
