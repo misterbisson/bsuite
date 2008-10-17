@@ -812,7 +812,7 @@ class bSuite {
 	}
 
 	function icon_editor_iframe( ){
-		echo '<iframe id="bsuite_icon_iframe" width="100%" height="110px" scrolling="no" frameborder="0" src="'. $this->path_web .'/icon-upload.php"></iframe>';
+		echo '<iframe id="bsuite_icon_iframe" width="100%" height="110px" scrolling="no" frameborder="0" src="'. $this->path_web .'/ui_iconupload.php"></iframe>';
 	}
 
 	function icon_get_default( $post_id, $size = 's' ){
