@@ -1,6 +1,6 @@
 // renumbers form names/ids in a sortable/editable list
 // used some hints from here: http://bennolan.com/?p=35 http://bennolan.com/?p=21
-jQuery.fn.renumber = function() {
+jQuery.fn.bsuite_renumber = function() {
 	var i = 0;
 	jQuery(jQuery(this).parent()).parent().find( 'li' ).each( function(){
 		jQuery(this).find( 'input,select,textarea' ).attr("id", function(){
@@ -23,10 +23,12 @@ function bsuite_icon_getuploadform() {
 		});
 	}
 
-	if( jQuery('#bsuite_icon_iframe').contents().find('#throbber') ){
+	if( "img/throbber.gif" == jQuery('#bsuite_icon_iframe').contents().find( '#throbber' ).attr( 'src' ) ){
+		// this logic honestly doesn't make sense to me
+	}else{
 		setTimeout( function(){ // pause for a moment to let things simmer
 			bsuite_icon_getuploadform();
-		}, 1000 )
+		}, 1500 )
 	}
 }
 
@@ -59,7 +61,7 @@ jQuery(document).ready(function(){
 	// http://docs.jquery.com/UI/Sortables
 	jQuery("#bsuite_machine_tags").sortable({
 		stop: function(){
-			jQuery(this).renumber();
+			jQuery(this).bsuite_renumber();
 		}
 	});
 
@@ -74,18 +76,19 @@ jQuery(document).ready(function(){
 
  	// make that button clone the line
  	// http://docs.jquery.com/Manipulation/clone
-	jQuery("button.add").click(function(){
+	jQuery("#bsuite_machine_tags button.add").click(function(){
 		jQuery(this).parent().clone(true).insertAfter(jQuery(this).parent())
-		jQuery(this).renumber();
+		jQuery(this).bsuite_renumber();
 	});
 
-	jQuery("button.del").click(function(){ 
+	jQuery("#bsuite_machine_tags button.del").click(function(){ 
 		jQuery(this).parent().remove();
-		jQuery(this).renumber();
+		jQuery(this).bsuite_renumber();
 	});
 
 	// prepares the bsuite icon upload/edit stuff
 	setTimeout( function(){
+		bsuite_icon_getuploadform();
 		bsuite_icon_getrealpostid();
 	}, 500 );
 

@@ -773,25 +773,23 @@ class bSuite {
 			// make the large version
 			if( $img_scale = image_resize( $file['file'], 500, 500, FALSE, 'l' )){
 
-				$img['l']['file'] = $img_scale;
-				$img['l']['url'] = $url_base . basename( $img_scale );
-				list( $img['l']['w'],$img['l']['h'] ) = getimagesize( $img_scale );
-
 				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
 				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
 
+				$img['l']['file'] = $img_scale;
+				$img['l']['url'] = $url_base . basename( $img_scale );
+				list( $img['l']['w'],$img['l']['h'] ) = getimagesize( $img_scale );
 			}
 			
 			// make the big version
 			if( $img_scale = image_resize( $file['file'], 1280, 1280, FALSE, 'b' )){
 
-				$img['b']['file'] = $img_scale;
-				$img['b']['url'] = $url_base . basename( $img_scale );
-				list( $img['b']['w'],$img['b']['h'] ) = getimagesize( $img_scale );
-
 				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
 				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
 
+				$img['b']['file'] = $img_scale;
+				$img['b']['url'] = $url_base . basename( $img_scale );
+				list( $img['b']['w'],$img['b']['h'] ) = getimagesize( $img_scale );
 			}
 			
 			// finally, delete the original
