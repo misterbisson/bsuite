@@ -16,19 +16,18 @@ jQuery.fn.bsuite_renumber = function() {
 
 // fetches the bsuite icon upload form and puts it in the iframe
 function bsuite_icon_getuploadform() {
+	//postboxL10n.requestFile // the variable representing the admin-ajax.php path
 	if( 0 < jQuery('#post_ID').val()){
-		jQuery('#bsuite_icon_iframe').contents().find('body').load('admin-ajax.php', { 
+		jQuery('#bsuite_icon_iframe').contents().find('body').load( postboxL10n.requestFile, { 
 			action : 'bsuite_icon_form', 
 			post_ID : ( jQuery('#post_ID').val() ) 
 		});
-	}
-
-	if( "img/throbber.gif" == jQuery('#bsuite_icon_iframe').contents().find( '#throbber' ).attr( 'src' ) ){
-		// this logic honestly doesn't make sense to me
 	}else{
+		bsuite_icon_getrealpostid();
+
 		setTimeout( function(){ // pause for a moment to let things simmer
 			bsuite_icon_getuploadform();
-		}, 1500 )
+		}, 2500 )
 	}
 }
 
@@ -46,12 +45,6 @@ function bsuite_icon_getrealpostid() {
 	
 		if( ' ' == jQuery('#title').val())
 			jQuery('#title').val(''); // clear the dummy title
-
-		if( 0 < jQuery('#post_ID').val()) {
-			setTimeout( function(){ // pause for a moment to let things simmer
-				bsuite_icon_getrealpostid();
-			}, 5000 )
-		}
 	}
 }
 
@@ -87,9 +80,14 @@ jQuery(document).ready(function(){
 	});
 
 	// prepares the bsuite icon upload/edit stuff
-	setTimeout( function(){
+	if( 0 > jQuery('#post_ID').val()){
+		jQuery('#bsuite_post_icon div.inside').html('<a href="#" id="clickme">+ Add Icon</a>').click(function(){ 
+			jQuery('#bsuite_post_icon div.inside').html('<iframe id="bsuite_icon_iframe" width="100%" scrolling="no" height="110" frameborder="0" src=""></iframe>');
+
+			bsuite_icon_getuploadform();
+		});
+	}else{
 		bsuite_icon_getuploadform();
-		bsuite_icon_getrealpostid();
-	}, 500 );
+	}
 
 });

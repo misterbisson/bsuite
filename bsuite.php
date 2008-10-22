@@ -810,7 +810,7 @@ class bSuite {
 	}
 
 	function icon_editor_iframe( ){
-		echo '<iframe id="bsuite_icon_iframe" width="100%" height="110px" scrolling="no" frameborder="0" src="'. $this->path_web .'/ui_iconupload.php"></iframe>';
+		echo '<noscript>This feature requires JavaScript.</noscript>';
 	}
 
 	function icon_get_default( $post_id, $size = 's' ){
@@ -1582,6 +1582,10 @@ $engine = $this->get_search_engine( $ref );
 		global $current_user;
 
 		if(!count( $_GET ))
+			if( !current_user_can( 'edit_others_posts' ) )
+				die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?author='. $current_user->id . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
+
+
 			die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?s'. ( get_option( 'bsuite_managefocus_author' ) ? '&author='. $current_user->id : '' ) . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
 
 		return($query);
