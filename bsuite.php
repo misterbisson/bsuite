@@ -1581,12 +1581,13 @@ $engine = $this->get_search_engine( $ref );
 	function searchsmart_posts_where_admin($query){
 		global $current_user;
 
-		if(!count( $_GET ))
+		if(!count( $_GET )){
 			if( !current_user_can( 'edit_others_posts' ) )
 				die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?author='. $current_user->id . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
 
 
 			die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?s'. ( get_option( 'bsuite_managefocus_author' ) ? '&author='. $current_user->id : '' ) . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
+		}
 
 		return($query);
 	}
