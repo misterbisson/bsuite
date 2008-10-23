@@ -810,7 +810,9 @@ class bSuite {
 	}
 
 	function icon_editor_iframe( ){
-		echo '<noscript>This feature requires JavaScript.</noscript>';
+		global $post_ID;
+
+		echo '<a href="#bsuite_post_icon" id="bsuite_post_icon_clickme"></a><noscript>This feature requires JavaScript.</noscript>';
 	}
 
 	function icon_get_default( $post_id, $size = 's' ){
@@ -1892,8 +1894,8 @@ $engine = $this->get_search_engine( $ref );
 	function sys_getloadavg(){
 		// the following code taken from tom pittlik's comment at
 		// http://php.net/manual/en/function.sys-getloadavg.php
-		$str = substr(strrchr(shell_exec('uptime'),':'),1);
-		$avs = array_map('trim',explode(',',$str));
+		$str = substr( strrchr( shell_exec( 'uptime' ),':' ),1 );
+		$avs = array_map( 'trim', explode( ',', $str ));
 		return( $avs );
 	}
 	// end load average related functions
@@ -2261,7 +2263,7 @@ $engine = $this->get_search_engine( $ref );
 <?php echo implode($tags_to_edit, "\n"); ?>
 </ul>
 
-<a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">About machine tags</a></p>
+<a href="http://maisonbisson.com/blog/bsuite/machine-tags" title="Machine Tag Documentation">About machine tags</a>
 </div>
 </div>
 		<?php

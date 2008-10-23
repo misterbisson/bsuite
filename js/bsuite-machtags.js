@@ -20,7 +20,7 @@ function bsuite_icon_getuploadform() {
 	if( 0 < jQuery('#post_ID').val()){
 		jQuery('#bsuite_icon_iframe').contents().find('body').load( postboxL10n.requestFile, { 
 			action : 'bsuite_icon_form', 
-			post_ID : ( jQuery('#post_ID').val() ) 
+			post_ID : ( jQuery('#post_ID').val() )
 		});
 	}else{
 		bsuite_icon_getrealpostid();
@@ -81,13 +81,21 @@ jQuery(document).ready(function(){
 
 	// prepares the bsuite icon upload/edit stuff
 	if( 0 > jQuery('#post_ID').val()){
-		jQuery('#bsuite_post_icon div.inside').html('<a href="#" id="clickme">+ Add Icon</a>').click(function(){ 
+		jQuery('#bsuite_post_icon_clickme').text('+ Add Icon').click(function(){ 
 			jQuery('#bsuite_post_icon div.inside').html('<iframe id="bsuite_icon_iframe" width="100%" scrolling="no" height="110" frameborder="0" src=""></iframe>');
 
 			bsuite_icon_getuploadform();
+
+			setTimeout( function(){ // pause for a moment to let things simmer
+				bsuite_icon_getuploadform();
+			}, 2500 )
 		});
 	}else{
-		bsuite_icon_getuploadform();
+		jQuery('#bsuite_post_icon div.inside').html('<iframe id="bsuite_icon_iframe" width="100%" scrolling="no" height="110" frameborder="0" src=""></iframe>');
+
+		setTimeout( function(){ // pause for a moment to let things simmer
+			bsuite_icon_getuploadform();
+		}, 2500 )
 	}
 
 });
