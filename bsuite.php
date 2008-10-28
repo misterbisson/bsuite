@@ -1535,7 +1535,7 @@ $engine = $this->get_search_engine( $ref );
 		if($args['return'] == 'formatted'){
 			$list = '';
 			foreach($result as $post){
-				$list .='<li>'. ( $args['show_icon'] ? '<a href="'. get_permalink( $post['object_id'] ) .'" title="'. attribute_escape( get_the_title( $post['object_id'] )).'">'. $this->icon_get_h( $post['object_id'], $args['icon_size'] ) .'</a>' : '' ) . ( $args['show_title'] ? '<a href="'. get_permalink( $post['object_id'] ) .'" title="'. attribute_escape( get_the_title( $post['object_id'] )).'">'. get_the_title( $post['object_id'] ) . '</a>' : '' ) . ( $args['show_counts'] ? '&nbsp;('. $post['hit_count'] .')' : '' ) .'</li>';
+				$list .='<li>'. ( $args['show_icon'] ? '<a href="'. get_permalink( $post['object_id'] ) .'" class="bsuite_post_icon_link" title="'. attribute_escape( get_the_title( $post['object_id'] )).'">'. $this->icon_get_h( $post['object_id'], $args['icon_size'] ) .'</a>' : '' ) . ( $args['show_title'] ? '<a href="'. get_permalink( $post['object_id'] ) .'" title="'. attribute_escape( get_the_title( $post['object_id'] )).'">'. get_the_title( $post['object_id'] ) . '</a>' : '' ) . ( $args['show_counts'] ? '&nbsp;('. $post['hit_count'] .')' : '' ) .'</li>';
 			}
 			return($list);
 		}
@@ -2589,7 +2589,7 @@ die();
 				<?php echo $before_title . $title . $after_title; ?>
 				<ul id="recentcomments"><?php
 				if ( $commented_posts ) : foreach ( $commented_posts as $comment ) :
-				echo  '<li class="recentcomments">'. ( $options['show_icon'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. $this->icon_get_h( $comment->comment_post_ID, $options['icon_size'] ) .'</a>' : '' ) . ( $options['show_title'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. get_the_title( $comment->comment_post_ID ) . '</a>' : '' ) . ( $options['show_counts'] ? '&nbsp;('. $comment->comment_count .')' : '' ) .'</li>';
+				echo  '<li class="recentcomments">'. ( $options['show_icon'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" class="bsuite_post_icon_link" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. $this->icon_get_h( $comment->comment_post_ID, $options['icon_size'] ) .'</a>' : '' ) . ( $options['show_title'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. get_the_title( $comment->comment_post_ID ) . '</a>' : '' ) . ( $options['show_counts'] ? '&nbsp;('. $comment->comment_count .')' : '' ) .'</li>';
 				endforeach; endif;?></ul>
 			<?php echo $after_widget; ?>
 	<?php
