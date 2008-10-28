@@ -18,7 +18,7 @@ jQuery.fn.bsuite_renumber = function() {
 function bsuite_icon_getuploadform() {
 	//postboxL10n.requestFile // the variable representing the admin-ajax.php path
 	if( 0 < jQuery('#post_ID').val()){
-		jQuery('#bsuite_icon_iframe').contents().find('body').load( postboxL10n.requestFile, { 
+		jQuery('#bsuite_icon_iframe').contents().find('html').load( postboxL10n.requestFile, { 
 			action : 'bsuite_icon_form', 
 			post_ID : ( jQuery('#post_ID').val() )
 		});

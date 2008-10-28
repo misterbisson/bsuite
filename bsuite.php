@@ -27,7 +27,7 @@ class bSuite {
 		$this->loadavg = $this->get_loadavg();
 
 		// establish web path to this plugin's directory
-		$this->path_web = '/'. PLUGINDIR .'/'. plugin_basename( dirname( __FILE__ ));
+		$this->path_web = plugins_url( basename( dirname( __FILE__ )));
 
 		// register and queue javascripts
 		wp_register_script( 'bsuite', $this->path_web . '/js/bsuite.js', array('jquery'), '20080503' );
@@ -36,25 +36,6 @@ class bSuite {
 		// jQuery text highlighting plugin http://johannburkard.de/blog/programming/javascript/highlight-javascript-text-higlighting-jquery-plugin.html
 		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
 		wp_enqueue_script( 'highlight' );	
-
-		if( is_admin() ){
-			if( ( 'edit.php' == basename( $_SERVER['PHP_SELF'] )) || ( 'edit-pages.php' == basename( $_SERVER['PHP_SELF'] )) )
-				add_filter('posts_where', array(&$this, 'searchsmart_posts_where_admin'), 1);
-
-			wp_register_script( 'edit_page', $this->path_web . '/js/edit_page.js', array('jquery'), '1' ); // add the sweet categories and tags JS from the post editor to the page editor
-			wp_register_script( 'bsuite-machtags', $this->path_web . '/js/bsuite-machtags.js', array('jquery-ui-sortable'), '1' );
-			wp_enqueue_script( 'bsuite-machtags' );	
-
-			add_action( 'admin_head', array(&$this, 'edit_admin_head_hook') );
-
-			if( strpos( $_SERVER['REQUEST_URI'], 'admin/page' )){
-				wp_enqueue_script( 'edit_page' );
-				wp_enqueue_script( 'jquery-ui-tabs' );
-				wp_enqueue_script( 'suggest' );
-				wp_enqueue_script( 'ajaxcat' );
-			}
-		}
-
 
 		// is this wpmu?
 		if( function_exists( 'is_site_admin' ))
@@ -121,8 +102,12 @@ class bSuite {
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
 
 		// default CSS
-		if( get_option( 'bsuite_insert_css' ))
+		if( get_option( 'bsuite_insert_css' )){
 			add_action('wp_head', array(&$this, 'css_default' ));
+// the register and queue style hooks only work in the dashboard
+//			wp_register_style( 'bsuite-default', $this->path_web .'/css/default.css' );
+//			wp_enqueue_style( 'bsuite-default' );
+		}
 
 		// bstat
 		add_action('get_footer', array(&$this, 'bstat_js'));
@@ -153,7 +138,8 @@ class bSuite {
 
 		// activation and menu hooks
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
-		add_action('admin_menu', array(&$this, 'addmenus'));
+		add_action('admin_menu', array(&$this, 'admin_menu_hook'));
+		add_action('init', array(&$this, 'init'));
 		// end register WordPress hooks
 
 /*
@@ -166,6 +152,45 @@ class bSuite {
 */
 
 
+	}
+
+	function init(){
+//		add_rewrite_endpoint( 'quickview', EP_PERMALINK ); // this doesn't quite work as I want it to
+	}
+
+	function admin_menu_hook() {
+		if( (( 'edit.php' == basename( $_SERVER['PHP_SELF'] )) || ( 'edit-pages.php' == basename( $_SERVER['PHP_SELF'] ))) && ( !count( $_GET )) ){
+			global $current_user;
+			if( !current_user_can( 'edit_others_posts' ) )
+				die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?author='. $current_user->id . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
+
+			die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?s'. ( get_option( 'bsuite_managefocus_author' ) ? '&author='. $current_user->id : '' ) . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
+		}
+
+		// the machine tags js and style
+		wp_register_script( 'bsuite-machtags', $this->path_web . '/js/bsuite-machtags.js', array('jquery-ui-sortable'), '1' );
+		wp_enqueue_script( 'bsuite-machtags' );	
+		wp_register_style( 'bsuite-machtags', $this->path_web .'/css/machtags.css' );
+		wp_enqueue_style( 'bsuite-machtags' );
+
+		// add the sweet categories and tags JS from the post editor to the page editor
+		wp_register_script( 'edit_page', $this->path_web . '/js/edit_page.js', array('jquery'), '1' ); 
+		if( strpos( $_SERVER['REQUEST_URI'], 'admin/page' )){
+			wp_enqueue_script( 'edit_page' );
+			wp_enqueue_script( 'jquery-ui-tabs' );
+			wp_enqueue_script( 'suggest' );
+			wp_enqueue_script( 'ajaxcat' );
+		}
+
+		// add the options page
+		add_options_page('bSuite Settings', 'bSuite', 8, plugin_basename( dirname( __FILE__ )) .'/ui_options.php' );
+		
+		// the bstat reports are handled in a seperate file
+		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 2, plugin_basename( dirname( __FILE__ )) .'/ui_stats.php' );
+
+		// add the post icon widget to the post and page editors
+		add_meta_box('bsuite_post_icon', __('bSuite Post Icon'), array( &$this, 'icon_editor_iframe' ), 'post', 'advanced', 'high');
+		add_meta_box('bsuite_post_icon', __('bSuite Post Icon'), array( &$this, 'icon_editor_iframe' ), 'page', 'advanced', 'high');
 	}
 
 
@@ -586,25 +611,25 @@ class bSuite {
 		$this->icon_sizes = array( 
 			's' => array( 
 				'file' => dirname( __FILE__ ) .'/img/post_icon_default/s.jpg',
-				'url' => plugins_url( basename( dirname( __FILE__ )) .'/img/post_icon_default/s.jpg' ),
+				'url' => $this->path_web .'/img/post_icon_default/s.jpg',
 				'w' => '100',
 				'h' => '100',
 				), 
 			'm' => array( 
 				'file' => dirname( __FILE__ ) .'/img/post_icon_default/m.jpg',
-				'url' => plugins_url( basename( dirname( __FILE__ )) .'/img/post_icon_default/m.jpg' ),
+				'url' => $this->path_web .'/img/post_icon_default/m.jpg',
 				'w' => '250',
 				'h' => '200',
 				), 
 			'l' => array( 
 				'file' => dirname( __FILE__ ) .'/img/post_icon_default/l.jpg',
-				'url' => plugins_url( basename( dirname( __FILE__ )) .'/img/post_icon_default/l.jpg' ),
+				'url' => $this->path_web .'/img/post_icon_default/l.jpg',
 				'w' => '500',
 				'h' => '375',
 				), 
 			'b' => array( 
 				'file' => dirname( __FILE__ ) .'/img/post_icon_default/b.jpg',
-				'url' => plugins_url( basename( dirname( __FILE__ )) .'/img/post_icon_default/b.jpg' ),
+				'url' => $this->path_web .'/img/post_icon_default/b.jpg',
 				'w' => '1280',
 				'h' => '975',
 				), 
@@ -640,23 +665,27 @@ class bSuite {
 
 		if( 0 >= (int) $post_id )
 			return( FALSE );
-
+?>
+<html><head></head>
+<?php
 
 		$bytes = apply_filters( 'import_upload_size_limit', wp_max_upload_size() );
 		$size = wp_convert_bytes_to_hr( $bytes );
-	if( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )){
-		echo '<img src="'. $img['s']['url'] .'" width="'. $img['s']['w'] .'" height="'. $img['s']['h'] .'" alt="the image for this record." style="float: left;" />'			
+		if( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )){
+			echo '<div style="width:'. $img['s']['w'] .'px; height:'. $img['s']['h'] .'px; background-image: url( \''. $img['s']['url'] .'\' ); float: left; padding: 3px; margin-right: 25px;">';
+			$img = array_pop( $img );
 ?>
-		<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
-		<?php wp_nonce_field('bsuite-icon-upload'); ?>
-		<input type="hidden" name="post_ID" value="<?php echo (int) $_REQUEST['post_ID'] ?>" />
-		<input type="hidden" name="action" value="bsuite_icon_delete" />
-		<input type="submit" class="button" value="<?php _e( 'Delete' ); ?>" /><br />
-		</form>
+			<form enctype="multipart/form-data" name="import-delete-form" id="import-delete-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
+			<?php wp_nonce_field('bsuite-icon-upload'); ?>
+			<input type="hidden" name="post_ID" value="<?php echo (int) $_REQUEST['post_ID'] ?>" />
+			<input type="hidden" name="action" value="bsuite_icon_delete" />
+			<input type="image" src="<?php echo $this->path_web .'/img/silk_icons/delete.png' ?>" onclick="if ( confirm('You are about to delete this image.\n\'Cancel\' to stop, \'OK\' to delete.') ) { return true;}return false;"  title="Delete icon"/>
+			<a id="icon_info" href="<?php echo $img['url'] ?>" title="View larger icon" target="_blank"><img src="<?php echo $this->path_web .'/img/silk_icons/magnifier_zoom_in.png' ?>" width="16" height="16" alt="zoom in on the icon." /></a>
+			</form></div>
 <?php
 	}
 ?>
-	<form enctype="multipart/form-data" id="import-upload-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
+	<form enctype="multipart/form-data" name="import-upload-form" id="import-upload-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
 	<?php wp_nonce_field('bsuite-icon-upload'); ?>
 	<input type="file" id="upload" name="import" size="20" /> 
 	<input type="hidden" name="post_ID" value="<?php echo (int) $_REQUEST['post_ID'] ?>" />
@@ -664,8 +693,8 @@ class bSuite {
 	<input type="hidden" name="max_file_size" value="<?php echo $bytes; ?>" />
 	<input type="submit" class="button" value="<?php _e( 'Upload New' ); ?>" />
 	(<?php printf( __('%s max' ), $size ); ?>)
-	</form>
-	<?php
+	</form></html>
+<?php
 	}	
 
 	function icon_ajax_delete( ){
@@ -873,7 +902,7 @@ class bSuite {
 
 	function icon_get_h( $post_id, $size = 's', $ow = 0, $oh = 0 ){
 		if( $img = $this->icon_get_a( $post_id, $size )){
-			return( '<div class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" style="width:'. ( $ow ? $ow : $img['w'] ) .'px; height:'. ( $oh ? $oh : $img['h'] ) .'px; background-image: url( \''. $img['url'] .'\' );"><a href="'. get_permalink( $post_id ) .'" title="'. attribute_escape( get_the_title( $post_id )) .'" style="display: block; width:'. ( $ow ? $ow : $img['w'] ) .'px; height:'. ( $oh ? $oh : $img['h'] ) .'px;" ></a></div>' );
+			return( '<img src="http://test23.wpopac.net/wp-content/plugins/bsuite_core/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background-image: url( \''. $img['url'] .'\' );" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
 		}
 		return( FALSE );
 	}
@@ -1068,10 +1097,10 @@ class bSuite {
 		if( !$this->didstats ){
 ?>
 <script type="text/javascript">
-bsuite.api_location='<?php echo substr( get_settings( 'siteurl' ), strpos( get_settings( 'siteurl' ), ':' ) + 3 ) . $this->path_web . '/worker.php' ?>';
+bsuite.api_location='<?php echo $this->path_web . '/worker.php' ?>';
 bsuite.log();
 </script>
-<noscript><img src="<?php echo get_settings( 'siteurl' ) . $this->path_web . '/worker.php' ?>" width="1" height="1" alt="stat counter" /></noscript>
+<noscript><img src="<?php echo $this->path_web . '/worker.php' ?>" width="1" height="1" alt="stat counter" /></noscript>
 <?php
 		}
 	}
@@ -1458,21 +1487,21 @@ $engine = $this->get_search_engine( $ref );
 		if( !$this->get_lock( 'pop_posts' ))
 			return( FALSE );
 
-		$defaults = array(
+		$args = wp_parse_args( $args, array(
 			'count' => 15,
 			'return' => 'formatted',
-			'template' => '<li>%%icon%%<a href="%%link%%">%%title%%</a>&nbsp;(%%hits%%)</li>',
-			'icon_size' => 0,
-		);
-		$args = wp_parse_args( $args, $defaults );
-	
+			'show_icon' => 0,
+			'show_title' => 1,
+			'show_counts' => 1,
+			'icon_size' => 's',
+		));
+
 		$date = 'AND hit_date = DATE(NOW())';
 		if($args['days'] > 1)
 			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
 	
 		$limit = 'LIMIT '. (0 + $args['count']);
-	
-	
+
 		$request = "SELECT object_id, SUM(hit_count) AS hit_count
 			FROM $this->hits_targets
 			WHERE 1=1
@@ -1492,7 +1521,7 @@ $engine = $this->get_search_engine( $ref );
 		if($args['return'] == 'formatted'){
 			$list = '';
 			foreach($result as $post){
-				$list .= str_replace(array('%%title%%','%%hits%%','%%link%%', '%%icon%%'), array(get_the_title($post['object_id']), $post['hit_count'], get_permalink($post['object_id']), ( $args['icon_size'] ? $this->icon_get_h( $post['object_id'], $args['icon_size'] ) : '' )), $args['template']);
+				$list .='<li>'. ( $args['show_icon'] ? '<a href="'. get_permalink( $post['object_id'] ) .'" title="'. attribute_escape( get_the_title( $post['object_id'] )).'">'. $this->icon_get_h( $post['object_id'], $args['icon_size'] ) .'</a>' : '' ) . ( $args['show_title'] ? '<a href="'. get_permalink( $post['object_id'] ) .'" title="'. attribute_escape( get_the_title( $post['object_id'] )).'">'. get_the_title( $post['object_id'] ) . '</a>' : '' ) . ( $args['show_counts'] ? '&nbsp;('. $post['hit_count'] .')' : '' ) .'</li>';
 			}
 			return($list);
 		}
@@ -1580,20 +1609,6 @@ $engine = $this->get_search_engine( $ref );
 		return( $query );
 	}
 
-	function searchsmart_posts_where_admin($query){
-		global $current_user;
-
-		if(!count( $_GET )){
-			if( !current_user_can( 'edit_others_posts' ) )
-				die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?author='. $current_user->id . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
-
-
-			die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?s'. ( get_option( 'bsuite_managefocus_author' ) ? '&author='. $current_user->id : '' ) . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
-		}
-
-		return($query);
-	}
-
 	function searchsmart_query( $searchphrase, $limit = 'LIMIT 0,5' ){
 		global $wpdb;
 
@@ -1631,6 +1646,10 @@ $engine = $this->get_search_engine( $ref );
 		// redirects ?s={search_term} to /search/{search_term} if permalinks are working
 		if( isset( $_GET['s'] ) && !empty( $wp_rewrite->permalink_structure ) )
 			wp_redirect(get_option('siteurl') .'/'. $wp_rewrite->search_base .'/'. urlencode( $_GET['s'] ), '301');
+
+		// serves the quickview links
+		if( $wp_query->is_singular && isset( $_GET['quickview'] ) )
+			$this->quickview();
 
 		// redirects the search to the single page if the search returns only one item
 		if( !$wp_query->is_singular && 1 === $wp_query->post_count )
@@ -1713,7 +1732,7 @@ $engine = $this->get_search_engine( $ref );
 		}
 
 		// diabled so that the update runs less often.
-		//update_option('bsuite_doing_ftindex', 0 );
+		update_option('bsuite_doing_ftindex', 0 );
 
 		return( count( $posts ));
 	}
@@ -1734,6 +1753,45 @@ $engine = $this->get_search_engine( $ref );
 		return(TRUE);
 	}
 	// end Searchsmart
+
+
+
+	function quickview(){
+		global $wp_query;
+
+		// make wp think this is a posts page, not a singular page
+		$wp_query->is_single = FALSE;
+		$wp_query->is_page = FALSE;
+		$wp_query->is_singular = FALSE;
+		$wp_query->is_posts_page = TRUE;
+
+		//loop
+		if (have_posts()){
+			while (have_posts()){
+				the_post();
+?>
+<div id="post-<?php echo $id ?>" class="hentry quickview">
+	<a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_icon( 'm' ) ?></a>
+	<h3 class="entry-title"><a href="<?php the_permalink() ?>" title="<?php printf(__('Permalink to %s', 'sandbox'), wp_specialchars(get_the_title(), 1)) ?>" rel="bookmark"><?php the_title() ?></a></h3>
+	<div class="entry-excerpt">
+		<?php the_excerpt(''.__( 'Read the rest of this entry' ).'') ?>	
+	</div>
+	<div class="entry-meta">
+		<span class="author vcard"><?php printf(__('By %s', 'sandbox'), '<a class="url fn n" href="'.get_author_link(false, $authordata->ID, $authordata->user_nicename).'" title="' . sprintf(__('View all posts by %s', 'sandbox'), $authordata->display_name) . '">'.get_the_author().'</a>') ?></span>					
+		<span class="meta-sep">&middot;</span>
+		<span class="entry-date"><abbr class="published" title="<?php the_time('Y-m-d\TH:i:sO'); ?>"><?php unset($previousday); printf(__('%1$s &#8211; %2$s', 'sandbox'), the_date('', '', '', false), get_the_time()) ?></abbr></span>
+		<span class="meta-sep">&middot;</span>
+		
+		<?php edit_post_link(__( 'Edit' ), '<span class="edit-link">', "</span> <span class=\"meta-sep\">&middot;</span>\n"); ?>
+			<span class="comments-link"><?php comments_popup_link(__( 'Comments (0)' ), __( 'Comments (1)' ), __( 'Comments (%)' )) ?></span>
+	</div>
+</div>
+<?php
+			}
+		}
+die();
+	}
+
 
 
 	// bSuggestive related functions
@@ -2144,12 +2202,6 @@ $engine = $this->get_search_engine( $ref );
 		
 		return $user_caps;
 	}
-	
-	function edit_admin_head_hook() {
-?>
-<link rel='stylesheet' href='<?php echo $this->path_web ?>/css/machtags.css' type='text/css' media='all' />
-<?php
-	}
 
 	function edit_publish_page( $post_ID ) {
 		if ( !isset($_POST['bsuite_who_can_edit']) )
@@ -2403,81 +2455,16 @@ $engine = $this->get_search_engine( $ref );
 					wp_set_post_tags( $post_id, $tags , FALSE);
 		}
 
-// need to delete any affected post caches here
+// TODO: delete any affected post caches here
 
 		return( count( $posts ));
 	}
 
-
-
-
 	function css_default() {
 ?>
-<style type="text/css">
-/* 
-** bSuite default styles
-**
-** more information at http://maisonbisson.com/blog/bsuite/
-*/
-
-/* the search word highlight */
-.highlight { 
-	background-color: #FFFF00;
-	padding: .2em;
-	border-top: 1px solid #FAFAD2;
-	border-right: 1px solid #FF8C00;
-	border-bottom: 1px solid #FF8C00;
-	border-left: 1px solid #FAFAD2;
-	-moz-border-radius: 5px;
-	-khtml-border-radius: 5px;
-	-webkit-border-radius: 5px;
-	border-radius: 5px;
-	color: black;
-}
-
-/* related posts */
-.bsuite_related h3 {
-	margin-top: 1em;
-	clear: both;
-}
-
-/* sharelinks */
-.bsuite_sharelinks h3 {
-	margin-top: 1em;
-	clear: both;
-}
-
-.bsuite_sharelinks ul {
-	margin:0 0 0 1em;
-}
-
-.bsuite_sharelinks ul li {
-	float: left;
-	list-style-image:none;
-	list-style-position:outside;
-	list-style-type:none;
-	margin:0 1em 0 0;
-}
-
-.bsuite_sharelinks ul li:before{
-	content: "";
-}
-
-.bsuite_sharelinks input {
-	width: 10em;
-}
-
-.bsuite_sharelinks .bsuite_share_bsuitetag {
-	padding: 1em 0 1em 0;
-	clear: both;
-	text-align: right;
-	font-family:"lucida grande", verdana, arial, sans-serif;
-	font-size: .6em
-}
-</style>
+<link rel="stylesheet" href="<?php echo $this->path_web ?>/css/default.css" type="text/css" media="all" />
 <?php
 	}
-
 
 
 	// widgets
@@ -2548,9 +2535,9 @@ $engine = $this->get_search_engine( $ref );
 		echo $before_widget;
 		echo $before_title . $title . $after_title;
 		echo '<ul id="sharelinks">';
-		echo '<li><img src="' . get_settings('siteurl') . $this->path_web .'/img/icon-share-16x16.gif" width="16" height="16" alt="bookmark and share icon" />&nbsp;<a href="#bsuite_share_bookmark" title="bookmark and share links">Bookmark and Share</a></li>';
-		echo '<li><img src="' . get_settings('siteurl') . $this->path_web .'/img/icon-feed-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="#bsuite_share_feed" title="RSS and feed links">RSS Feeds</a></li>';
-		echo '<li><img src="' . get_settings('siteurl') .'/'. $this->path_web .'/img/icon-translate-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="#bsuite_share_translate" title="RSS and feed links">Translate</a></li>';
+		echo '<li><img src="'. $this->path_web .'/img/icon-share-16x16.gif" width="16" height="16" alt="bookmark and share icon" />&nbsp;<a href="#bsuite_share_bookmark" title="bookmark and share links">Bookmark and Share</a></li>';
+		echo '<li><img src="'. $this->path_web .'/img/icon-feed-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="#bsuite_share_feed" title="RSS and feed links">RSS Feeds</a></li>';
+		echo '<li><img src="'. $this->path_web .'/img/icon-translate-16x16.png" width="16" height="16" alt="RSS and feeds icon" />&nbsp;<a href="#bsuite_share_translate" title="RSS and feed links">Translate</a></li>';
 		echo '</ul>';
 		echo $after_widget;
 	}
@@ -2568,23 +2555,27 @@ $engine = $this->get_search_engine( $ref );
 			$number = 1;
 		else if ( $number > 15 )
 			$number = 15;
-	
+
+		$options['icon_size'] = 's';
+		if( !$options['show_icon'] && !$options['show_title'] )
+			$options['show_title'] = $options['show_counts'] = 1;
+
 		if ( !$commented_posts = wp_cache_get( 'recently_commented_posts', 'widget' ) ) {
 			$commented_posts = $wpdb->get_results("SELECT comment_ID, comment_post_ID, COUNT(comment_post_ID) as comment_count, MAX(comment_date_gmt) AS sort_order FROM $wpdb->comments WHERE comment_approved = '1' GROUP BY comment_post_ID ORDER BY sort_order DESC LIMIT $number");
 			wp_cache_add( 'recently_commented_posts', $commented_posts, 'widget' );
 		}
 	?>
-	
+
 			<?php echo $before_widget; ?>
 				<?php echo $before_title . $title . $after_title; ?>
 				<ul id="recentcomments"><?php
-				if ( $commented_posts ) : foreach ($commented_posts as $comment) :
-				echo  '<li class="recentcomments">'. ( $options['icon_size'] ? $this->icon_get_h( $comment->comment_post_ID, $options['icon_size'] ) : '' ) .'<a href="'. get_permalink($comment->comment_post_ID) . '#comment-' . $comment->comment_ID . '">' . get_the_title($comment->comment_post_ID) . '</a>&nbsp;('. $comment->comment_count .')</li>';
+				if ( $commented_posts ) : foreach ( $commented_posts as $comment ) :
+				echo  '<li class="recentcomments">'. ( $options['show_icon'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. $this->icon_get_h( $comment->comment_post_ID, $options['icon_size'] ) .'</a>' : '' ) . ( $options['show_title'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. get_the_title( $comment->comment_post_ID ) . '</a>' : '' ) . ( $options['show_counts'] ? '&nbsp;('. $comment->comment_count .')' : '' ) .'</li>';
 				endforeach; endif;?></ul>
 			<?php echo $after_widget; ?>
 	<?php
 	}
-	
+
 	function widget_recently_commented_posts_delete_cache() {
 		wp_cache_delete( 'recently_commented_posts', 'widget' );
 	}
@@ -2594,7 +2585,10 @@ $engine = $this->get_search_engine( $ref );
 		if ( $_POST['bsuite-recently-commented-posts-submit'] ) {
 			$newoptions['title'] = strip_tags(stripslashes($_POST['bsuite-recently-commented-posts-title']));
 			$newoptions['number'] = (int) $_POST['bsuite-recently-commented-posts-number'];
-			$newoptions['icon_size'] = $_POST['bsuite-recently-commented-posts-icon'] ? 's' : 0;
+			$newoptions['show_title'] = (int) $_POST['bsuite-recently-commented-posts-show_title'];
+			$newoptions['show_counts'] = (int) $_POST['bsuite-recently-commented-posts-show_counts'];
+			$newoptions['show_icon'] = (int) $_POST['bsuite-recently-commented-posts-show_icon'];
+			$newoptions['icon_size'] = $_POST['bsuite-recently-commented-posts-icon_size'] ? 's' : 0;
 		}
 		if ( $options != $newoptions ) {
 			$options = $newoptions;
@@ -2604,13 +2598,19 @@ $engine = $this->get_search_engine( $ref );
 		$title = attribute_escape($options['title']);
 		if ( !$number = (int) $options['number'] )
 			$number = 5;
-		$icon = $options['icon_size'] ? 'checked="checked"' : '';
+		$show_icon = $options['show_icon'] ? 'checked="checked"' : '';
+		$show_title = $options['show_title'] ? 'checked="checked"' : '';
+		$show_counts = $options['show_counts'] ? 'checked="checked"' : '';
 	?>
 				<p><label for="bsuite-recently-commented-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bsuite-recently-commented-posts-title" name="bsuite-recently-commented-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
 
 				<p><label for="bsuite-recently-commented-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-recently-commented-posts-number" name="bsuite-recently-commented-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
 
-				<p><label for="bsuite-recently-commented-posts-icon"><?php _e('Include post icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $icon; ?> id="bsuite-recently-commented-posts-icon" name="bsuite-recently-commented-posts-icon" /></label></p>
+				<p><?php _e('Show:'); ?>
+					<label for="bsuite-recently-commented-posts-show_icon"><?php _e('icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_icon; ?> id="bsuite-recently-commented-posts-show_icon" name="bsuite-recently-commented-posts-show_icon" /></label> 
+					<label for="bsuite-recently-commented-posts-show_title"><?php _e('title:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_title; ?> id="bsuite-recently-commented-posts-show_title" name="bsuite-recently-commented-posts-show_title" /></label> 
+					<label for="bsuite-recently-commented-posts-show_counts"><?php _e('counts:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_counts; ?> id="bsuite-recently-commented-posts-show_counts" name="bsuite-recently-commented-posts-show_counts" /></label>
+				</p>
 
 				<input type="hidden" id="bsuite-recently-commented-posts-submit" name="bsuite-recently-commented-posts-submit" value="1" />
 	<?php
@@ -2634,7 +2634,11 @@ $engine = $this->get_search_engine( $ref );
 		extract($args, EXTR_SKIP);
 		$options = get_option('bstat_pop_posts');
 
-		$opt = array( 'icon_size' => $options['icon_size'] );
+		$opt = array( 
+			'show_icon' => $options['show_icon'],
+			'show_title' => $options['show_title'],
+			'show_counts' => $options['show_counts'],
+		);
 		$title = empty($options['title']) ? __('Popular Posts') : $options['title'];
 		if ( !$opt['count'] = (int) $options['number'] )
 			$opt['count'] = 5;
@@ -2649,6 +2653,10 @@ $engine = $this->get_search_engine( $ref );
 			$opt['days'] = 1;
 		else if ( $opt['days'] > 30 )
 			$opt['days'] = 30;
+
+		$opt['icon_size'] = 's';
+		if( !$opt['show_icon'] && !$opt['show_title'] )
+			$opt['show_title'] = $opt['show_counts'] = 1;
 
 		if ( !$pop_posts = wp_cache_get( 'bstat_pop_posts', 'widget' ) ) {
 			$pop_posts = $this->pop_posts( $opt );
@@ -2677,7 +2685,10 @@ $engine = $this->get_search_engine( $ref );
 			$newoptions['title'] = strip_tags(stripslashes($_POST['bstat-pop-posts-title']));
 			$newoptions['number'] = (int) $_POST['bstat-pop-posts-number'];
 			$newoptions['days'] = (int) $_POST['bstat-pop-posts-days'];
-			$newoptions['icon_size'] = $_POST['bstat-pop-posts-icon'] ? 's' : 0;
+			$newoptions['show_title'] = (int) $_POST['bstat-pop-posts-show_title'];
+			$newoptions['show_counts'] = (int) $_POST['bstat-pop-posts-show_counts'];
+			$newoptions['show_icon'] = (int) $_POST['bstat-pop-posts-show_icon'];
+			$newoptions['icon_size'] = $_POST['bstat-pop-posts-icon_size'] ? 's' : 0;
 		}
 		if ( $options != $newoptions ) {
 			$options = $newoptions;
@@ -2689,7 +2700,9 @@ $engine = $this->get_search_engine( $ref );
 			$number = 5;
 		if ( !$days = (int) $options['days'] )
 			$days = 7;
-		$icon = $options['icon_size'] ? 'checked="checked"' : '';
+		$show_icon = $options['show_icon'] ? 'checked="checked"' : '';
+		$show_title = $options['show_title'] ? 'checked="checked"' : '';
+		$show_counts = $options['show_counts'] ? 'checked="checked"' : '';
 	?>
 				<p><label for="bstat-pop-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bstat-pop-posts-title" name="bstat-pop-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
 
@@ -2697,7 +2710,11 @@ $engine = $this->get_search_engine( $ref );
 
 				<p><label for="bstat-pop-posts-days"><?php _e('In past x days (1 = today only):'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-days" name="bstat-pop-posts-days" type="text" value="<?php echo $days; ?>" /></label> <?php _e('(at most 30)'); ?></p>
 
-				<p><label for="bstat-pop-posts-icon"><?php _e('Include post icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $icon; ?> id="bstat-pop-posts-icon" name="bstat-pop-posts-icon" /></label></p>
+				<p><?php _e('Show:'); ?>
+					<label for="bstat-pop-posts-show_icon"><?php _e('icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_icon; ?> id="bstat-pop-posts-show_icon" name="bstat-pop-posts-show_icon" /></label> 
+					<label for="bstat-pop-posts-show_title"><?php _e('title:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_title; ?> id="bstat-pop-posts-show_title" name="bstat-pop-posts-show_title" /></label> 
+					<label for="bstat-pop-posts-show_counts"><?php _e('counts:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_counts; ?> id="bstat-pop-posts-show_counts" name="bstat-pop-posts-show_counts" /></label>
+				</p>
 
 				<input type="hidden" id="bstat-pop-posts-submit" name="bstat-pop-posts-submit" value="1" />
 	<?php
@@ -2835,10 +2852,10 @@ $engine = $this->get_search_engine( $ref );
 			update_option('bsuite_related_posts', array('title' => 'Related Posts', 'number' => 7));
 
 		if(!get_option('bsuite_recently_commented_posts'))
-			update_option('bsuite_recently_commented_posts', array('title' => 'Recently Commented Posts', 'number' => 7));
+			update_option('bsuite_recently_commented_posts', array('title' => 'Recently Commented Posts', 'number' => 7, 'show_title' => 1, 'show_counts' => 1));
 
 		if(!get_option('bstat_pop_posts'))
-			update_option('bstat_pop_posts', array('title' => 'Popular Posts', 'number' => 5, 'days' => 7));
+			update_option('bstat_pop_posts', array('title' => 'Popular Posts', 'number' => 5, 'days' => 7, 'show_title' => 1, 'show_counts' => 1));
 
 		if(!get_option('bstat_pop_refs'))
 			update_option('bstat_pop_refs', array('title' => 'Popular Searches', 'number' => 5));
@@ -2951,18 +2968,6 @@ $engine = $this->get_search_engine( $ref );
 		$options = add_option_whitelist( $added, $options );
 	
 		return( $options );
-	}
-
-	function addmenus() {
-		// add the options page
-		add_options_page('bSuite Settings', 'bSuite', 8, plugin_basename( dirname( __FILE__ )) .'/ui_options.php' );
-		
-		// the bstat reports are handled in a seperate file
-		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 2, plugin_basename( dirname( __FILE__ )) .'/ui_stats.php' );
-
-		// add the post icon widget to the editor
-		add_meta_box('bsuite_post_icon', __('bSuite Post Icon'), array( &$this, 'icon_editor_iframe' ), 'post', 'advanced', 'high');
-		add_meta_box('bsuite_post_icon', __('bSuite Post Icon'), array( &$this, 'icon_editor_iframe' ), 'page', 'advanced', 'high');
 	}
 
 	function kses_allowedposttags() {
@@ -3447,6 +3452,17 @@ class bSuite_sms {
 
 
 
+
+function the_icon( $size = 's', $ow = 0, $oh = 0 ){
+	global $bsuite, $id;
+
+	$size = preg_replace( '/[^a-z|0-9|_]/i', '', $size );
+	$ow = absint( $ow );
+	$oh = absint( $oh );
+
+	if( $id )
+		echo $bsuite->icon_get_h( $id, $size, $ow, $oh );
+}
 
 function the_related(){
 	global $bsuite;
