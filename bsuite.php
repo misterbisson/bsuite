@@ -29,6 +29,8 @@ class bSuite {
 		// establish web path to this plugin's directory
 		$this->path_web = plugins_url( basename( dirname( __FILE__ )));
 
+		$this->is_quickview = FALSE;
+
 		// register and queue javascripts
 		wp_register_script( 'bsuite', $this->path_web . '/js/bsuite.js', array('jquery'), '20080503' );
 		wp_enqueue_script( 'bsuite' );	
@@ -100,6 +102,15 @@ class bSuite {
 			add_filter('content_save_pre', array(&$this, 'searchsmart_edit'));
 		}
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
+
+		// quickview
+		/*
+		add_filter('bsuite_quickview_excerpt', 'wptexturize', 10);
+		add_filter('bsuite_quickview_excerpt', 'convert_smilies', 10);
+		add_filter('bsuite_quickview_excerpt', 'convert_chars', 10);
+		add_filter('bsuite_quickview_excerpt', 'wpautop', 10);
+		add_filter('bsuite_quickview_excerpt', 'do_shortcode', 20);
+		*/
 
 		// default CSS
 		if( get_option( 'bsuite_insert_css' )){
@@ -672,6 +683,9 @@ class bSuite {
 		$bytes = apply_filters( 'import_upload_size_limit', wp_max_upload_size() );
 		$size = wp_convert_bytes_to_hr( $bytes );
 		if( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )){
+			if( is_string( $img ))
+				$img = unserialize( $img );
+
 			echo '<div style="width:'. $img['s']['w'] .'px; height:'. $img['s']['h'] .'px; background-image: url( \''. $img['s']['url'] .'\' ); float: left; padding: 3px; margin-right: 25px;">';
 			$img = array_pop( $img );
 ?>
@@ -902,7 +916,7 @@ class bSuite {
 
 	function icon_get_h( $post_id, $size = 's', $ow = 0, $oh = 0 ){
 		if( $img = $this->icon_get_a( $post_id, $size )){
-			return( '<img src="http://test23.wpopac.net/wp-content/plugins/bsuite_core/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background-image: url( \''. $img['url'] .'\' );" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
+			return( '<img src="'. $this->path_web .'/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background-image: url( \''. $img['url'] .'\' );" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
 		}
 		return( FALSE );
 	}
@@ -1764,20 +1778,22 @@ $engine = $this->get_search_engine( $ref );
 		$wp_query->is_page = FALSE;
 		$wp_query->is_singular = FALSE;
 		$wp_query->is_posts_page = TRUE;
+		$this->is_quickview = TRUE;
 
 		//loop
 		if (have_posts()){
 			while (have_posts()){
 				the_post();
+				ob_start();
 ?>
 <div id="post-<?php echo $id ?>" class="hentry quickview">
-	<a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_icon( 'm' ) ?></a>
+	<a href="<?php the_permalink() ?>" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_icon( 'm' ) ?></a>
 	<h3 class="entry-title"><a href="<?php the_permalink() ?>" title="<?php printf(__('Permalink to %s', 'sandbox'), wp_specialchars(get_the_title(), 1)) ?>" rel="bookmark"><?php the_title() ?></a></h3>
 	<div class="entry-excerpt">
 		<?php the_excerpt(''.__( 'Read the rest of this entry' ).'') ?>	
 	</div>
 	<div class="entry-meta">
-		<span class="author vcard"><?php printf(__('By %s', 'sandbox'), '<a class="url fn n" href="'.get_author_link(false, $authordata->ID, $authordata->user_nicename).'" title="' . sprintf(__('View all posts by %s', 'sandbox'), $authordata->display_name) . '">'.get_the_author().'</a>') ?></span>					
+		<span class="author vcard"><?php printf(__('Posted by %s'), '<a class="url fn n" href="'.get_author_link(false, $authordata->ID, $authordata->user_nicename).'" title="' . sprintf(__('View all posts by %s', 'sandbox'), $authordata->display_name) . '">'.get_the_author().'</a>') ?></span>					
 		<span class="meta-sep">&middot;</span>
 		<span class="entry-date"><abbr class="published" title="<?php the_time('Y-m-d\TH:i:sO'); ?>"><?php unset($previousday); printf(__('%1$s &#8211; %2$s', 'sandbox'), the_date('', '', '', false), get_the_time()) ?></abbr></span>
 		<span class="meta-sep">&middot;</span>
@@ -1787,6 +1803,9 @@ $engine = $this->get_search_engine( $ref );
 	</div>
 </div>
 <?php
+			die( apply_filters( 'bsuite_quickview_excerpt', ob_get_clean() ));
+
+
 			}
 		}
 die();
@@ -3452,6 +3471,10 @@ class bSuite_sms {
 
 
 
+function is_quickview(){
+	global $bsuite;
+	return( $bsuite->is_quickview );
+}
 
 function the_icon( $size = 's', $ow = 0, $oh = 0 ){
 	global $bsuite, $id;
