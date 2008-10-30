@@ -12,6 +12,8 @@ class bSuite {
 
 	function bSuite(){
 
+//die( print_r( $_POST ));
+
 		global $wpdb;
 		$this->search_table = $wpdb->prefix . 'bsuite4_search';
 
@@ -2561,27 +2563,33 @@ die();
 		echo $after_widget;
 	}
 	
-	function widget_recently_commented_posts($args) {
+	function widget_recently_commented_posts( $args, $widget_args = 1) {
 		// this code pretty much directly rips off WordPress' native recent comments widget,
 		// the difference here is that I'm displaying recently commented posts, not recent comments.
 		global $wpdb, $commented_posts;
+
+		if ( is_numeric($widget_args) )
+			$widget_args = array( 'number' => $widget_args );
+		$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
+		extract( $widget_args, EXTR_SKIP );
+
 		extract($args, EXTR_SKIP);
 		$options = get_option('bsuite_recently_commented_posts');
-		$title = empty($options['title']) ? __('Recently Commented Posts', 'bsuite') : $options['title'];
-		if ( !$number = (int) $options['number'] )
-			$number = 5;
-		else if ( $number < 1 )
-			$number = 1;
-		else if ( $number > 15 )
-			$number = 15;
+		$title = empty($options[ $number ]['title']) ? __('Recently Commented Posts', 'bsuite') : $options[ $number ]['title'];
+		if ( !$posts = (int) $options[ $number ]['number'] )
+			$posts = 5;
+		else if ( $posts < 1 )
+			$posts = 1;
+		else if ( $posts > 15 )
+			$posts = 15;
 
-		$options['icon_size'] = 's';
-		if( !$options['show_icon'] && !$options['show_title'] )
-			$options['show_title'] = $options['show_counts'] = 1;
+		$options[ $number ]['icon_size'] = 's';
+		if( !$options[ $number ]['show_icon'] && !$options[ $number ]['show_title'] )
+			$options[ $number ]['show_title'] = $options[ $number ]['show_counts'] = 1;
 
-		if ( !$commented_posts = wp_cache_get( 'recently_commented_posts', 'widget' ) ) {
-			$commented_posts = $wpdb->get_results("SELECT comment_ID, comment_post_ID, COUNT(comment_post_ID) as comment_count, MAX(comment_date_gmt) AS sort_order FROM $wpdb->comments WHERE comment_approved = '1' GROUP BY comment_post_ID ORDER BY sort_order DESC LIMIT $number");
-			wp_cache_add( 'recently_commented_posts', $commented_posts, 'widget' );
+		if ( !$commented_posts = wp_cache_get( 'recently_commented_posts-'. $number, 'widget' ) ) {
+			$commented_posts = $wpdb->get_results("SELECT comment_ID, comment_post_ID, COUNT(comment_post_ID) as comment_count, MAX(comment_date_gmt) AS sort_order FROM $wpdb->comments WHERE comment_approved = '1' GROUP BY comment_post_ID ORDER BY sort_order DESC LIMIT $posts");
+			wp_cache_set( 'recently_commented_posts-'. $number, $commented_posts, 'widget' );
 		}
 	?>
 
@@ -2589,84 +2597,153 @@ die();
 				<?php echo $before_title . $title . $after_title; ?>
 				<ul id="recentcomments"><?php
 				if ( $commented_posts ) : foreach ( $commented_posts as $comment ) :
-				echo  '<li class="recentcomments">'. ( $options['show_icon'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" class="bsuite_post_icon_link" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. $this->icon_get_h( $comment->comment_post_ID, $options['icon_size'] ) .'</a>' : '' ) . ( $options['show_title'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. get_the_title( $comment->comment_post_ID ) . '</a>' : '' ) . ( $options['show_counts'] ? '&nbsp;('. $comment->comment_count .')' : '' ) .'</li>';
+				echo  '<li class="recentcomments">'. ( $options[ $number ]['show_icon'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" class="bsuite_post_icon_link" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. $this->icon_get_h( $comment->comment_post_ID, $options[ $number ]['icon_size'] ) .'</a>' : '' ) . ( $options[ $number ]['show_title'] ? '<a href="'. get_permalink( $comment->comment_post_ID ) . '#comment-' . $comment->comment_ID . '" title="'. attribute_escape( get_the_title( $comment->comment_post_ID )).'">'. get_the_title( $comment->comment_post_ID ) . '</a>' : '' ) . ( $options[ $number ]['show_counts'] ? '&nbsp;('. $comment->comment_count .')' : '' ) .'</li>';
 				endforeach; endif;?></ul>
 			<?php echo $after_widget; ?>
 	<?php
 	}
 
 	function widget_recently_commented_posts_delete_cache() {
-		wp_cache_delete( 'recently_commented_posts', 'widget' );
+		if ( !$options = get_option('bsuite_recently_commented_posts') )
+			$options = array();
+		foreach ( array_keys($options) as $o )
+			wp_cache_delete( 'recently_commented_posts-'. $o, 'widget' );
 	}
 
-	function widget_recently_commented_posts_control() {
-		$options = $newoptions = get_option('bsuite_recently_commented_posts');
-		if ( $_POST['bsuite-recently-commented-posts-submit'] ) {
-			$newoptions['title'] = strip_tags(stripslashes($_POST['bsuite-recently-commented-posts-title']));
-			$newoptions['number'] = (int) $_POST['bsuite-recently-commented-posts-number'];
-			$newoptions['show_title'] = (int) $_POST['bsuite-recently-commented-posts-show_title'];
-			$newoptions['show_counts'] = (int) $_POST['bsuite-recently-commented-posts-show_counts'];
-			$newoptions['show_icon'] = (int) $_POST['bsuite-recently-commented-posts-show_icon'];
-			$newoptions['icon_size'] = $_POST['bsuite-recently-commented-posts-icon_size'] ? 's' : 0;
-		}
-		if ( $options != $newoptions ) {
-			$options = $newoptions;
+	function widget_recently_commented_posts_control( $widget_args ) {
+		global $wp_registered_widgets;
+		static $updated = false;
+	
+		if ( is_numeric($widget_args) )
+			$widget_args = array( 'number' => $widget_args );
+		$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
+		extract( $widget_args, EXTR_SKIP );
+
+		$options = get_option('bsuite_recently_commented_posts');
+		if ( !is_array($options) )
+			$options = array();
+	
+		if ( !$updated && !empty($_POST['sidebar']) ) {
+			$sidebar = (string) $_POST['sidebar'];
+	
+			$sidebars_widgets = wp_get_sidebars_widgets();
+			if ( isset($sidebars_widgets[$sidebar]) )
+				$this_sidebar =& $sidebars_widgets[$sidebar];
+			else
+				$this_sidebar = array();
+	
+			foreach ( $this_sidebar as $_widget_id ) {
+				if ( array( &$this, 'widget_recently_commented_posts' ) == $wp_registered_widgets[$_widget_id]['callback'] && isset($wp_registered_widgets[$_widget_id]['params'][0]['number']) ) {
+					$widget_number = $wp_registered_widgets[$_widget_id]['params'][0]['number'];
+					if ( !in_array( "bsuite-commented-posts-$widget_number", $_POST['widget-id'] ) ) // the widget has been removed.
+						unset($options[$widget_number]);
+				}
+			}
+	
+			foreach ( (array) $_POST['bsuite-commented-posts'] as $widget_number => $widget_var ) {
+				if ( !isset($widget_var['number']) && isset($options[$widget_number]) ) // user clicked cancel
+					continue;
+
+				$options[$widget_number]['title'] = strip_tags(stripslashes($widget_var['title']));
+				$options[$widget_number]['number'] = (int) $widget_var['number'];
+				$options[$widget_number]['show_title'] = (int) $widget_var['show_title'];
+				$options[$widget_number]['show_counts'] = (int) $widget_var['show_counts'];
+				$options[$widget_number]['show_icon'] = (int) $widget_var['show_icon'];
+				$options[$widget_number]['icon_size'] = $widget_var['icon_size'] ? 's' : 0;
+			}
+	
 			update_option('bsuite_recently_commented_posts', $options);
 			$this->widget_recently_commented_posts_delete_cache();
+			$updated = true;
 		}
-		$title = attribute_escape($options['title']);
-		if ( !$number = (int) $options['number'] )
-			$number = 5;
-		$show_icon = $options['show_icon'] ? 'checked="checked"' : '';
-		$show_title = $options['show_title'] ? 'checked="checked"' : '';
-		$show_counts = $options['show_counts'] ? 'checked="checked"' : '';
-	?>
-				<p><label for="bsuite-recently-commented-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bsuite-recently-commented-posts-title" name="bsuite-recently-commented-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
 
-				<p><label for="bsuite-recently-commented-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-recently-commented-posts-number" name="bsuite-recently-commented-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
+		if ( -1 == $number ) {
+			$title = __( 'Recently Commented', 'bsuite' );
+			$posts = 5;
+			$days = 7;
+			$show_icon = '';
+			$show_title = 'checked="checked"';
+			$show_counts = 'checked="checked"';
+	
+			// we reset the widget number via JS	
+			$number = '%i%';
+		} else {
+			$title = attribute_escape( $options[$number]['title'] );
+			if ( !$posts = (int) $options[$number]['number'] )
+				$posts = 5;
+			$show_icon = $options[$number]['show_icon'] ? 'checked="checked"' : '';
+			$show_title = $options[$number]['show_title'] ? 'checked="checked"' : '';
+			$show_counts = $options[$number]['show_counts'] ? 'checked="checked"' : '';
+		}
+?>
+		<p><label for="bsuite-commented-posts-title-<?php echo $number; ?>"><?php _e('Title:'); ?> <input style="width: 250px;" id="bsuite-commented-posts-title-<?php echo $number; ?>" name="bsuite-commented-posts[<?php echo $number; ?>][title]" type="text" value="<?php echo $title; ?>" /></label></p>
 
-				<p><?php _e('Show:'); ?>
-					<label for="bsuite-recently-commented-posts-show_icon"><?php _e('icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_icon; ?> id="bsuite-recently-commented-posts-show_icon" name="bsuite-recently-commented-posts-show_icon" /></label> 
-					<label for="bsuite-recently-commented-posts-show_title"><?php _e('title:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_title; ?> id="bsuite-recently-commented-posts-show_title" name="bsuite-recently-commented-posts-show_title" /></label> 
-					<label for="bsuite-recently-commented-posts-show_counts"><?php _e('counts:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_counts; ?> id="bsuite-recently-commented-posts-show_counts" name="bsuite-recently-commented-posts-show_counts" /></label>
-				</p>
+		<p><label for="bsuite-commented-posts-number-<?php echo $number; ?>"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-commented-posts-number-<?php echo $number; ?>" name="bsuite-commented-posts[<?php echo $number; ?>][number]" type="text" value="<?php echo $posts; ?>" /></label> <?php _e('(at most 15)'); ?></p>
 
-				<input type="hidden" id="bsuite-recently-commented-posts-submit" name="bsuite-recently-commented-posts-submit" value="1" />
+		<p><?php _e('Show:'); ?>
+			<label for="bsuite-commented-posts-show_icon-<?php echo $number; ?>"><?php _e('icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_icon; ?> id="bsuite-commented-posts-show_icon-<?php echo $number; ?>" name="bsuite-commented-posts[<?php echo $number; ?>][show_icon]" /></label> 
+			<label for="bsuite-commented-posts-show_title-<?php echo $number; ?>"><?php _e('title:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_title; ?> id="bsuite-commented-posts-show_title-<?php echo $number; ?>" name="bsuite-commented-posts[<?php echo $number; ?>][show_title]" /></label> 
+			<label for="bsuite-commented-posts-show_counts-<?php echo $number; ?>"><?php _e('counts:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_counts; ?> id="bsuite-commented-posts-show_counts-<?php echo $number; ?>" name="bsuite-commented-posts[<?php echo $number; ?>][show_counts]" /></label>
+		</p>
+
+		<input type="hidden" id="bsuite-commented-posts-submit" name="bsuite-commented-posts[<?php echo $number; ?>][submit]" value="1" />
 	<?php
 	}
 	
 	function widget_recently_commented_posts_register() {
-		$class = array('classname' => 'bsuite_recently_commented_posts');
-		wp_register_sidebar_widget('bsuite-recently-commented-posts', __('bSuite Recently Commented', 'bsuite'), array($this, 'widget_recently_commented_posts'), $class);
-		wp_register_widget_control('bsuite-recently-commented-posts', __('bSuite Recently Commented', 'bsuite'), array($this, 'widget_recently_commented_posts_control'), $class, 'width=320&height=90');
+		if ( !$options = get_option('bsuite_recently_commented_posts') )
+			$options = array();
+		$widget_ops = array('classname' => 'bsuite-recently-commented-posts', 'description' => __('A list of posts and pages with recent comments', 'bsuite'));
+		$control_ops = array('width' => 320, 'height' => 90, 'id_base' => 'bsuite-commented-posts');
+		$name = 'bSuite<br /> '. __( 'Recently Commented Posts', 'bsuite' );
 	
-		if ( is_active_widget('widget_recently_commented_posts') ){
-			add_action('wp_head', 'wp_widget_recent_comments_style');
+		$id = false;
+		foreach ( array_keys($options) as $o ) {
+			// Old widgets can have null values for some reason
+			if ( !isset($options[$o]['number'] ))
+				continue;
+
+			$id = "bsuite-commented-posts-$o"; // Never never never translate an id
+			wp_register_sidebar_widget($id, $name, array(&$this, 'widget_recently_commented_posts'), $widget_ops, array( 'number' => $o ));
+			wp_register_widget_control($id, $name, array(&$this, 'widget_recently_commented_posts_control'), $control_ops, array( 'number' => $o ));
+		}
+
+		// If there are none, we register the widget's existance with a generic template
+		if ( !$id ) {
+			wp_register_sidebar_widget( 'bsuite-commented-posts-1', $name, array(&$this, 'widget_recently_commented_posts'), $widget_ops, array( 'number' => -1 ) );
+			wp_register_widget_control( 'bsuite-commented-posts-1', $name, array(&$this, 'widget_recently_commented_posts_control'), $control_ops, array( 'number' => -1 ) );
+		}else{
+			add_action( 'wp_head', 'wp_widget_recent_comments_style' );
 			add_action( 'comment_post', array(&$this, 'widget_recently_commented_posts_delete_cache' ));
 			add_action( 'wp_set_comment_status', array(&$this, 'widget_recently_commented_posts_delete_cache' ));
 		}
 	}
 
-	function widget_popular_posts($args) {
+	function widget_popular_posts( $args, $widget_args = 1 ) {
 		global $post, $wpdb;
+
+		if ( is_numeric($widget_args) )
+			$widget_args = array( 'number' => $widget_args );
+		$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
+		extract( $widget_args, EXTR_SKIP );
 
 		extract($args, EXTR_SKIP);
 		$options = get_option('bstat_pop_posts');
 
 		$opt = array( 
-			'show_icon' => $options['show_icon'],
-			'show_title' => $options['show_title'],
-			'show_counts' => $options['show_counts'],
+			'show_icon' => $options[ $number ]['show_icon'],
+			'show_title' => $options[ $number ]['show_title'],
+			'show_counts' => $options[ $number ]['show_counts'],
 		);
-		$title = empty($options['title']) ? __('Popular Posts') : $options['title'];
-		if ( !$opt['count'] = (int) $options['number'] )
+		$title = empty($options[ $number ]['title']) ? __('Popular Posts', 'bsuite') : $options[ $number ]['title'];
+		if ( !$opt['count'] = (int) $options[ $number ]['number'] )
 			$opt['count'] = 5;
 		else if ( $opt['count'] < 1 )
 			$opt['count'] = 1;
 		else if ( $opt['count'] > 15 )
 			$opt['count'] = 15;
 
-		if ( !$opt['days'] = (int) $options['days'] )
+		if ( !$opt['days'] = (int) $options[ $number ]['days'] )
 			$opt['days'] = 7;
 		else if ( $opt['days'] < 1 )
 			$opt['days'] = 1;
@@ -2677,16 +2754,16 @@ die();
 		if( !$opt['show_icon'] && !$opt['show_title'] )
 			$opt['show_title'] = $opt['show_counts'] = 1;
 
-		if ( !$pop_posts = wp_cache_get( 'bstat_pop_posts', 'widget' ) ) {
+		if ( !$pop_posts = wp_cache_get( 'bstat-pop-posts-'. $number , 'widget' ) ) {
 			$pop_posts = $this->pop_posts( $opt );
-			wp_cache_add( 'bstat_pop_posts', $pop_posts, 'widget', 3600 );
+			wp_cache_set( 'bstat-pop-posts-'. $number , $pop_posts, 'widget', 3600 );
 		}
 
 		if ( !empty($pop_posts) ) {
 ?>
 			<?php echo $before_widget; ?>
 				<?php echo $before_title . $title . $after_title; ?>
-				<ul id="bstat-pop-posts"><?php
+				<ul><?php
 				echo $pop_posts;
 				?></ul>
 			<?php echo $after_widget; ?>
@@ -2695,48 +2772,121 @@ die();
 	}
 
 	function widget_popular_posts_delete_cache() {
-		wp_cache_delete( 'bstat_pop_posts', 'widget' );
+		if ( !$options = get_option('bstat_pop_posts') )
+			$options = array();
+		foreach ( array_keys($options) as $o )
+			wp_cache_delete( 'bstat-pop-posts-'. $o, 'widget' );
 	}
 
-	function widget_popular_posts_control() {
-		$options = $newoptions = get_option('bstat_pop_posts');
-		if ( $_POST['bstat-pop-posts-submit'] ) {
-			$newoptions['title'] = strip_tags(stripslashes($_POST['bstat-pop-posts-title']));
-			$newoptions['number'] = (int) $_POST['bstat-pop-posts-number'];
-			$newoptions['days'] = (int) $_POST['bstat-pop-posts-days'];
-			$newoptions['show_title'] = (int) $_POST['bstat-pop-posts-show_title'];
-			$newoptions['show_counts'] = (int) $_POST['bstat-pop-posts-show_counts'];
-			$newoptions['show_icon'] = (int) $_POST['bstat-pop-posts-show_icon'];
-			$newoptions['icon_size'] = $_POST['bstat-pop-posts-icon_size'] ? 's' : 0;
-		}
-		if ( $options != $newoptions ) {
-			$options = $newoptions;
+
+	function widget_popular_posts_control($widget_args) {
+		global $wp_registered_widgets;
+		static $updated = false;
+	
+		if ( is_numeric($widget_args) )
+			$widget_args = array( 'number' => $widget_args );
+		$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
+		extract( $widget_args, EXTR_SKIP );
+	
+		$options = get_option('bstat_pop_posts');
+		if ( !is_array($options) )
+			$options = array();
+	
+		if ( !$updated && !empty($_POST['sidebar']) ) {
+			$sidebar = (string) $_POST['sidebar'];
+	
+			$sidebars_widgets = wp_get_sidebars_widgets();
+			if ( isset($sidebars_widgets[$sidebar]) )
+				$this_sidebar =& $sidebars_widgets[$sidebar];
+			else
+				$this_sidebar = array();
+	
+			foreach ( $this_sidebar as $_widget_id ) {
+				if ( array(&$this, 'widget_popular_posts') == $wp_registered_widgets[$_widget_id]['callback'] && isset($wp_registered_widgets[$_widget_id]['params'][0]['number']) ) {
+					$widget_number = $wp_registered_widgets[$_widget_id]['params'][0]['number'];
+					if ( !in_array( "bstat-pop-posts-$widget_number", $_POST['widget-id'] ) ) // the widget has been removed.
+						unset($options[$widget_number]);
+				}
+			}
+	
+			foreach ( (array) $_POST['bstat-pop-posts'] as $widget_number => $widget_var ) {
+				if ( !isset($widget_var['number']) && isset($options[$widget_number]) ) // user clicked cancel
+					continue;
+	
+				$options[$widget_number]['title'] = strip_tags(stripslashes($widget_var['title']));
+				$options[$widget_number]['number'] = (int) $widget_var['number'];
+				$options[$widget_number]['days'] = (int) $widget_var['days'];
+				$options[$widget_number]['show_title'] = (int) $widget_var['show_title'];
+				$options[$widget_number]['show_counts'] = (int) $widget_var['show_counts'];
+				$options[$widget_number]['show_icon'] = (int) $widget_var['show_icon'];
+				$options[$widget_number]['icon_size'] = $widget_var['icon_size'] ? 's' : 0;
+			}
+	
 			update_option('bstat_pop_posts', $options);
 			$this->widget_popular_posts_delete_cache();
+			$updated = true;
 		}
-		$title = attribute_escape($options['title']);
-		if ( !$number = (int) $options['number'] )
-			$number = 5;
-		if ( !$days = (int) $options['days'] )
+	
+		if ( -1 == $number ) {
+			$title = __( 'Popular Posts', 'bsuite' );
+			$posts = 5;
 			$days = 7;
-		$show_icon = $options['show_icon'] ? 'checked="checked"' : '';
-		$show_title = $options['show_title'] ? 'checked="checked"' : '';
-		$show_counts = $options['show_counts'] ? 'checked="checked"' : '';
-	?>
-				<p><label for="bstat-pop-posts-title"><?php _e('Title:'); ?> <input style="width: 250px;" id="bstat-pop-posts-title" name="bstat-pop-posts-title" type="text" value="<?php echo $title; ?>" /></label></p>
+			$show_icon = '';
+			$show_title = 'checked="checked"';
+			$show_counts = 'checked="checked"';
+	
+			// we reset the widget number via JS	
+			$number = '%i%';
+		} else {
+			$title = attribute_escape( $options[$number]['title'] );
+			if ( !$posts = (int) $options[$number]['number'] )
+				$posts = 5;
+			if ( !$days = (int) $options[$number]['days'] )
+				$days = 7;
+			$show_icon = $options[$number]['show_icon'] ? 'checked="checked"' : '';
+			$show_title = $options[$number]['show_title'] ? 'checked="checked"' : '';
+			$show_counts = $options[$number]['show_counts'] ? 'checked="checked"' : '';
+		}
+	
+?>
+		<p><label for="bstat-pop-posts-title-<?php echo $number; ?>"><?php _e('Title:'); ?> <input style="width: 250px;" id="bstat-pop-posts-title-<?php echo $number; ?>" name="bstat-pop-posts[<?php echo $number; ?>][title]" type="text" value="<?php echo $title; ?>" /></label></p>
 
-				<p><label for="bstat-pop-posts-number"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-number" name="bstat-pop-posts-number" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 15)'); ?></p>
+		<p><label for="bstat-pop-posts-number-<?php echo $number; ?>"><?php _e('Number of posts to show:'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-number-<?php echo $number; ?>" name="bstat-pop-posts[<?php echo $number; ?>][number]" type="text" value="<?php echo $posts; ?>" /></label> <?php _e('(at most 15)'); ?></p>
 
-				<p><label for="bstat-pop-posts-days"><?php _e('In past x days (1 = today only):'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-days" name="bstat-pop-posts-days" type="text" value="<?php echo $days; ?>" /></label> <?php _e('(at most 30)'); ?></p>
+		<p><label for="bstat-pop-posts-days-<?php echo $number; ?>"><?php _e('In past x days (1 = today only):'); ?> <input style="width: 25px; text-align: center;" id="bstat-pop-posts-days-<?php echo $number; ?>" name="bstat-pop-posts[<?php echo $number; ?>][days]" type="text" value="<?php echo $days; ?>" /></label> <?php _e('(at most 30)'); ?></p>
 
-				<p><?php _e('Show:'); ?>
-					<label for="bstat-pop-posts-show_icon"><?php _e('icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_icon; ?> id="bstat-pop-posts-show_icon" name="bstat-pop-posts-show_icon" /></label> 
-					<label for="bstat-pop-posts-show_title"><?php _e('title:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_title; ?> id="bstat-pop-posts-show_title" name="bstat-pop-posts-show_title" /></label> 
-					<label for="bstat-pop-posts-show_counts"><?php _e('counts:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_counts; ?> id="bstat-pop-posts-show_counts" name="bstat-pop-posts-show_counts" /></label>
-				</p>
+		<p><?php _e('Show:'); ?>
+			<label for="bstat-pop-posts-show_icon-<?php echo $number; ?>"><?php _e('icon:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_icon; ?> id="bstat-pop-posts-show_icon-<?php echo $number; ?>" name="bstat-pop-posts[<?php echo $number; ?>][show_icon]" /></label> 
+			<label for="bstat-pop-posts-show_title-<?php echo $number; ?>"><?php _e('title:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_title; ?> id="bstat-pop-posts-show_title-<?php echo $number; ?>" name="bstat-pop-posts[<?php echo $number; ?>][show_title]" /></label> 
+			<label for="bstat-pop-posts-show_counts-<?php echo $number; ?>"><?php _e('counts:'); ?> <input class="checkbox" type="checkbox" value="1" <?php echo $show_counts; ?> id="bstat-pop-posts-show_counts-<?php echo $number; ?>" name="bstat-pop-posts[<?php echo $number; ?>][show_counts]" /></label>
+		</p>
 
-				<input type="hidden" id="bstat-pop-posts-submit" name="bstat-pop-posts-submit" value="1" />
-	<?php
+		<input type="hidden" id="bstat-pop-posts-submit" name="bstat-pop-posts[<?php echo $number; ?>][submit]" value="1" />
+<?php
+	}
+
+	function widget_popular_posts_register() {
+		if ( !$options = get_option('bstat_pop_posts') )
+			$options = array();
+		$widget_ops = array('classname' => 'bstat-pop-posts', 'description' => __('Your site&#8217;s most popular posts and pages', 'bsuite'));
+		$control_ops = array('width' => 320, 'height' => 90, 'id_base' => 'bstat-pop-posts');
+		$name = 'bSuite<br /> '. __( 'Popular Posts', 'bsuite' );
+	
+		$id = false;
+		foreach ( array_keys($options) as $o ) {
+			// Old widgets can have null values for some reason
+			if ( !isset($options[$o]['title']))
+				continue;
+			$id = "bstat-pop-posts-$o"; // Never never never translate an id
+			wp_register_sidebar_widget($id, $name, array(&$this, 'widget_popular_posts'), $widget_ops, array( 'number' => $o ));
+			wp_register_widget_control($id, $name, array(&$this, 'widget_popular_posts_control'), $control_ops, array( 'number' => $o ));
+		}
+	
+		// If there are none, we register the widget's existance with a generic template
+		if ( !$id ) {
+			wp_register_sidebar_widget( 'bstat-pop-posts-1', $name, array(&$this, 'widget_popular_posts'), $widget_ops, array( 'number' => -1 ) );
+			wp_register_widget_control( 'bstat-pop-posts-1', $name, array(&$this, 'widget_popular_posts_control'), $control_ops, array( 'number' => -1 ) );
+		}
 	}
 
 	function widget_popular_refs($args) {
@@ -2806,14 +2956,12 @@ die();
 
 	function widgets_register(){
 		$this->widget_recently_commented_posts_register();
+		$this->widget_popular_posts_register();
 
 		wp_register_sidebar_widget('bsuite-related-posts', __('bSuite Related Posts', 'bsuite'), array(&$this, 'widget_related_posts'), 'bsuite_related_posts');
 		wp_register_widget_control('bsuite-related-posts', __('bSuite Related Posts', 'bsuite'), array(&$this, 'widget_related_posts_control'), 'width=320&height=90');
 
 		wp_register_sidebar_widget('bsuite-sharelinks', __('bSuite Share Links', 'bsuite'), array(&$this, 'widget_sharelinks'), 'bsuite_sharelinks');
-
-		wp_register_sidebar_widget('bstat-pop-posts', __('bStat Posts'), array(&$this, 'widget_popular_posts'), 'bstat-pop-posts');
-		wp_register_widget_control('bstat-pop-posts', __('bStat Posts'), array(&$this, 'widget_popular_posts_control'), 'width=320&height=90');
 
 		wp_register_sidebar_widget('bstat-pop-refs', __('bStat Refs'), array(&$this, 'widget_popular_refs'), 'bstat-pop-refs');
 		wp_register_widget_control('bstat-pop-refs', __('bStat Refs'), array(&$this, 'widget_popular_refs_control'), 'width=320&height=90');
@@ -2869,12 +3017,6 @@ die();
 		// set some defaults for the widgets
 		if(!get_option('bsuite_related_posts'))
 			update_option('bsuite_related_posts', array('title' => 'Related Posts', 'number' => 7));
-
-		if(!get_option('bsuite_recently_commented_posts'))
-			update_option('bsuite_recently_commented_posts', array('title' => 'Recently Commented Posts', 'number' => 7, 'show_title' => 1, 'show_counts' => 1));
-
-		if(!get_option('bstat_pop_posts'))
-			update_option('bstat_pop_posts', array('title' => 'Popular Posts', 'number' => 5, 'days' => 7, 'show_title' => 1, 'show_counts' => 1));
 
 		if(!get_option('bstat_pop_refs'))
 			update_option('bstat_pop_refs', array('title' => 'Popular Searches', 'number' => 5));
