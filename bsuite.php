@@ -992,11 +992,11 @@ class bSuite {
 	
 		// the embed links 
 		if( $post_id && ( $embed = $this->link2me( $post_id ))){
-			$content .= '<li class="bsuite_share_embed"><h3 id="bsuite_share_embed">Link or embed this</h3>' . $embed .'</li>';
+			$content .= '<li id="bsuite_share_embed" class="bsuite_share_embed"><h3>Link or embed this</h3>' . $embed .'</li>';
 		}
 	
 		// the bookmark links 
-		$content .= '<li class="bsuite_share_bookmark"><h3 id="bsuite_share_bookmark">Bookmark this at</h3><ul>';
+		$content .= '<li id="bsuite_share_bookmark" class="bsuite_share_bookmark"><h3>Bookmark this at</h3><ul>';
 		global $services_bookmark;
 		foreach ($services_bookmark as $key => $data) {
 			$content .= '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/'. $key .'.gif" width="16" height="16" alt="'. attribute_escape($data['name']) .' sharing icon">&nbsp;<a href="'. str_replace(array('{title}', '{url}'), array($the_title, $the_permalink), $data['url']) .'">'. $data['name'] .'</a></li>';
@@ -1004,10 +1004,10 @@ class bSuite {
 		$content .= '</ul></li>';
 	
 		// the email links
-		$content .= '<li class="bsuite_share_email"><h3 id="bsuite_share_email">Email this page</h3><ul><li><a href="mailto:?MIME-Version=1.0&Content-Type=text/html;&subject='. attribute_escape(urldecode($the_title)) .'&body=%0D%0AI found this at '.  attribute_escape(get_bloginfo('name')) .'%0D%0A'. attribute_escape(urldecode($the_permalink)) .'%0D%0A">Send this page using your computer&#039;s emailer</a></li></ul></li>';
+		$content .= '<li id="bsuite_share_email" class="bsuite_share_email"><h3>Email this page</h3><ul><li><a href="mailto:?MIME-Version=1.0&Content-Type=text/html;&subject='. attribute_escape(urldecode($the_title)) .'&body=%0D%0AI found this at '.  attribute_escape(get_bloginfo('name')) .'%0D%0A'. attribute_escape(urldecode($the_permalink)) .'%0D%0A">Send this page using your computer&#039;s emailer</a></li></ul></li>';
 	
 		// the feed links
-		$content .= '<li class="bsuite_share_feed"><h3 id="bsuite_share_feed">Stay up to date</h3><ul>';
+		$content .= '<li id="bsuite_share_feed class="bsuite_share_feed"><h3">Stay up to date</h3><ul>';
 		$feeds = array();
 		if($wp_query->is_singular)
 			$feeds[] = array('title' => 'Comments on this post', 'url' => get_post_comments_feed_link($post_id));
@@ -1028,7 +1028,7 @@ class bSuite {
 		$content .= '</ul></li>';
 	
 		// the translation links
-		$content .= '<li class="bsuite_share_translate"><h3 id="bsuite_share_translate">Automatically translate this to</h3><ul>';
+		$content .= '<li id="bsuite_share_translate" class="bsuite_share_translate"><h3>Automatically translate this to</h3><ul>';
 		global $services_translate;
 		foreach ($services_translate as $key => $data) {
 			$content .= '<li><a href="'. str_replace('{url}', $the_permalink, $data['url']) .'">'. $data['name'] .'</a></li>';
