@@ -221,6 +221,7 @@ class bSuite {
 			'ul_class' => 'contents pagemenu',
 			'ol_class' => FALSE,
 			'excerpt'   => FALSE,
+			'icon'   => FALSE,
 			'echo' => 0,
 			'child_of' => $id,
 			'depth' => 1,
@@ -258,11 +259,13 @@ class bSuite {
 		}
 
 		if( $arg['excerpt'] )
-			return( $prefix . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_callback'), wp_list_pages( $arg )) . $suffix );
+			return( $prefix . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_excerpt'), wp_list_pages( $arg )) . $suffix );
+		if( $arg['icon'] )
+			return( $prefix . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_icon'), wp_list_pages( $arg )) . $suffix );
 		return( $prefix . wp_list_pages( $arg ) . $suffix );
 	}
 
-	function shortcode_list_pages_callback( $arg ){
+	function shortcode_list_pages_excerpt( $arg ){
 		global $id, $post;
 	
 		$post_orig = unserialize( serialize( $post )); // how else to prevent passing object by reference?
@@ -279,6 +282,11 @@ class bSuite {
 		if( 5 < strlen( $content ))
 			return( $arg[0] .'<ul><li class="page_excerpt page_excerpt-'. $arg[1] .'">'. $content .'</li></ul>' );
 		return( $arg[0] );
+	}
+
+	function shortcode_list_pages_icon( $arg ){
+		$content = apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
+		return( $arg[0] .'<ul><li class="page_icon page_icon-'. $arg[1] .'"><a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a></li></ul>' );
 	}
 
 
@@ -918,7 +926,7 @@ class bSuite {
 
 	function icon_get_h( $post_id, $size = 's', $ow = 0, $oh = 0 ){
 		if( $img = $this->icon_get_a( $post_id, $size )){
-			return( '<img src="'. $this->path_web .'/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background-image: url( \''. $img['url'] .'\' );" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
+			return( '<img src="'. $this->path_web .'/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background-image: url( '. $img['url'] .' );" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
 		}
 		return( FALSE );
 	}
@@ -926,32 +934,6 @@ class bSuite {
 
 	// end post icon related functions
 	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
