@@ -217,8 +217,8 @@ class bSuite {
 
 		$arg = shortcode_atts( array(
 			'title' => 'Contents',
-			'div_class' => 'contents pagemenu',
-			'ul_class' => 'contents pagemenu',
+			'div_class' => 'contents pagemenu list_pages',
+			'ul_class' => 'contents pagemenu list_pages',
 			'ol_class' => FALSE,
 			'excerpt'   => FALSE,
 			'icon'   => FALSE,
@@ -258,37 +258,40 @@ class bSuite {
 			}
 		}
 
-		if( $arg['excerpt'] )
-			return( $prefix . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_excerpt'), wp_list_pages( $arg )) . $suffix );
-		if( $arg['icon'] )
-			return( $prefix . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_icon'), wp_list_pages( $arg )) . $suffix );
+		if(( $arg['excerpt'] ) || ( $arg['icon'] )){
+			$this->list_pages->show_excerpt = $arg['excerpt'];
+			$this->list_pages->show_icon = $arg['icon'];
+			return( $prefix . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_callback'), wp_list_pages( $arg )) . $suffix );
+		}
 		return( $prefix . wp_list_pages( $arg ) . $suffix );
 	}
 
-	function shortcode_list_pages_excerpt( $arg ){
+	function shortcode_list_pages_callback( $arg ){
 		global $id, $post;
 	
-		$post_orig = unserialize( serialize( $post )); // how else to prevent passing object by reference?
-		$id_orig = $id;
-	
-		$post = get_post( $arg[1] );
-		$id = $post->ID;
+		if( $this->list_pages->show_excerpt ){
+			$post_orig = unserialize( serialize( $post )); // how else to prevent passing object by reference?
+			$id_orig = $id;
 		
-		$content = apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
+			$post = get_post( $arg[1] );
+			$id = $post->ID;
+			
+			$content = ( $this->list_pages->show_icon ? '<a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a>' : '' ) . apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
+		
+			$post = $post_orig;
+			$id = $id_orig;
 	
-		$post = $post_orig;
-		$id = $id_orig;
+			if( 5 < strlen( $content ))
+				return( $arg[0] .'<ul><li class="page_excerpt page_excerpt-'. $arg[1] .'">'. $content .'</li></ul>' );
+			return( $arg[0] );
 
-		if( 5 < strlen( $content ))
-			return( $arg[0] .'<ul><li class="page_excerpt page_excerpt-'. $arg[1] .'">'. $content .'</li></ul>' );
-		return( $arg[0] );
+		}else{
+			$content = apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
+			return( $arg[0] .'<ul><li class="page_icon page_icon-'. $arg[1] .'"><a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a></li></ul>' );
+
+		}
+
 	}
-
-	function shortcode_list_pages_icon( $arg ){
-		$content = apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
-		return( $arg[0] .'<ul><li class="page_icon page_icon-'. $arg[1] .'"><a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a></li></ul>' );
-	}
-
 
 	function shortcode_icon( $arg ){
 		// [innerindex ]
