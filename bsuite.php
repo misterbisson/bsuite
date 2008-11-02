@@ -1007,7 +1007,7 @@ class bSuite {
 		$content .= '<li id="bsuite_share_email" class="bsuite_share_email"><h3>Email this page</h3><ul><li><a href="mailto:?MIME-Version=1.0&Content-Type=text/html;&subject='. attribute_escape(urldecode($the_title)) .'&body=%0D%0AI found this at '.  attribute_escape(get_bloginfo('name')) .'%0D%0A'. attribute_escape(urldecode($the_permalink)) .'%0D%0A">Send this page using your computer&#039;s emailer</a></li></ul></li>';
 	
 		// the feed links
-		$content .= '<li id="bsuite_share_feed class="bsuite_share_feed"><h3">Stay up to date</h3><ul>';
+		$content .= '<li id="bsuite_share_feed" class="bsuite_share_feed"><h3>Stay up to date</h3><ul>';
 		$feeds = array();
 		if($wp_query->is_singular)
 			$feeds[] = array('title' => 'Comments on this post', 'url' => get_post_comments_feed_link($post_id));
@@ -2695,7 +2695,7 @@ die();
 			wp_register_sidebar_widget( 'bsuite-commented-posts-1', $name, array(&$this, 'widget_recently_commented_posts'), $widget_ops, array( 'number' => -1 ) );
 			wp_register_widget_control( 'bsuite-commented-posts-1', $name, array(&$this, 'widget_recently_commented_posts_control'), $control_ops, array( 'number' => -1 ) );
 		}else{
-			add_action( 'wp_head', 'wp_widget_recent_comments_style' );
+//			add_action( 'wp_head', 'wp_widget_recent_comments_style' );
 			add_action( 'comment_post', array(&$this, 'widget_recently_commented_posts_delete_cache' ));
 			add_action( 'wp_set_comment_status', array(&$this, 'widget_recently_commented_posts_delete_cache' ));
 		}
