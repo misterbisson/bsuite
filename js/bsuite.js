@@ -105,9 +105,7 @@ var bsuite={
 	u = uri
 	n = Math.round(Math.random()*2147483647);
 ********************************************/
-			var src='http:';
-			if(this.url.protocol=='https:') src='https:';
-			src+='//'+this.api_location;
+			var src = this.api_location;
 			//generate a random number to prevent caching
 			var n = Math.round(Math.random()*2147483647);
 			//set up the querystring
