@@ -61,6 +61,7 @@ class bSuite {
 		add_shortcode('icon', array(&$this, 'shortcode_icon'));
 		add_shortcode('feed', array(&$this, 'shortcode_feed'));
 		add_shortcode('slideshare', array(&$this, 'shortcode_slideshare'));
+		add_shortcode('wufoo', array(&$this, 'shortcode_wufoo'));
 
 		// filter the_excerpt and x_rss through do_shortcode(). wish this was in core
 		// http://trac.wordpress.org/ticket/7093
@@ -428,6 +429,21 @@ class bSuite {
 			return( FALSE );
 
 		return( str_replace( '%%id%%', $arg['id'], '<div class="embed slideshare" id="slideshare-%%id%%"><object type="application/x-shockwave-flash" wmode="transparent" data="https://s3.amazonaws.com:443/slideshare/ssplayer.swf?id=%%id%%" width="425" height="348"><param name="movie" value="https://s3.amazonaws.com:443/slideshare/ssplayer.swf?id=%%id%%" /></object></div>' ));
+	}
+
+	function shortcode_wufoo( $arg ){
+		// [wufoo id=z7x4m0 domain=place.wufoo.com]
+
+		$arg = shortcode_atts( array(
+			'id' => FALSE,
+			'domain' => FALSE,
+			'height' => 500,
+		), $arg );
+
+		if( !$arg['id'] || !$arg['domain'] )
+			return( FALSE );
+
+		return( str_replace( array('%%id%%','%%domain%%','%%height%%'), array($arg['id'],$arg['domain'],$arg['height']), '<iframe height="%%height%%" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none" src="https://%%domain%%/embed/%%id%%/"><a href="http://maisonbisson.wufoo.com/forms/%%id%%/">Fill out my Wufoo form!</a></iframe>' ));
 	}
 
 

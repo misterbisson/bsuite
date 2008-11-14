@@ -1,16 +1,45 @@
 === bSuite ===
 Contributors: misterbisson
 Donate link: http://MaisonBisson.com/
-Tags: cms, content management, tags, stats, statistics, formatting, pages, widgets, related posts, sharelinks, keyword searching
+Tags: cms, content management, tags, stats, statistics, formatting, pages, widgets, related posts, keyword searching, post, posts, page, pages, admin, related content
 Requires at least: 2.6.0
-Tested up to: 2.6.2
+Tested up to: 2.6.3
 Stable tag: 4.0.1
 
-A suite of tools used to help surface interesting and popular stories as well as improve WordPress' CMS capabilities and usefulness as an application platform.
+A suite of tools used to help surface interesting and popular stories as well as improve WordPress' CMS capabilities as an application platform.
 
 == Description ==
 
 bSuite is a set of tools that help surface interesting and popular stories as well as improve WordPress' CMS capabilities and usefulness as an application platform. <a href="http://maisonbisson.com/bsuite/widgets/">Available widgets</a> can show most popular posts, recently commented posts, or related posts (can also add a listof related posts to the bottom of the post content). <a href="http://maisonbisson.com/bsuite/shortcodes/">Added shortcodes</a> help organize content, allowing you to list all sub-pages of the current page or list all headings within the page. Another shortcode will render RSS feeds into a page or post. See <a href="http://wordpress.org/extend/plugins/bsuite/screenshots/">the screenshots</a> for more.
+
+== Stats ==
+
+1. Tracks page loads across your WordPress site
+1. Works with caching plugins
+1. Shows you what's popular, what's growing in popularity, and what's declining
+1. Shows you what categories and tags are most popular
+1. Tracks the search terms readers use to find your site (and highlights those terms on the page)
+
+== Widgets ==
+
+<a href="http://maisonbisson.com/bsuite/widgets/">bSuite widgets</a> include: 
+
+1. bSuite Popular Posts
+1. bSuite Related Posts
+1. bSuite Recently Commented Posts
+
+== Shortcodes ==
+
+<a href="http://maisonbisson.com/bsuite/shortcodes/">Built-in shortcodes</a> allow you to:
+
+1. Embed an RSS or Atom feed into a post or page
+1. Include the content or excerpt from one post or page in another.
+1. Automatically build an index of headings on a page and create a table of contents to it (with links to anchors on the page)
+1. Embed a list of pages or sub-pages on a page or post
+1. Embed Slideshare items
+1. Embed Wufoo forms
+
+== Accessories ==
 
 Included companion plugins include a <a href="http://maisonbisson.com/bsuite/tag-importer/">universal tag importer</a>, and an upgrader to help you move from bSuite 3.
 
