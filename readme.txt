@@ -4,7 +4,7 @@ Donate link: http://MaisonBisson.com/
 Tags: cms, content management, tags, stats, statistics, formatting, pages, widgets, related posts, keyword searching, post, posts, page, pages, admin, related content
 Requires at least: 2.6.0
 Tested up to: 2.6.3
-Stable tag: 4.0.1
+Stable tag: 4.0.2
 
 A suite of tools used to help surface interesting and popular stories as well as improve WordPress' CMS capabilities as an application platform.
 
