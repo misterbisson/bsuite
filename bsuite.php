@@ -945,6 +945,8 @@ class bSuite {
 
 	function icon_get_h( $post_id, $size = 's', $ow = 0, $oh = 0 ){
 		if( $img = $this->icon_get_a( $post_id, $size )){
+			if( strpos( current_filter(), 'rss' ))
+				return( '<img src="'. $img['url'] .'" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
 			return( '<img src="'. $this->path_web .'/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background-image: url( '. $img['url'] .' );" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
 		}
 		return( FALSE );
