@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/bsuite/">Documentation here</a>.
-Version: 4.0.2
+Version: 4.0.3
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -11,8 +11,6 @@ Author URI: http://maisonbisson.com/blog/
 class bSuite {
 
 	function bSuite(){
-
-//die( print_r( $_POST ));
 
 		global $wpdb;
 		$this->search_table = $wpdb->prefix . 'bsuite4_search';
@@ -106,21 +104,11 @@ class bSuite {
 		}
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
 
-		// quickview
-		/*
-		add_filter('bsuite_quickview_excerpt', 'wptexturize', 10);
-		add_filter('bsuite_quickview_excerpt', 'convert_smilies', 10);
-		add_filter('bsuite_quickview_excerpt', 'convert_chars', 10);
-		add_filter('bsuite_quickview_excerpt', 'wpautop', 10);
-		add_filter('bsuite_quickview_excerpt', 'do_shortcode', 20);
-		*/
-
 		// default CSS
 		if( get_option( 'bsuite_insert_css' )){
-			add_action('wp_head', array(&$this, 'css_default' ));
-// the register and queue style hooks only work in the dashboard
-//			wp_register_style( 'bsuite-default', $this->path_web .'/css/default.css' );
-//			wp_enqueue_style( 'bsuite-default' );
+			add_action('wp_head', 'wp_print_styles', 9);
+			wp_register_style( 'bsuite-default', $this->path_web .'/css/default.css' );
+			wp_enqueue_style( 'bsuite-default' );
 		}
 
 		// bstat
@@ -147,15 +135,18 @@ class bSuite {
 
 		add_action('widgets_init', array(&$this, 'widgets_register'));
 
-		add_filter( 'whitelist_options', array(&$this, 'mu_options' ));
-
 
 		// activation and menu hooks
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
 		add_action('admin_menu', array(&$this, 'admin_menu_hook'));
+		add_action('admin_init', array(&$this, 'admin_init'));
 		add_action('init', array(&$this, 'init'));
 		// end register WordPress hooks
 
+
+	}
+
+	function admin_init(){
 /*
 		// set things up so authors can edit their own pages
 		$role = get_role('author');
@@ -165,7 +156,19 @@ class bSuite {
 		}
 */
 
+		add_filter( 'whitelist_options', array(&$this, 'mu_options' ));
 
+		register_setting( 'bsuite-options', 'bsuite_insert_related', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_insert_sharelinks', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_searchsmart', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_swhl', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_who_can_edit' );
+		register_setting( 'bsuite-options', 'bsuite_managefocus_month', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_managefocus_author', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_insert_css', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_migration_interval', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_migration_count', 'absint' );
+		register_setting( 'bsuite-options', 'bsuite_load_max', 'absint' );	
 	}
 
 	function init(){
@@ -2158,72 +2161,117 @@ die();
 		// Blicki info: http://wordpress.org/extend/plugins/blicki/
 		// http://www.blicki.com/
 	
-		global $post;
-		
+		global $post_ID, $page_ID;
+
 		$requested_cap = $cap_data[0];
 		$user_id = $cap_data[1];
-		$post_id = '';
-		if ( isset($cap_data[2]) )
+
+		if ( isset($cap_data[2]) && ( 0 < (int) $cap_data[2] ))
 			$post_id = $cap_data[2];
-		if ( !isset($post_id) && isset($post->ID) )
-			$post_id = $post->ID;
+		else if ( isset($post_ID) && ( 0 < (int) $post_ID ))
+			$post_id = $post_ID;
+		else if ( isset($page_ID) && ( 0 < (int) $page_ID ))
+			$post_id = $page_ID;
 		//$current_user = new WP_User($user_id);
 	
-		if ( 'edit_page' == $requested_cap ) {
-			foreach ($requested_caps as $req_cap)
-				$req_caps[$req_cap] = true;
-			$who_can_edit = get_post_meta($post_id, '_bsuite_who_can_edit', true);
-			if ( empty($who_can_edit) )
-				$who_can_edit = get_settings('bsuite_who_can_edit');
-			if ( 'anyone' == $who_can_edit ) {
-				$user_caps = array_merge($user_caps, $req_caps);
-			} else if ('registered_users' == $who_can_edit ) {
-				if ( is_user_logged_in() )
+		switch( $requested_cap ){
+			case 'publish_pages':
+				foreach ($requested_caps as $req_cap)
+					$req_caps[$req_cap] = true;
+
+				$who_can_edit = get_post_meta($post_id, '_bsuite_who_can_edit', true);
+				if ( empty($who_can_edit) )
+					$who_can_edit = get_settings('bsuite_who_can_publish');
+
+				switch( $who_can_edit ){
+					case 'anyone':
+						$user_caps = array_merge($user_caps, $req_caps);
+						break;
+
+					case 'registered_users':
+						if ( is_user_logged_in() )
+							$user_caps = array_merge($user_caps, $req_caps);
+						break;
+
+					case 'authors':
+						if ( is_user_logged_in() && isset($user_caps['author']))
+							$user_caps = array_merge($user_caps, $req_caps);
+						break;
+
+					default:
+						$caps = map_meta_cap('edit_page', $user_id, $post_id);
+						foreach ($caps as $cap) {
+							if ( empty($user_caps[$cap]) || !$user_caps[$cap] )
+								return $user_caps;
+						}
+						$user_caps = array_merge($user_caps, $req_caps);
+				}
+				break;
+
+			case 'edit_page':
+			case 'edit_others_pages':
+			case 'edit_published_pages':
+				foreach ($requested_caps as $req_cap)
+					$req_caps[$req_cap] = true;
+				$who_can_edit = get_post_meta($post_id, '_bsuite_who_can_edit', true);
+				if ( empty($who_can_edit) )
+					$who_can_edit = get_settings('bsuite_who_can_edit');
+				if ( 'anyone' == $who_can_edit ) {
 					$user_caps = array_merge($user_caps, $req_caps);
-			} else if ('authors' == $who_can_edit ) {
-				if ( is_user_logged_in() && isset($user_caps['author']))
+				} else if ('registered_users' == $who_can_edit ) {
+					if ( is_user_logged_in() )
+						$user_caps = array_merge($user_caps, $req_caps);
+				} else if ('authors' == $who_can_edit ) {
+					if ( is_user_logged_in() && isset($user_caps['author']))
+						$user_caps = array_merge($user_caps, $req_caps);
+				} else {
+					$caps = map_meta_cap('edit_page', $user_id, $post_id);
+					foreach ($caps as $cap) {
+						if ( empty($user_caps[$cap]) || !$user_caps[$cap] )
+							return $user_caps;
+					}
 					$user_caps = array_merge($user_caps, $req_caps);
-			} else {
+				}
+				break;
+
+			case 'edit_pages':
+			case 'read':
+				foreach ($requested_caps as $req_cap)
+					$req_caps[$req_cap] = true;
+				$who_can_edit = get_option('bsuite_who_can_edit');
+				if ( 'anyone' == $who_can_edit ) {
+					$user_caps = array_merge($user_caps, $req_caps);
+				} else if ('registered_users' == $who_can_edit ) {
+					if ( is_user_logged_in() )
+						$user_caps = array_merge($user_caps, $req_caps);
+				}
+				return $user_caps;
+				break;
+
+			case 'delete_page':
+			case 'delete_pages':
+				foreach ($requested_caps as $req_cap)
+					$req_caps[$req_cap] = true;
+				$who_can_delete = get_option('bsuite_who_can_delete');
+				if ( 'anyone' == $who_can_delete ) {
+					$user_caps = array_merge($user_caps, $req_caps);
+				} else if ('registered_users' == $who_can_delete ) {
+					if ( is_user_logged_in() )
+						$user_caps = array_merge($user_caps, $req_caps);
+				}
+				return $user_caps;
+				break;
+
+			case 'bsuite_change_access':
 				$caps = map_meta_cap('edit_page', $user_id, $post_id);
 				foreach ($caps as $cap) {
 					if ( empty($user_caps[$cap]) || !$user_caps[$cap] )
 						return $user_caps;
 				}
-				$user_caps = array_merge($user_caps, $req_caps);
-			}
-		} else if ( 'edit_pages' == $requested_cap ||
-			'read' == $requested_cap ) {
-			foreach ($requested_caps as $req_cap)
-				$req_caps[$req_cap] = true;
-			$who_can_edit = get_option('bsuite_who_can_edit');
-			if ( 'anyone' == $who_can_edit ) {
-				$user_caps = array_merge($user_caps, $req_caps);
-			} else if ('registered_users' == $who_can_edit ) {
-				if ( is_user_logged_in() )
-					$user_caps = array_merge($user_caps, $req_caps);
-			}
-			return $user_caps;
-		} else if ( 'delete_page' == $requested_cap || 'delete_pages' == $requested_cap ) {
-			foreach ($requested_caps as $req_cap)
-				$req_caps[$req_cap] = true;
-			$who_can_delete = get_option('bsuite_who_can_delete');
-			if ( 'anyone' == $who_can_delete ) {
-				$user_caps = array_merge($user_caps, $req_caps);
-			} else if ('registered_users' == $who_can_delete ) {
-				if ( is_user_logged_in() )
-					$user_caps = array_merge($user_caps, $req_caps);
-			}
-			return $user_caps;
-		} else if ( 'bsuite_change_access' == $requested_cap ) {
-			$caps = map_meta_cap('edit_page', $user_id, $post_id);
-			foreach ($caps as $cap) {
-				if ( empty($user_caps[$cap]) || !$user_caps[$cap] )
-					return $user_caps;
-			}
-	
-			$user_caps['bsuite_change_access'] = true;
+				$user_caps['bsuite_change_access'] = true;
+				break;
 		}
-		
+
 		return $user_caps;
 	}
 
@@ -2484,11 +2532,6 @@ die();
 		return( count( $posts ));
 	}
 
-	function css_default() {
-?>
-<link rel="stylesheet" href="<?php echo $this->path_web ?>/css/default.css" type="text/css" media="all" />
-<?php
-	}
 
 
 	// widgets

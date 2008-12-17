@@ -56,10 +56,6 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 
 <form method="post" action="options.php">
 <input type='hidden' name='option_page' value='bsuite' />
-<?php if( !$bsuite->is_mu ) wp_nonce_field('update-options'); else wp_nonce_field('bsuite-options'); ?>
-
-
-
 
 <h3><?php _e('Options'); ?></h3>
 
@@ -179,6 +175,7 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 <?php } ?>
 
 <p class="submit">
+<?php settings_fields('bsuite-options'); ?>
 <input type="hidden" name="action" value="update" />
 <input type="hidden" name="page_options" value="bsuite_insert_related,bsuite_insert_sharelinks,bsuite_searchsmart,bsuite_swhl,bsuite_who_can_edit,bsuite_managefocus_month,bsuite_managefocus_author,bsuite_insert_css,bsuite_migration_interval,bsuite_migration_count,bsuite_load_max" />
 <input type="submit" name="Submit" value="<?php _e('Save Changes') ?>" class="button" />
