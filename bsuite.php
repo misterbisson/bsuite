@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/bsuite/">Documentation here</a>.
-Version: 4.0.3
+Version: 4.0.4
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
