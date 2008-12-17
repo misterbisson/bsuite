@@ -103,6 +103,7 @@ class bSuite {
 			add_filter('content_save_pre', array(&$this, 'searchsmart_edit'));
 		}
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
+		add_filter('post_link', array(&$this, 'searchsmart_post_link_direct'), 11, 2);
 
 		// default CSS
 		if( get_option( 'bsuite_insert_css' )){
@@ -1678,6 +1679,12 @@ $engine = $this->get_search_engine( $ref );
 			wp_redirect( get_permalink( $wp_query->post->ID ) , '302');
 
 		return(TRUE);
+	}
+
+	function searchsmart_post_link_direct( $permalink, $post ){
+		if( $redirect = get_post_meta( $post->ID, 'redirect', TRUE ))
+			return( $redirect );
+		return( $permalink );
 	}
 
 	function searchsmart_edit( $content ){
