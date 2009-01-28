@@ -898,9 +898,9 @@ class bSuite {
 			return( $this->icon_sizes['s'] );
 	}
 
-	function icon_get_tofit( $post_id, $size = 's' ){
+	function icon_get_tofit( $img, $size = 's' ){
 		if( is_array( $this->icon_sizes[ $size ] )){
-			if( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )){
+			if( is_array( $img )){
 
 				// what area are we looking for?
 				$area_expected = $this->icon_sizes[ $size ]['w'] * $this->icon_sizes[ $size ]['h'];
@@ -934,15 +934,18 @@ class bSuite {
 		}else{
 			// we don't know what size you're looking for
 			// we'll try the 's' size instead
-			return( $this->icon_get_tofit( $post_id, 's' )); 
+			return( $this->icon_get_tofit( $img, 's' )); 
 		}
 	}
 
 	function icon_get_a( $post_id, $size = 's' ){
-		if(( $img = get_post_meta( $post_id, 'bsuite_post_icon', TRUE )) && ( is_array( $img[ $size ] )))
-			return( $img[ $size ] );
-		else if( is_array( $img ))
-			return( $this->icon_get_tofit( $post_id, $size ));
+		$img = apply_filters( 'bsuite_post_icon', get_post_meta( $post_id, 'bsuite_post_icon', TRUE ));
+
+		if( is_array( $img ))
+			if( is_array( $img[ $size ] ))
+				return( $img[ $size ] );
+			else
+				return( $this->icon_get_tofit( $img, $size ));
 		else
 			return( $this->icon_get_default( $post_id, $size ));
 	}
