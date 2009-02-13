@@ -58,14 +58,13 @@ class bSuite {
 		add_shortcode('include', array(&$this, 'shortcode_include'));
 		add_shortcode('icon', array(&$this, 'shortcode_icon'));
 		add_shortcode('feed', array(&$this, 'shortcode_feed'));
-		add_shortcode('slideshare', array(&$this, 'shortcode_slideshare'));
-		add_shortcode('wufoo', array(&$this, 'shortcode_wufoo'));
 
 		// filter the_excerpt and x_rss through do_shortcode(). wish this was in core
 		// http://trac.wordpress.org/ticket/7093
 		add_filter('the_content_rss', 'do_shortcode', 11);
 		add_filter('the_excerpt', 'do_shortcode', 11);
 		add_filter('the_excerpt_rss', 'do_shortcode', 11);
+		add_filter('widget_text', 'do_shortcode', 11);
 
 		// bsuite post icons
 		add_action('wp_ajax_bsuite_icon_form', array( &$this, 'icon_ajax_form' ));
@@ -421,35 +420,6 @@ class bSuite {
 
 		return( $prefix . $this->get_feed( $arg['feed_url'], $arg['count'], $arg['template'], TRUE) . $suffix );
 	}
-
-	function shortcode_slideshare( $arg ){
-		// [slideshare id=211578&doc=misty-holland-1198496990903941-2&w=425]
-
-		$arg = shortcode_atts( array(
-			'id' => FALSE,
-		), $arg );
-
-		if( ! $arg['id'] )
-			return( FALSE );
-
-		return( str_replace( '%%id%%', $arg['id'], '<div class="embed slideshare" id="slideshare-%%id%%"><object type="application/x-shockwave-flash" wmode="transparent" data="https://s3.amazonaws.com:443/slideshare/ssplayer.swf?id=%%id%%" width="425" height="348"><param name="movie" value="https://s3.amazonaws.com:443/slideshare/ssplayer.swf?id=%%id%%" /></object></div>' ));
-	}
-
-	function shortcode_wufoo( $arg ){
-		// [wufoo id=z7x4m0 domain=place.wufoo.com]
-
-		$arg = shortcode_atts( array(
-			'id' => FALSE,
-			'domain' => FALSE,
-			'height' => 500,
-		), $arg );
-
-		if( !$arg['id'] || !$arg['domain'] )
-			return( FALSE );
-
-		return( str_replace( array('%%id%%','%%domain%%','%%height%%'), array($arg['id'],$arg['domain'],$arg['height']), '<iframe height="%%height%%" allowTransparency="true" frameborder="0" scrolling="no" style="width:100%; border:none" src="https://%%domain%%/embed/%%id%%/"><a href="http://maisonbisson.wufoo.com/forms/%%id%%/">Fill out my Wufoo form!</a></iframe>' ));
-	}
-
 
 	//
 	// token functions
@@ -939,7 +909,7 @@ class bSuite {
 	}
 
 	function icon_get_a( $post_id, $size = 's' ){
-		$img = apply_filters( 'bsuite_post_icon', get_post_meta( $post_id, 'bsuite_post_icon', TRUE ));
+		$img = apply_filters( 'bsuite_post_icon', get_post_meta( $post_id, 'bsuite_post_icon', TRUE ), $post_id );
 
 		if( is_array( $img ))
 			if( is_array( $img[ $size ] ))
@@ -950,9 +920,9 @@ class bSuite {
 			return( $this->icon_get_default( $post_id, $size ));
 	}
 
-	function icon_get_h( $post_id, $size = 's', $ow = 0, $oh = 0 ){
+	function icon_get_h( $post_id, $size = 's', $nostyle = FALSE, $ow = 0, $oh = 0 ){
 		if( $img = $this->icon_get_a( $post_id, $size )){
-			if( strpos( current_filter(), 'rss' ))
+			if( $nostyle || strpos( current_filter(), 'rss' ))
 				return( '<img src="'. $img['url'] .'" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
 			return( '<img src="'. $this->path_web .'/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background-image: url( '. $img['url'] .' );" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
 		}
@@ -1966,6 +1936,17 @@ die();
 		// locks automatically drop when the connection is dropped
 		// http://dev.mysql.com/doc/refman/5.0/en/miscellaneous-functions.html#function_get-lock
 		if( 0 == $wpdb->get_var( 'SELECT GET_LOCK("'. $wpdb->prefix . 'bsuitelock_'. $lock .'", ".001")' ))
+			return( FALSE );
+		return( TRUE );
+	}
+
+	function release_lock( $lock ){
+		global $wpdb;
+
+		if( !$lock = preg_replace( '/[^a-z|0-9|_]/i', '', str_replace( ' ', '_', $lock )))
+			return( FALSE );
+
+		if( 0 == $wpdb->get_var( 'SELECT RELEASE_LOCK("'. $wpdb->prefix . 'bsuitelock_'. $lock .'", ".001")' ))
 			return( FALSE );
 		return( TRUE );
 	}
