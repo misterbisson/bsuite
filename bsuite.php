@@ -1809,8 +1809,10 @@ die();
 
 		if( $id ){
 			$taxonomies = ( array_filter( apply_filters( 'bsuite_suggestive_taxonomies', array( 'post_tag', 'category' ))));
-			
-			if( is_array( $taxonomies ))
+
+			$taxonomies = array_filter( array_map( array( &$wpdb, 'escape' ), $taxonomies ));
+
+			if( count( $taxonomies ))
 				return( apply_filters('bsuite_suggestive_query',
 					"SELECT t_r.object_id AS post_id, COUNT(t_r.object_id) AS hits
 					FROM ( SELECT t_ra.term_taxonomy_id
@@ -2477,6 +2479,11 @@ die();
 			return( $response );
 		else
 			return( FALSE );
+	}
+
+	function autoksum_get_text( $text ){
+		$text = $this->autoksum_doapi( $text );
+		return( $text['summary'] );
 	}
 
 //	function autoksum_excerpt_image(){
