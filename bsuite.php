@@ -91,8 +91,10 @@ class bSuite {
 
 		// bsuggestive related posts
 		add_filter('save_post', array(&$this, 'bsuggestive_delete_cache'));
-		if( get_option( 'bsuite_insert_related' ))
+		if( get_option( 'bsuite_insert_related' )){
+			add_filter('the_content', array(&$this, 'bsuggestive_bypageviews_the_content'), 5);
 			add_filter('the_content', array(&$this, 'bsuggestive_the_content'), 5);
+		}
 
 		// sharelinks
 		if( get_option( 'bsuite_insert_sharelinks' ))
@@ -1910,7 +1912,7 @@ die();
 		if ( !$related_posts = wp_cache_get( $id, 'bsuite_related_posts' ) ) {
 			if( $the_query = $this->bsuggestive_query( $id ) ){
 				$related_posts = $wpdb->get_col($the_query);
-				wp_cache_add( $id, $related_posts, 'bsuite_related_posts', time() + 900000 ); // cache for 25 days
+				wp_cache_set( $id, $related_posts, 'bsuite_related_posts', time() + 900000 ); // cache for 25 days
 				return($related_posts); // if we have to go to the DB to get the posts, then this will get returned
 			}
 			return( FALSE ); // if there's nothing in the cache and we've got no query
@@ -1949,7 +1951,75 @@ die();
 
 	function bsuggestive_the_content( $content ) {
 		if( $related = $this->bsuggestive_the_related() )
-			return( $content . '<h3 class="bsuite_related">Related items</h3><ul class="bsuite_related">'. $related .'</ul>' );
+			return( $content .'<h3 class="bsuite_related">Related items</h3><ul class="bsuite_related">'. $related .'</ul>' );
+		return( $content );
+	}
+
+	function bsuggestive_bypageviews_getposts( $id ) {
+		global $wpdb;
+
+		$id = absint( $id );
+		if ( !$related_posts = wp_cache_get( $id, 'bsuite_relatedbypageviews_posts' ) ) {
+			if( $related_posts = $wpdb->get_col(
+				"SELECT h.object_id, COUNT(h.object_id) AS hits
+				FROM
+				(
+					SELECT sess_id
+					FROM $this->hits_shistory
+					WHERE object_id = $id
+					AND object_type = 0
+
+					GROUP BY sess_id DESC
+					LIMIT 250
+
+				) s
+				LEFT JOIN $this->hits_shistory h ON h.sess_id = s.sess_id
+				LEFT JOIN 
+				(
+					SELECT post_id
+					FROM $this->hits_pop
+					ORDER BY hits_recent DESC
+					LIMIT 7
+				) pop ON pop.post_id = h.object_id
+				WHERE h.object_id <> $id
+				AND h.object_type = 0
+				AND pop.post_id IS NULL
+				GROUP BY h.object_id
+				ORDER BY hits DESC
+				LIMIT 0,150"
+			)){
+				wp_cache_set( $id, $related_posts, 'bsuite_relatedbypageviews_posts', time() + 90000 ); // cache it for 25 hours
+				return( $related_posts ); // if we have to go to the DB to get the posts, then this will get returned
+			}
+			return( FALSE ); // if there's nothing in the cache and we've got no query
+		}
+		return($related_posts); // if the cache is still warm, then we return this
+	}
+
+	function bsuggestive_bypageviews_the_related($before = '<li>', $after = '</li>') {
+		global $post;
+		$report = FALSE;
+
+		$id = (int) $post->ID;
+		if ( !$id )
+			return( FALSE ); // no ID, no service
+
+		$posts = array_slice($this->bsuggestive_bypageviews_getposts( $id ), 0, 5);
+		if($posts){
+			$report = '';
+			foreach($posts as $post_id){
+//				$post = &get_post( $post_id );
+				$url = get_permalink($post_id);
+				$linktext = get_the_title($post_id);
+				$report .= $before . "<a href='$url'>$linktext</a>". $after;
+			}
+		}
+		return($report);
+	}
+
+	function bsuggestive_bypageviews_the_content( $content ) {
+		if( $related = $this->bsuggestive_bypageviews_the_related() )
+			return( $content . '<h3 class="bsuite_related_bypageviews">People who looked at this item also looked at...</h3><ul class="bsuite_related">'. $related .'</ul>' );
 		return( $content );
 	}
 	// end bSuggestive
