@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/bsuite/">Documentation here</a>.
-Version: 4.0.4
+Version: 4.0.5
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -45,6 +45,18 @@ class bSuite {
 		else
 			$this->is_mu = FALSE;
 
+		if( get_option( 'bsuite_mycss_replacethemecss' ) && !is_admin() ){
+			add_filter( 'stylesheet_uri', array( &$this, 'bsuite_mycss_hidesstylesheet' ), 11 );
+			add_filter( 'locale_stylesheet_uri', array( &$this, 'bsuite_mycss_hidesstylesheet' ), 11 );
+		}
+
+		if(( get_option( 'bsuite_mycss' ) || get_option( 'bsuite_mycss_replacethemecss' )) && !is_admin() ){
+			wp_register_style( 'bsuite-mycss', get_option('home') .'/index.php?bsuite_mycss=print' );
+			wp_enqueue_style( 'bsuite-mycss' );
+		}
+
+		if ( isset( $_GET['bsuite_mycss'] ) && !is_admin() )
+			add_action( 'init', array( &$this, 'bsuite_mycss_printstyles' ));
 
 
 		//
@@ -156,7 +168,7 @@ class bSuite {
 		}
 */
 
-		add_filter( 'whitelist_options', array(&$this, 'mu_options' ));
+//		add_filter( 'whitelist_options', array(&$this, 'mu_options' ));
 
 		register_setting( 'bsuite-options', 'bsuite_insert_related', 'absint' );
 		register_setting( 'bsuite-options', 'bsuite_insert_sharelinks', 'absint' );
@@ -172,6 +184,11 @@ class bSuite {
 	}
 
 	function init(){
+		if( 0 < get_option( 'bsuite_mycss_maxwidth' ))
+			$GLOBALS['content_width'] = absint( get_option( 'bsuite_mycss_maxwidth' ));
+		if( !isset( $GLOBALS['content_width'] ))
+			$GLOBALS['content_width'] = 500;
+
 //		add_rewrite_endpoint( 'quickview', EP_PERMALINK ); // this doesn't quite work as I want it to
 	}
 
@@ -200,10 +217,13 @@ class bSuite {
 		}
 
 		// add the options page
-		add_options_page('bSuite Settings', 'bSuite', 8, plugin_basename( dirname( __FILE__ )) .'/ui_options.php' );
+		add_options_page('bSuite Settings', 'bSuite', 'manage_options', plugin_basename( dirname( __FILE__ )) .'/ui_options.php' );
 		
 		// the bstat reports are handled in a seperate file
-		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 2, plugin_basename( dirname( __FILE__ )) .'/ui_stats.php' );
+		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 'edit_posts', plugin_basename( dirname( __FILE__ )) .'/ui_stats.php' );
+
+		// the custom css page
+		add_theme_page( __('Custom CSS'), __('Custom CSS'), 'switch_themes', plugin_basename( dirname( __FILE__ )) .'/ui_mycss.php' );
 
 		// add the post icon widget to the post and page editors
 		add_meta_box('bsuite_post_icon', __('bSuite Post Icon'), array( &$this, 'icon_editor_iframe' ), 'post', 'advanced', 'high');
@@ -934,6 +954,57 @@ class bSuite {
 	
 
 
+
+
+
+
+	function bsuite_mycss_printstyles(){
+		@header('Content-Type: text/css; charset=' . get_option('blog_charset'));
+
+		echo get_option( 'bsuite_mycss' );
+		die();
+	}
+
+	function bsuite_mycss_hidesstylesheet( $input ){
+		return( $this->path_web . '/css/empty.css' );
+	}
+
+	function mycss_sanitize( $input ){
+		$input = wp_filter_nohtml_kses( $input );
+		$input = preg_replace('/\/\*.*?\*\//sm', '', $input); // strip comments
+		
+		$safecss = '';
+		foreach( explode( "\n", $input ) as $line )
+			$safecss .= $this->mycss_cleanline( $line );
+		
+		return( $safecss );
+	}
+
+	function mycss_cleanline( $input ){
+		$evil = 0;
+
+		$filtered = wp_kses_decode_entities( $input );
+		$filtered = preg_replace('/expression[^\(]?\(.*?\)/i', '', $filtered, -1, $flag ); // strip expressions
+		if( $flag ) $evil++;
+
+		$filtered = preg_replace('/@import/i', '', $filtered, -1, $flag ); // strip @import
+		if( $flag ) $evil++;
+
+		$filtered = preg_replace('/about:/i', '', $filtered, -1, $flag ); // strip about: uris
+		if( $flag ) $evil++;
+
+		$filtered = preg_replace_callback('/([\w]*?):\/\//si', array( $this, 'mycss_cleanuri' ), $filtered, -1, $flag ); // strip non http uris
+		if( $flag ) $evil++;
+
+		return( $evil ? $filtered : $input );
+	}
+
+	function mycss_cleanuri( $input ){
+		if( !preg_match( '/^http:\/\//', $input[0] ))
+			return '';
+
+		return( $input[0] );
+	}
 
 
 
