@@ -1910,7 +1910,7 @@ die();
 		if ( !$related_posts = wp_cache_get( $id, 'bsuite_related_posts' ) ) {
 			if( $the_query = $this->bsuggestive_query( $id ) ){
 				$related_posts = $wpdb->get_col($the_query);
-				wp_cache_add( $id, $related_posts, 'bsuite_related_posts', 864000 );
+				wp_cache_add( $id, $related_posts, 'bsuite_related_posts', time() + 900000 ); // cache for 25 days
 				return($related_posts); // if we have to go to the DB to get the posts, then this will get returned
 			}
 			return( FALSE ); // if there's nothing in the cache and we've got no query
