@@ -45,16 +45,6 @@ class bSuite {
 		else
 			$this->is_mu = FALSE;
 
-		if( get_option( 'bsuite_mycss_replacethemecss' ) && !is_admin() ){
-			add_filter( 'stylesheet_uri', array( &$this, 'bsuite_mycss_hidesstylesheet' ), 11 );
-			add_filter( 'locale_stylesheet_uri', array( &$this, 'bsuite_mycss_hidesstylesheet' ), 11 );
-		}
-
-		if(( get_option( 'bsuite_mycss' ) || get_option( 'bsuite_mycss_replacethemecss' )) && !is_admin() ){
-			wp_register_style( 'bsuite-mycss', get_option('home') .'/index.php?bsuite_mycss=print' );
-			wp_enqueue_style( 'bsuite-mycss' );
-		}
-
 		if ( isset( $_GET['bsuite_mycss'] ) && !is_admin() )
 			add_action( 'init', array( &$this, 'bsuite_mycss_printstyles' ));
 
@@ -184,6 +174,16 @@ class bSuite {
 	}
 
 	function init(){
+		if( get_option( 'bsuite_mycss_replacethemecss' ) && !is_admin() ){
+			add_filter( 'stylesheet_uri', array( &$this, 'bsuite_mycss_hidesstylesheet' ), 11 );
+			add_filter( 'locale_stylesheet_uri', array( &$this, 'bsuite_mycss_hidesstylesheet' ), 11 );
+		}
+
+		if(( get_option( 'bsuite_mycss' ) || get_option( 'bsuite_mycss_replacethemecss' )) && !is_admin() ){
+			wp_register_style( 'bsuite-mycss', get_option('home') .'/index.php?bsuite_mycss=print' );
+			wp_enqueue_style( 'bsuite-mycss' );
+		}
+
 		if( 0 < get_option( 'bsuite_mycss_maxwidth' ))
 			$GLOBALS['content_width'] = absint( get_option( 'bsuite_mycss_maxwidth' ));
 		if( !isset( $GLOBALS['content_width'] ))
