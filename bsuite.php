@@ -711,7 +711,7 @@ class bSuite {
 			if( is_string( $img ))
 				$img = unserialize( $img );
 
-			echo '<div style="width:'. $img['s']['w'] .'px; height:'. $img['s']['h'] .'px; background-image: url( \''. $img['s']['url'] .'\' ); float: left; padding: 3px; margin-right: 25px;">';
+			echo '<div style="width:'. $img['s']['w'] .'px; height:'. $img['s']['h'] .'px; background: #bbbbbb url( \''. $img['s']['url'] .'\' ) no-repeat scroll center; float: left; padding: 3px; margin-right: 25px;">';
 			$img = array_pop( $img );
 ?>
 			<form enctype="multipart/form-data" name="import-delete-form" id="import-delete-form" method="post" action="<?php echo bloginfo( 'wpurl' ) .'/wp-admin/admin-ajax.php' ?>">
@@ -946,7 +946,7 @@ class bSuite {
 		if( $img = $this->icon_get_a( $post_id, $size )){
 			if( $nostyle || strpos( current_filter(), 'rss' ))
 				return( '<img src="'. $img['url'] .'" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
-			return( '<img src="'. $this->path_web .'/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background-image: url( '. $img['url'] .' );" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
+			return( '<img src="'. $this->path_web .'/img/spacer.gif" class="bsuite_post_icon bsuite_post_icon_'. $post_id .'" width="'. ( $ow ? $ow : $img['w'] ) .'" height="'. ( $oh ? $oh : $img['h'] ) .'" style="background: #bbbbbb url( '. $img['url'] .' ) no-repeat scroll center;" alt="'. attribute_escape( get_the_title( $post_id )) .'" />' );
 		}
 		return( FALSE );
 	}
