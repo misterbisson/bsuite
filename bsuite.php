@@ -1721,7 +1721,7 @@ $engine = $this->get_search_engine( $ref );
 			$this->quickview();
 
 		// redirects the search to the single page if the search returns only one item
-		if( !$wp_query->is_singular && 1 === $wp_query->post_count )
+		if( !$wp_query->is_singular && 1 === $wp_query->post_count && !$wp_query->is_feed )
 			wp_redirect( get_permalink( $wp_query->post->ID ) , '302');
 
 		return(TRUE);
