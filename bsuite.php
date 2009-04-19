@@ -1942,7 +1942,7 @@ die();
 		if ( !$id )
 			return( FALSE ); // no ID, no service
 
-		if( $posts = $this->bsuggestive_getposts( $id ) && is_array( $posts )){
+		if( ( $posts = $this->bsuggestive_getposts( $id )) && is_array( $posts )){
 			$posts = array_slice( $posts, 0, 5 );
 			$report = '';
 			foreach($posts as $post_id){
@@ -2017,7 +2017,7 @@ die();
 		if ( !$id )
 			return( FALSE ); // no ID, no service
 
-		if( $posts = $this->bsuggestive_bypageviews_getposts( $id ) && is_array( $posts )){
+		if( ( $posts = $this->bsuggestive_bypageviews_getposts( $id )) && is_array( $posts )){
 			$posts = array_slice( $posts, 0, 5 );
 			$report = '';
 			foreach($posts as $post_id){
