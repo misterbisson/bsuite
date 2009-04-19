@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/bsuite/">Documentation here</a>.
-Version: 4.0.5
+Version: 4.0.6
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -1885,6 +1885,12 @@ die();
 
 			$taxonomies = array_filter( array_map( array( &$wpdb, 'escape' ), $taxonomies ));
 
+			$ignore_ids = ( array_filter( apply_filters( 'bsuite_suggestive_ignoreposts', array( $id ))));
+			if( is_array( $ignore_ids ))
+				$ignore_ids = implode( ',', array_filter( array_map( 'absint' , $ignore_ids )));
+			else
+				$ignore_ids = $id;
+
 			if( count( $taxonomies ))
 				return( apply_filters('bsuite_suggestive_query',
 					"SELECT t_r.object_id AS post_id, COUNT(t_r.object_id) AS hits
@@ -1896,7 +1902,7 @@ die();
 					) ttid
 					LEFT JOIN $wpdb->term_relationships t_r ON t_r.term_taxonomy_id = ttid.term_taxonomy_id
 					LEFT JOIN $wpdb->posts p ON t_r.object_id  = p.ID
-					WHERE p.ID != $id
+					WHERE p.ID NOT IN( $ignore_ids )
 					AND p.post_status = 'publish'
 					GROUP BY p.ID
 					ORDER BY hits DESC, p.post_date_gmt DESC
@@ -1936,8 +1942,8 @@ die();
 		if ( !$id )
 			return( FALSE ); // no ID, no service
 
-		$posts = array_slice($this->bsuggestive_getposts( $id ), 0, 5);
-		if($posts){
+		if( $posts = $this->bsuggestive_getposts( $id ) && is_array( $posts )){
+			$posts = array_slice( $posts, 0, 5 );
 			$report = '';
 			foreach($posts as $post_id){
 //				$post = &get_post( $post_id );
@@ -1959,6 +1965,13 @@ die();
 		global $wpdb;
 
 		$id = absint( $id );
+
+		$ignore_ids = ( array_filter( apply_filters( 'bsuite_suggestive_ignoreposts', array( $id ))));
+		if( is_array( $ignore_ids ))
+			$ignore_ids = implode( ',', array_filter( array_map( 'absint' , $ignore_ids )));
+		else
+			$ignore_ids = $id;
+
 		if ( !$related_posts = wp_cache_get( $id, 'bsuite_relatedbypageviews_posts' ) ) {
 			if( $related_posts = $wpdb->get_col(
 				"SELECT h.object_id, COUNT(h.object_id) AS hits
@@ -1981,7 +1994,7 @@ die();
 					ORDER BY hits_recent DESC
 					LIMIT 7
 				) pop ON pop.post_id = h.object_id
-				WHERE h.object_id <> $id
+				WHERE h.object_id NOT IN( $ignore_ids )
 				AND h.object_type = 0
 				AND pop.post_id IS NULL
 				GROUP BY h.object_id
@@ -2004,8 +2017,8 @@ die();
 		if ( !$id )
 			return( FALSE ); // no ID, no service
 
-		$posts = array_slice($this->bsuggestive_bypageviews_getposts( $id ), 0, 5);
-		if($posts){
+		if( $posts = $this->bsuggestive_bypageviews_getposts( $id ) && is_array( $posts )){
+			$posts = array_slice( $posts, 0, 5 );
 			$report = '';
 			foreach($posts as $post_id){
 //				$post = &get_post( $post_id );
