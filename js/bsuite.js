@@ -109,7 +109,7 @@ var bsuite={
 			//generate a random number to prevent caching
 			var n = Math.round(Math.random()*2147483647);
 			//set up the querystring
-			src+='?pn='+n;
+			src+='?bsuite_hit='+n;
 			//grab referrer.  if there is none, set to -
 			var ref=this.doc.referrer;
 			if(!ref || ref=="") ref='-';

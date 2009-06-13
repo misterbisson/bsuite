@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/bsuite/">Documentation here</a>.
-Version: 4.0.6
+Version: 4.0.7
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -139,6 +139,10 @@ class bSuite {
 
 		add_action('widgets_init', array(&$this, 'widgets_register'));
 
+		// user-contributed tags
+		add_action('preprocess_comment', array(&$this, 'uctags_preprocess_comment'), 1);
+
+
 
 		// activation and menu hooks
 		register_activation_hook(__FILE__, array(&$this, 'activate'));
@@ -190,6 +194,10 @@ class bSuite {
 			$GLOBALS['content_width'] = absint( get_option( 'bsuite_mycss_maxwidth' ));
 		if( !isset( $GLOBALS['content_width'] ))
 			$GLOBALS['content_width'] = 500;
+
+		// handle user-contributed tags via comments
+		if( strpos( $_SERVER['PHP_SELF'], 'wp-comments-post.php' ) && ( !empty( $_REQUEST['bsuite_uctags'] )))
+			$_REQUEST['comment'] = 'BSUITE_UCTAG';
 
 //		add_rewrite_endpoint( 'quickview', EP_PERMALINK ); // this doesn't quite work as I want it to
 	}
@@ -2039,6 +2047,22 @@ die();
 
 
 
+	//
+	// user-contributed comments
+	//
+	function uctags_preprocess_comment( $comment ) {
+		$comment['bsuite_uctags'] = !empty( $_REQUEST['bsuite_uctags'] );
+		if($comment['bsuite_uctags']){
+print_r( array_map( 'trim',  explode( ',', wp_filter_nohtml_kses( $_REQUEST['bsuite_uctags'] ))));
+//die;
+		}
+
+print_r( $_REQUEST );
+die;
+		return( $comment );
+	}
+	// end user-contributed comment functions
+
 	function pagetree(){
 		// identify the family tree of a page, return an array
 		global $wp_query;
@@ -3152,7 +3176,328 @@ die();
 	<?php
 	}
 
+
+function widget_any_posts_categories( $selected = array() ){
+	$items = get_categories( array( 'style' => FALSE, 'echo' => FALSE, 'hierarchical' => FALSE ));
+
+	foreach( $items as $item ){
+		$list[] = '<label for="bstat-pop-posts-categories-'. $item->slug .'-%i%"><input class="checkbox" type="checkbox" value="'. $item->slug .'" '.( in_array( $item->slug, $selected ) ? 'checked="checked"' : '' ) .' id="bstat-pop-posts-categories-'. $item->slug .'-%i%" name="bstat-pop-posts[%i%][categories][]" /> '. $item->name .'</label>';
+	}
+
+	return implode( ', ', $list );
+}
+
+function widget_any_posts_instances( $self = 0 , $selected = array() ){
+	if ( !$options = get_option('bsuite_any_posts') )
+		return FALSE;
+
+		if( isset( $options[ $self ] ))
+			unset( $options[ $self ] );
+
+	foreach( $options as $number => $option ){
+		$list[] = '<label for="bstat-pop-posts-relatedto-'. $number .'-%i%"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, $selected ) ? 'checked="checked"' : '' ) .' id="bstat-pop-posts-relatedto-'. $number .'-%i%" name="bstat-pop-posts[%i%][relatedto][]" /> '. $option['title'] .'</label>';
+	}
+
+	return implode( ', ', $list );
+}
+
+function widget_template_dropdown( $default = '' ) {
+	$templates = $this->get_widget_templates();
+	foreach ($templates as $template => $info )
+		: if ( $default == $template )
+			$selected = " selected='selected'";
+		else
+			$selected = '';
+	echo "\n\t<option value=\"" .$info['file'] .'" '. $selected .'>'. $info['name'] .'</option>';
+	endforeach;
+}
+
+function get_widget_templates_readdir( $template_base ){
+	$page_templates = array();
+	$template_dir = @ dir( $template_base );
+	if ( $template_dir ) {
+		while ( ( $file = $template_dir->read() ) !== false ) {
+			if ( preg_match('|^\.+$|', $file) )
+				continue;
+			if ( preg_match('|\.php$|', $file) ) {
+				$template_files[] = get_template_directory() . $file;
+
+				$template_data = implode( '', file( $template_base . $file ));
+	
+				$name = '';
+				if ( preg_match( '|Template Name:(.*)$|mi', $template_data, $name ) )
+					$name = _cleanup_header_comment($name[1]);
+
+				if ( !empty( $name ) ) {
+					$file = basename( $file );
+					$page_templates[ $file ]['name'] = trim( $name );
+					$page_templates[ $file ]['file'] = basename( $file );
+					$page_templates[ $file ]['fullpath'] = $template_base . $file;
+				}
+			}
+		}
+		@ $template_dir->close();
+	}
+	return $page_templates;
+}
+
+function get_widget_templates() {
+
+	return array_merge( 
+			$this->get_widget_templates_readdir( get_template_directory(). 'bsuite_templates' ), 
+			$this->get_widget_templates_readdir( '/Users/bisson/WebDocs/test27_wpopac/wp-content/plugins/bsuite/templates/' )
+		);
+}
+
+
+function widget_any_posts( $args, $widget_args = 1 ) {
+	global $post, $wpdb;
+
+	if ( is_numeric($widget_args) )
+		$widget_args = array( 'number' => $widget_args );
+	$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
+	extract( $widget_args, EXTR_SKIP );
+
+	extract($args, EXTR_SKIP);
+	$options = get_option('bsuite_any_posts');
+
+	$opt = array( 
+		'show_icon' => $options[ $number ]['show_icon'],
+		'show_title' => $options[ $number ]['show_title'],
+	);
+	$title = empty($options[ $number ]['title']) ? __('Recent Posts', 'bsuite') : $options[ $number ]['title'];
+	if ( !$opt['count'] = (int) $options[ $number ]['number'] )
+		$opt['count'] = 5;
+	else if ( $opt['count'] < 1 )
+		$opt['count'] = 1;
+	else if ( $opt['count'] > 15 )
+		$opt['count'] = 15;
+
+	$opt['icon_size'] = 's';
+	if( !$opt['show_icon'] && !$opt['show_title'] )
+		$opt['show_title'] = $opt['show_counts'] = 1;
+
+	$templates = $this->get_widget_templates();
+	$is_readable = is_readable( $templates[ $options[ $number ]['template'] ]['fullpath'] );
+
+	if( TRUE ){
+		global $wp_query;
+		$ourposts = &$wp_query;
+	}else{
+	}
+
+	if( $ourposts->have_posts() ){
+		while( $ourposts->have_posts() ){
+			$ourposts->the_post();
+			
+			if( $is_readable ){
+				include $templates[ $options[ $number ]['template'] ]['fullpath'];
+			}else{
+?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
+<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
+	<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
+	<small><?php the_time('F jS, Y') ?> <!-- by <?php the_author() ?> --></small>
+
+	<div class="entry">
+		<?php the_content('Read the rest of this entry &raquo;'); ?>
+	</div>
+
+	<p class="postmetadata"><?php the_tags('Tags: ', ', ', '<br />'); ?> Posted in <?php the_category(', ') ?> | <?php edit_post_link('Edit', '', ' | '); ?>  <?php comments_popup_link('No Comments &#187;', '1 Comment &#187;', '% Comments &#187;'); ?></p>
+</div>
+<?php
+			}
+		}
+	}
+
+/*
+	if ( !$pop_posts = wp_cache_get( 'bsuite-any-posts-'. $number , 'widget' ) ) {
+		$pop_posts = $this->pop_posts( $opt );
+		wp_cache_set( 'bsuite-any-posts-'. $number , $pop_posts, 'widget', 3600 );
+	}
+
+	if ( !empty($pop_posts) ) {
+?>
+		<?php echo $before_widget; ?>
+			<?php echo $before_title . $title . $after_title; ?>
+			<ul><?php
+			echo $pop_posts;
+			?></ul>
+		<?php echo $after_widget; ?>
+<?php
+	}
+*/
+}
+
+function widget_any_posts_delete_cache() {
+	if ( !$options = get_option('bsuite_any_posts') )
+		$options = array();
+	foreach ( array_keys($options) as $o )
+		wp_cache_delete( 'bsuite-any-posts-'. $o, 'widget' );
+}
+
+
+function widget_any_posts_control($widget_args) {
+	global $wp_registered_widgets;
+	$updated = FALSE;
+
+	if ( is_numeric($widget_args) )
+		$widget_args = array( 'number' => $widget_args );
+	$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
+	extract( $widget_args, EXTR_SKIP );
+
+	$options = get_option('bsuite_any_posts');
+	if ( !is_array($options) )
+		$options = array();
+	if ( !$updated && !empty( $_POST['sidebar'] )){
+		$sidebar = (string) $_POST['sidebar'];
+
+		$sidebars_widgets = wp_get_sidebars_widgets();
+		if ( isset($sidebars_widgets[$sidebar]) )
+			$this_sidebar =& $sidebars_widgets[$sidebar];
+		else
+			$this_sidebar = array();
+
+		foreach ( $this_sidebar as $_widget_id ) {
+			if ( array(&$this, 'widget_any_posts') == $wp_registered_widgets[$_widget_id]['callback'] && isset($wp_registered_widgets[$_widget_id]['params'][0]['number']) ) {
+				$widget_number = $wp_registered_widgets[$_widget_id]['params'][0]['number'];
+				if ( !in_array( "bsuite-any-posts-$widget_number", $_POST['widget-id'] ) ) // the widget has been removed.
+					unset($options[$widget_number]);
+			}
+		}
+
+
+		foreach ( (array) $_POST['bsuite-any-posts'] as $widget_number => $widget_var ) {
+			if ( !isset($widget_var['what']) && isset($options[$widget_number]) ) // user clicked cancel
+				continue;
+
+			$options[$widget_number]['title'] = strip_tags( stripslashes( $widget_var['title'] ));
+
+			$options[$widget_number]['what'] = strip_tags( stripslashes( $widget_var['what'] ));
+
+			$options[$widget_number]['template'] = strip_tags( stripslashes( $widget_var['template'] ));
+		}
+
+		update_option('bsuite_any_posts', $options);
+		$this->widget_any_posts_delete_cache();
+		$updated = true;
+	}
+
+	if ( -1 == $number ) {
+		$title = __( 'Recent Posts', 'bsuite' );
+
+		// we reset the widget number via JS	
+		$number = '%i%';
+	} else {
+		$title = attribute_escape( $options[$number]['title'] );
+	}
+?>
+	<p><label for="bsuite-any-posts-title-<?php echo $number; ?>"><?php _e('Title:'); ?> <input style="width: 250px;" id="bsuite-any-posts-title-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][title]" type="text" value="<?php echo $title; ?>" /></label></p>
+
+	<p><label for="bsuite-any-posts-what-<?php echo $number; ?>"><?php _e('What to show:'); ?>
+	<select id="bsuite-any-posts-what-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][what]">
+		<option value="normal" <?php selected( $options[$number]['what'], 'normal' ) ?>>The default content</option>
+		<option value="posts" <?php selected( $options[$number]['what'], 'posts' ) ?>>Posts</option>
+		<option value="posts_category_any" <?php selected( $options[$number]['what'], 'posts_category_any' ) ?>>Posts in any of these categories</option>
+		<option value="posts_category_all" <?php selected( $options[$number]['what'], 'posts_category_all' ) ?>>Posts in all of these categories</option>
+		<option value="posts_tag_any" <?php selected( $options[$number]['what'], 'posts_tag_any' ) ?>>Posts with any of these tags</option>
+		<option value="posts_tag_all" <?php selected( $options[$number]['what'], 'posts_tag_all' ) ?>>Posts with all of these tags</option>
+		<option value="posts_tagcat_all" <?php selected( $options[$number]['what'], 'posts_tagcat_all' ) ?>>Posts with all of these categories and tags</option>
+		<option value="posts_id" <?php selected( $options[$number]['what'], 'posts_id' ) ?>>Posts by ID</option>
+		<option value="pages" <?php selected( $options[$number]['what'], 'pages' ) ?>>Pages</option>
+		<option value="pages_id" <?php selected( $options[$number]['what'], 'pages_id' ) ?>>Pages by ID</option>
+		<option value="any" <?php selected( $options[$number]['what'], 'any' ) ?>>Any content</option>
+	</select>
+	</label></p>
+
+	<p><?php _e('Categories:'); ?> <?php echo $this->widget_any_posts_categories(); ?></p>
+
+	<p><label for="bsuite-any-posts-tags-<?php echo $number; ?>"><?php _e('Tags:'); ?> <input style="width: 250px" id="bsuite-any-posts-tags-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][tags]" type="text" value="<?php echo $number; ?>" /></label></p>
+
+	<p><label for="bsuite-any-posts-ids-<?php echo $number; ?>"><?php _e('IDs:'); ?> <input style="width: 250px" id="bsuite-any-posts-ids-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][ids]" type="text" value="<?php echo $number; ?>" /></label></p>
+
+	<p><label for="bsuite-any-posts-activity-<?php echo $number; ?>"><?php _e('Activity:'); ?>
+	<select id="bsuite-any-posts-activity-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][activity]">
+		<option value="any" <?php selected( $options[$number]['activity'], 'any' ) ?>>Any</option>
+
+		<option value="pop_most" <?php selected( $options[$number]['activity'], 'pop_most' ) ?>>Most popular items</option>
+		<option value="pop_least" <?php selected( $options[$number]['activity'], 'pop_least' ) ?>>Least popular</option>
+
+		<option value="comment_few" <?php selected( $options[$number]['activity'], 'comment_few' ) ?>>Recently viewed</option>
+
+		<option value="comment_recent" <?php selected( $options[$number]['activity'], 'comment_recent' ) ?>>Recently commented</option>
+		<option value="comment_few" <?php selected( $options[$number]['activity'], 'comment_few' ) ?>>Fewest comments</option>
+
+		<option value="age_new" <?php selected( $options[$number]['activity'], 'age_new' ) ?>>Newer items</option>
+		<option value="age_old" <?php selected( $options[$number]['activity'], 'age_old' ) ?>>Older items</option>
+		<option value="age_year" <?php selected( $options[$number]['activity'], 'age_year' ) ?>>Items from a year ago</option>
+	</select>
+	</label></p>
+
+	<?php if( $other_instances = $this->widget_any_posts_instances() ): ?>
+		<p><label for="bsuite-any-posts-relationship-<?php echo $number; ?>"><?php _e('Relationship to other items:'); ?>
+		<select id="bsuite-any-posts-relationship-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][relationship]">
+			<option value="none" <?php selected( $options[$number]['relationship'], 'none' ) ?>>None</option>
+			<option value="similar" <?php selected( $options[$number]['relationship'], 'similar' ) ?>>Similar to</option>
+			<option value="excluding" <?php selected( $options[$number]['relationship'], 'excluding' ) ?>>Excluding those</option>
+		</select>
+		</label></p>
+	
+		<p><?php _e('...items shown in:'); ?> <?php echo $other_instances; ?></p>
+	<?php endif; ?>
+
+	<p><label for="bsuite-any-posts-count-<?php echo $number; ?>"><?php _e('Number of items to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-count-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][count]" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 50)'); ?></p>
+
+	<p><label for="bsuite-any-posts-order-<?php echo $number; ?>"><?php _e('Ordered by:'); ?>
+	<select id="bsuite-any-posts-order-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][order]">
+
+		<option value="age_new" <?php selected( $options[$number]['order'], 'age_new' ) ?>>Newest</option>
+		<option value="age_old" <?php selected( $options[$number]['order'], 'age_old' ) ?>>Oldest</option>
+
+		<option value="pop_most" <?php selected( $options[$number]['order'], 'pop_most' ) ?>>Most popular</option>
+		<option value="pop_least" <?php selected( $options[$number]['order'], 'pop_least' ) ?>>Least popular</option>
+
+		<option value="comment_recent" <?php selected( $options[$number]['order'], 'comment_recent' ) ?>>Recently commented</option>
+
+		<option value="rand" <?php selected( $options[$number]['order'], 'rand' ) ?>>Random</option>
+	</select>
+	</label></p>
+
+	<p><label for="bsuite-any-posts-template-<?php echo $number; ?>"><?php _e('Template:') ?>
+	<select id="bsuite-any-posts-template-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][template]"><?php $this->widget_template_dropdown( $options[$number]['template'] ); ?></select>
+	</label></p>
+
+	<p><label for="bsuite-any-posts-columns-<?php echo $number; ?>"><?php _e('Number of columns:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-columns-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][columns]" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(1 to 8)'); ?></p>
+
+	<input type="hidden" id="bsuite-any-posts-submit" name="bsuite-any-posts[<?php echo $number; ?>][submit]" value="1" />
+<?php
+}
+
+function widget_any_posts_register() {
+	if ( !$options = get_option('bsuite_any_posts') )
+		$options = array();
+	$widget_ops = array('classname' => 'bsuite-any-posts', 'description' => __('Build your own post loop', 'bsuite'));
+	$control_ops = array('width' => 320, 'height' => 90, 'id_base' => 'bsuite-any-posts');
+	$name = 'bSuite<br /> '. __( 'Any Posts', 'bsuite' );
+
+	$id = false;
+	foreach ( array_keys($options) as $o ) {
+		// Old widgets can have null values for some reason
+		if ( !isset($options[$o]['title']))
+			continue;
+		$id = "bsuite-any-posts-$o"; // Never never never translate an id
+		wp_register_sidebar_widget($id, $name, array(&$this, 'widget_any_posts'), $widget_ops, array( 'number' => $o ));
+		wp_register_widget_control($id, $name, array(&$this, 'widget_any_posts_control'), $control_ops, array( 'number' => $o ));
+	}
+
+	// If there are none, we register the widget's existance with a generic template
+	if ( !$id ) {
+		wp_register_sidebar_widget( 'bsuite-any-posts-1', $name, array(&$this, 'widget_any_posts'), $widget_ops, array( 'number' => -1 ) );
+		wp_register_widget_control( 'bsuite-any-posts-1', $name, array(&$this, 'widget_any_posts_control'), $control_ops, array( 'number' => -1 ) );
+	}
+}
+
 	function widgets_register(){
+		$this->widget_any_posts_register();
 		$this->widget_recently_commented_posts_register();
 		$this->widget_popular_posts_register();
 
