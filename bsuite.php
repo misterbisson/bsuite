@@ -139,9 +139,10 @@ class bSuite {
 
 		add_action('widgets_init', array(&$this, 'widgets_register'));
 
+/*
 		// user-contributed tags
 		add_action('preprocess_comment', array(&$this, 'uctags_preprocess_comment'), 1);
-
+*/
 
 
 		// activation and menu hooks
@@ -194,10 +195,11 @@ class bSuite {
 			$GLOBALS['content_width'] = absint( get_option( 'bsuite_mycss_maxwidth' ));
 		if( !isset( $GLOBALS['content_width'] ))
 			$GLOBALS['content_width'] = 500;
-
+/*
 		// handle user-contributed tags via comments
 		if( strpos( $_SERVER['PHP_SELF'], 'wp-comments-post.php' ) && ( !empty( $_REQUEST['bsuite_uctags'] )))
 			$_REQUEST['comment'] = 'BSUITE_UCTAG';
+*/
 
 //		add_rewrite_endpoint( 'quickview', EP_PERMALINK ); // this doesn't quite work as I want it to
 	}
@@ -2046,7 +2048,7 @@ die();
 	// end bSuggestive
 
 
-
+/*
 	//
 	// user-contributed comments
 	//
@@ -2062,6 +2064,7 @@ die;
 		return( $comment );
 	}
 	// end user-contributed comment functions
+*/
 
 	function pagetree(){
 		// identify the family tree of a page, return an array
@@ -3284,6 +3287,9 @@ function widget_any_posts( $args, $widget_args = 1 ) {
 		global $wp_query;
 		$ourposts = &$wp_query;
 	}else{
+		// this should have new query criteria, but simply copy the default loop for now. 
+		global $wp_query;
+		$ourposts = &$wp_query;
 	}
 
 	if( $ourposts->have_posts() ){
