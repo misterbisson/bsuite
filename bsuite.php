@@ -3180,11 +3180,11 @@ die;
 	}
 
 
-function widget_any_posts_categories( $selected = array() ){
+function widget_any_posts_categories( $number , $selected = array() ){
 	$items = get_categories( array( 'style' => FALSE, 'echo' => FALSE, 'hierarchical' => FALSE ));
 
 	foreach( $items as $item ){
-		$list[] = '<label for="bstat-pop-posts-categories-'. $item->slug .'-%i%"><input class="checkbox" type="checkbox" value="'. $item->slug .'" '.( in_array( $item->slug, $selected ) ? 'checked="checked"' : '' ) .' id="bstat-pop-posts-categories-'. $item->slug .'-%i%" name="bstat-pop-posts[%i%][categories][]" /> '. $item->name .'</label>';
+		$list[] = '<label for="bsuite-any-posts-categories-'. $item->term_id .'-'. $number .'"><input class="checkbox" type="checkbox" value="'. $item->term_id .'" '.( in_array( $item->term_id, $selected ) ? 'checked="checked"' : '' ) .' id="bsuite-any-posts-categories-'. $item->term_id .'-'. $number .'" name="bsuite-any-posts['. $number .'][categories][]" /> '. $item->name .'</label>';
 	}
 
 	return implode( ', ', $list );
@@ -3198,7 +3198,7 @@ function widget_any_posts_instances( $self = 0 , $selected = array() ){
 			unset( $options[ $self ] );
 
 	foreach( $options as $number => $option ){
-		$list[] = '<label for="bstat-pop-posts-relatedto-'. $number .'-%i%"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, $selected ) ? 'checked="checked"' : '' ) .' id="bstat-pop-posts-relatedto-'. $number .'-%i%" name="bstat-pop-posts[%i%][relatedto][]" /> '. $option['title'] .'</label>';
+		$list[] = '<label for="bsuite-any-posts-relatedto-'. $self .'-'. $number .'"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, $selected ) ? 'checked="checked"' : '' ) .' id="bsuite-any-posts-relatedto-'. $self .'-'. $number .'" name="bsuite-any-posts['. $self .'][relatedto][]" /> '. $option['title'] .'</label>';
 	}
 
 	return implode( ', ', $list );
@@ -3260,25 +3260,14 @@ function widget_any_posts( $args, $widget_args = 1 ) {
 		$widget_args = array( 'number' => $widget_args );
 	$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
 	extract( $widget_args, EXTR_SKIP );
-
 	extract($args, EXTR_SKIP);
+
 	$options = get_option('bsuite_any_posts');
 
-	$opt = array( 
-		'show_icon' => $options[ $number ]['show_icon'],
-		'show_title' => $options[ $number ]['show_title'],
-	);
-	$title = empty($options[ $number ]['title']) ? __('Recent Posts', 'bsuite') : $options[ $number ]['title'];
-	if ( !$opt['count'] = (int) $options[ $number ]['number'] )
-		$opt['count'] = 5;
-	else if ( $opt['count'] < 1 )
-		$opt['count'] = 1;
-	else if ( $opt['count'] > 15 )
-		$opt['count'] = 15;
+print_r( $options[ $number ] );
 
-	$opt['icon_size'] = 's';
-	if( !$opt['show_icon'] && !$opt['show_title'] )
-		$opt['show_title'] = $opt['show_counts'] = 1;
+	$title = empty($options[ $number ]['title']) ? __('Any Posts', 'bsuite') : $options[ $number ]['title'];
+
 
 	$templates = $this->get_widget_templates();
 	$is_readable = is_readable( $templates[ $options[ $number ]['template'] ]['fullpath'] );
@@ -3376,11 +3365,26 @@ function widget_any_posts_control($widget_args) {
 			if ( !isset($widget_var['what']) && isset($options[$widget_number]) ) // user clicked cancel
 				continue;
 
-			$options[$widget_number]['title'] = strip_tags( stripslashes( $widget_var['title'] ));
-
-			$options[$widget_number]['what'] = strip_tags( stripslashes( $widget_var['what'] ));
-
-			$options[$widget_number]['template'] = strip_tags( stripslashes( $widget_var['template'] ));
+			$widget_var = stripslashes_deep( $widget_var );
+			
+			$options[$widget_number]['title'] = wp_filter_nohtml_kses( $widget_var['title'] );
+			$options[$widget_number]['what'] = in_array( $widget_var['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $widget_var['what']: '';
+			$options[$widget_number]['blog'] = absint( $widget_var['blog'] );
+			$options[$widget_number]['categories'] = array_filter( array_map( 'absint', $widget_var['categories'] ));
+			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $widget_var['tags'] )))) as $tag_name ){
+				$temp = is_term( $tag_name, 'post_tag' );
+				$options[$widget_number]['tags'][] = $temp->term_id;
+			}
+			$options[$widget_number]['ids'] = array_filter( array_map( 'absint', explode( ',', $widget_var['ids'] )));
+			$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
+			$options[$widget_number]['age'] = in_array( $widget_var['age'], array( 'age_new', 'age_old', 'age_from') ) ? $widget_var['age']: '';
+			$options[$widget_number]['agestrtotime'] = strtotime( $widget_var['agestrtotime'] ) ? $widget_var['agestrtotime'] : '';
+			$options[$widget_number]['relationship'] = in_array( $widget_var['relationship'], array( 'none', 'similar', 'excluding') ) ? $widget_var['relationship']: '';
+			$options[$widget_number]['relatedto'] = array_filter( array_map( 'absint', $widget_var['relatedto'] ));
+			$options[$widget_number]['count'] = absint( $widget_var['count'] );
+			$options[$widget_number]['order'] = in_array( $widget_var['order'], array( 'age_new', 'age_old', 'pop_most', 'pop_least', 'comment_recent', 'rand' ) ) ? $widget_var['order']: '';
+			$options[$widget_number]['template'] = wp_filter_nohtml_kses( $widget_var['template'] );
+			$options[$widget_number]['columns'] = absint( $widget_var['columns'] );
 		}
 
 		update_option('bsuite_any_posts', $options);
@@ -3389,7 +3393,7 @@ function widget_any_posts_control($widget_args) {
 	}
 
 	if ( -1 == $number ) {
-		$title = __( 'Recent Posts', 'bsuite' );
+		$title = __( 'Any Posts', 'bsuite' );
 
 		// we reset the widget number via JS	
 		$number = '%i%';
@@ -3399,60 +3403,103 @@ function widget_any_posts_control($widget_args) {
 ?>
 	<p><label for="bsuite-any-posts-title-<?php echo $number; ?>"><?php _e('Title:'); ?> <input style="width: 250px;" id="bsuite-any-posts-title-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][title]" type="text" value="<?php echo $title; ?>" /></label></p>
 
+	<fieldset class="bsuite-any-posts-what">
 	<p><label for="bsuite-any-posts-what-<?php echo $number; ?>"><?php _e('What to show:'); ?>
 	<select id="bsuite-any-posts-what-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][what]">
 		<option value="normal" <?php selected( $options[$number]['what'], 'normal' ) ?>>The default content</option>
-		<option value="posts" <?php selected( $options[$number]['what'], 'posts' ) ?>>Posts</option>
-		<option value="posts_category_any" <?php selected( $options[$number]['what'], 'posts_category_any' ) ?>>Posts in any of these categories</option>
-		<option value="posts_category_all" <?php selected( $options[$number]['what'], 'posts_category_all' ) ?>>Posts in all of these categories</option>
-		<option value="posts_tag_any" <?php selected( $options[$number]['what'], 'posts_tag_any' ) ?>>Posts with any of these tags</option>
-		<option value="posts_tag_all" <?php selected( $options[$number]['what'], 'posts_tag_all' ) ?>>Posts with all of these tags</option>
-		<option value="posts_tagcat_all" <?php selected( $options[$number]['what'], 'posts_tagcat_all' ) ?>>Posts with all of these categories and tags</option>
-		<option value="posts_id" <?php selected( $options[$number]['what'], 'posts_id' ) ?>>Posts by ID</option>
-		<option value="pages" <?php selected( $options[$number]['what'], 'pages' ) ?>>Pages</option>
-		<option value="pages_id" <?php selected( $options[$number]['what'], 'pages_id' ) ?>>Pages by ID</option>
+		<option value="post" <?php selected( $options[$number]['what'], 'post' ) ?>>Posts</option>
+		<option value="page" <?php selected( $options[$number]['what'], 'page' ) ?>>Pages</option>
+		<option value="attachment" <?php selected( $options[$number]['what'], 'attachment' ) ?>>Attachments</option>
 		<option value="any" <?php selected( $options[$number]['what'], 'any' ) ?>>Any content</option>
 	</select>
 	</label></p>
+	<fieldset>
 
-	<p><?php _e('Categories:'); ?> <?php echo $this->widget_any_posts_categories(); ?></p>
+	<fieldset class="bsuite-any-posts-blog">
+	<?php
+//global $current_user;
+//get_blogs_of_user( $current_user->ID );
+// must allow for situations where the current user doesn't have access to the previously selected other blog
+	?>
+	<p><label for="bsuite-any-posts-blog-<?php echo $number; ?>"><?php _e('Blog:'); ?>
+	<select id="bsuite-any-posts-blog-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][blog]">
+		<option value="1" <?php selected( $options[$number]['blog'], '1' ) ?>>This blog</option>
+		<option value="2" <?php selected( $options[$number]['blog'], '2' ) ?>>the title of nother blog of mine</option>
+		<option value="3" <?php selected( $options[$number]['blog'], '3' ) ?>>my most favorite blog</option>
+		<option value="4" <?php selected( $options[$number]['blog'], '4' ) ?>>a group blog i use</option>
+		<option value="5" <?php selected( $options[$number]['blog'], '5' ) ?>>blog blog blog</option>
+	</select>
+	</label></p>
+	<fieldset>
 
-	<p><label for="bsuite-any-posts-tags-<?php echo $number; ?>"><?php _e('Tags:'); ?> <input style="width: 250px" id="bsuite-any-posts-tags-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][tags]" type="text" value="<?php echo $number; ?>" /></label></p>
+	<fieldset class="bsuite-any-posts-categories">
+	<p><?php _e('Categories:'); ?> 
+	<select id="bsuite-any-posts-categoriesbool-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][categoriesbool]">
+		<option value="in" <?php selected( $options[$number]['categoriesbool'], 'in' ) ?>>Any</option>
+		<option value="and" <?php selected( $options[$number]['categoriesbool'], 'and' ) ?>>All</option>
+		<option value="not_in" <?php selected( $options[$number]['categoriesbool'], 'not_in' ) ?>>None</option>
+	</select> 
+	<?php echo $this->widget_any_posts_categories( $number, $options[$number]['categories'] ); ?></p>
+	<fieldset>
 
-	<p><label for="bsuite-any-posts-ids-<?php echo $number; ?>"><?php _e('IDs:'); ?> <input style="width: 250px" id="bsuite-any-posts-ids-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][ids]" type="text" value="<?php echo $number; ?>" /></label></p>
+	<fieldset class="bsuite-any-posts-tags">
+	<p><label for="bsuite-any-posts-tags-<?php echo $number; ?>"><?php _e('Tags:'); ?> <select id="bsuite-any-posts-tagsbool-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][tagsbool]">
+		<option value="in" <?php selected( $options[$number]['tagsbool'], 'in' ) ?>>Any</option>
+		<option value="and" <?php selected( $options[$number]['tagsbool'], 'and' ) ?>>All</option>
+		<option value="not_in" <?php selected( $options[$number]['tagsbool'], 'not_in' ) ?>>None</option>
+	</select> 
+	<input style="width: 250px" id="bsuite-any-posts-tags-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][tags]" type="text" value="<?php echo implode( ', ', $options[$number]['tags'] ); ?>" /></label></p>
+	<fieldset>
 
+	<fieldset class="bsuite-any-posts-ids">
+	<p><label for="bsuite-any-posts-ids-<?php echo $number; ?>"><?php _e('IDs:'); ?> <input style="width: 250px" id="bsuite-any-posts-ids-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][ids]" type="text" value="<?php echo implode( ', ', $options[$number]['ids'] ); ?>" /></label></p>
+	<fieldset>
+
+	<fieldset class="bsuite-any-posts-activity">
 	<p><label for="bsuite-any-posts-activity-<?php echo $number; ?>"><?php _e('Activity:'); ?>
 	<select id="bsuite-any-posts-activity-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][activity]">
-		<option value="any" <?php selected( $options[$number]['activity'], 'any' ) ?>>Any</option>
-
 		<option value="pop_most" <?php selected( $options[$number]['activity'], 'pop_most' ) ?>>Most popular items</option>
 		<option value="pop_least" <?php selected( $options[$number]['activity'], 'pop_least' ) ?>>Least popular</option>
 
-		<option value="comment_few" <?php selected( $options[$number]['activity'], 'comment_few' ) ?>>Recently viewed</option>
+		<option value="pop_recent" <?php selected( $options[$number]['activity'], 'pop_recent' ) ?>>Recently viewed</option>
 
 		<option value="comment_recent" <?php selected( $options[$number]['activity'], 'comment_recent' ) ?>>Recently commented</option>
 		<option value="comment_few" <?php selected( $options[$number]['activity'], 'comment_few' ) ?>>Fewest comments</option>
+	</select>
+	</label></p>
+	<fieldset>
 
-		<option value="age_new" <?php selected( $options[$number]['activity'], 'age_new' ) ?>>Newer items</option>
-		<option value="age_old" <?php selected( $options[$number]['activity'], 'age_old' ) ?>>Older items</option>
-		<option value="age_year" <?php selected( $options[$number]['activity'], 'age_year' ) ?>>Items from a year ago</option>
+	<fieldset class="bsuite-any-posts-age">
+	<p><label for="bsuite-any-posts-age-<?php echo $number; ?>"><?php _e('Post date:'); ?>
+	<select id="bsuite-any-posts-age-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][age]">
+		<option value="age_new" <?php selected( $options[$number]['age'], 'age_new' ) ?>>Newer items</option>
+		<option value="age_old" <?php selected( $options[$number]['age'], 'age_old' ) ?>>Older items</option>
+		<option value="age_from" <?php selected( $options[$number]['age'], 'age_from' ) ?>>Items from...</option>
 	</select>
 	</label></p>
 
-	<?php if( $other_instances = $this->widget_any_posts_instances() ): ?>
-		<p><label for="bsuite-any-posts-relationship-<?php echo $number; ?>"><?php _e('Relationship to other items:'); ?>
-		<select id="bsuite-any-posts-relationship-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][relationship]">
-			<option value="none" <?php selected( $options[$number]['relationship'], 'none' ) ?>>None</option>
-			<option value="similar" <?php selected( $options[$number]['relationship'], 'similar' ) ?>>Similar to</option>
-			<option value="excluding" <?php selected( $options[$number]['relationship'], 'excluding' ) ?>>Excluding those</option>
-		</select>
-		</label></p>
-	
-		<p><?php _e('...items shown in:'); ?> <?php echo $other_instances; ?></p>
+	<p><label for="bsuite-any-posts-agestrtotime-<?php echo $number; ?>"><?php _e('When:'); ?> <input style="width: 250px" id="bsuite-any-posts-agestrtotime-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][agestrtotime]" type="text" value="<?php echo attribute_escape( $options[$number]['agestrtotime'] ); ?>" /></label></p>
+	<fieldset>
+
+	<?php if( $other_instances = $this->widget_any_posts_instances( $number, $options[$number]['relatedto']) ): ?>
+		<fieldset class="bsuite-any-posts-relationship">
+			<p><label for="bsuite-any-posts-relationship-<?php echo $number; ?>"><?php _e('Relationship to other items:'); ?>
+			<select id="bsuite-any-posts-relationship-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][relationship]">
+				<option value="none" <?php selected( $options[$number]['relationship'], 'none' ) ?>>None</option>
+				<option value="similar" <?php selected( $options[$number]['relationship'], 'similar' ) ?>>Similar to</option>
+				<option value="excluding" <?php selected( $options[$number]['relationship'], 'excluding' ) ?>>Excluding those</option>
+			</select>
+			</label></p>
+		
+			<p><?php _e('...items shown in:'); ?> <?php echo $other_instances; ?></p>
+		<fieldset>
 	<?php endif; ?>
 
-	<p><label for="bsuite-any-posts-count-<?php echo $number; ?>"><?php _e('Number of items to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-count-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][count]" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(at most 50)'); ?></p>
+	<fieldset class="bsuite-any-posts-categories">
+	<p><label for="bsuite-any-posts-count-<?php echo $number; ?>"><?php _e('Number of items to show:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-count-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][count]" type="text" value="<?php echo attribute_escape( $options[$number]['count'] ); ?>" /></label> <?php _e('(at most 50)'); ?></p>
+	<fieldset>
 
+	<fieldset class="bsuite-any-posts-order">
 	<p><label for="bsuite-any-posts-order-<?php echo $number; ?>"><?php _e('Ordered by:'); ?>
 	<select id="bsuite-any-posts-order-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][order]">
 
@@ -3467,12 +3514,15 @@ function widget_any_posts_control($widget_args) {
 		<option value="rand" <?php selected( $options[$number]['order'], 'rand' ) ?>>Random</option>
 	</select>
 	</label></p>
+	<fieldset>
 
+	<fieldset class="bsuite-any-posts-template">
 	<p><label for="bsuite-any-posts-template-<?php echo $number; ?>"><?php _e('Template:') ?>
-	<select id="bsuite-any-posts-template-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][template]"><?php $this->widget_template_dropdown( $options[$number]['template'] ); ?></select>
+	<select id="bsuite-any-posts-template-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][template]"><?php $this->widget_template_dropdown( $options[$number]['template'] ); ?></select>
 	</label></p>
 
-	<p><label for="bsuite-any-posts-columns-<?php echo $number; ?>"><?php _e('Number of columns:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-columns-<?php echo $number; ?>" name="bsuite-any-posts-[<?php echo $number; ?>][columns]" type="text" value="<?php echo $number; ?>" /></label> <?php _e('(1 to 8)'); ?></p>
+	<p><label for="bsuite-any-posts-columns-<?php echo $number; ?>"><?php _e('Number of columns:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-columns-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][columns]" type="text" value="<?php echo attribute_escape( $options[$number]['columns'] ); ?>" /></label> <?php _e('(1 to 8)'); ?></p>
+	<fieldset>
 
 	<input type="hidden" id="bsuite-any-posts-submit" name="bsuite-any-posts[<?php echo $number; ?>][submit]" value="1" />
 <?php
