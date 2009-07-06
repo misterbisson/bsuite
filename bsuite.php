@@ -3270,24 +3270,66 @@ print_r( $options[ $number ] );
 
 
 	$templates = $this->get_widget_templates();
-	$is_readable = is_readable( $templates[ $options[ $number ]['template'] ]['fullpath'] );
 
-	if( TRUE ){
+	if( 'normal' == $options[$number]['what'] ){
 		global $wp_query;
 		$ourposts = &$wp_query;
 	}else{
-		// this should have new query criteria, but simply copy the default loop for now. 
-		global $wp_query;
-		$ourposts = &$wp_query;
+		if( in_array( $options[$number]['what'], array( 'post', 'page', 'attachment' )))
+			$criteria['post_type'] = $options[$number]['what'];
+		
+		if( !empty( $options[$number]['categories'] ))
+			$criteria['category__'. ( in_array( $options[$number]['categoriesbool'], array( 'in', 'and', 'not_in' )) ? $options[$number]['categoriesbool'] : 'in' ) ] = $options[$number]['categories'];
+		
+		if( !empty( $options[$number]['tags'] ))
+			$criteria['category__'. ( in_array( $options[$number]['tagsbool'], array( 'in', 'and', 'not_in' )) ? $options[$number]['tagsbool'] : 'in' ) ] = $options[$number]['tags'];
+		
+		if( !empty( $options[$number]['post__in'] ))
+			$criteria['post__in'] = $options[$number]['post__in'];
+		
+		if( !empty( $options[$number]['post__not_in'] ))
+			$criteria['post__not_in'] = $options[$number]['post__not_in'];
+		
+		$criteria['showposts'] = $options[$number]['count'];
+		
+		switch( $options[$number]['order'] ){
+			case 'age_new':
+				$criteria['orderby'] = 'post_date';
+				$criteria['order'] = 'DESC';
+				break;
+			case 'age_old':
+				$criteria['orderby'] = 'post_date';
+				$criteria['order'] = 'ASC';
+				break;
+			case 'pop_most':
+			case 'pop_least':
+			case 'comment_recent':
+			case 'rand':
+			default:
+				$criteria['orderby'] = 'rand';
+				break;
+		}
+
+		$ourposts = new WP_Query( $criteria );
+
+/*
+$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
+
+$options[$widget_number]['age'] = in_array( $widget_var['age'], array( 'after', 'before', 'around') ) ? $widget_var['age']: '';
+$options[$widget_number]['agestrtotime'] = strtotime( $widget_var['agestrtotime'] ) ? $widget_var['agestrtotime'] : '';
+
+$options[$widget_number]['relationship'] = in_array( $widget_var['relationship'], array( 'similar', 'excluding') ) ? $widget_var['relationship']: '';
+$options[$widget_number]['relatedto'] = array_filter( array_map( 'absint', $widget_var['relatedto'] ));
+
+
+*/
 	}
 
 	if( $ourposts->have_posts() ){
 		while( $ourposts->have_posts() ){
 			$ourposts->the_post();
 			
-			if( $is_readable ){
-				include $templates[ $options[ $number ]['template'] ]['fullpath'];
-			}else{
+			if( ! include $templates[ $options[ $number ]['template'] ]['fullpath'] ){
 ?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 <div <?php post_class() ?> id="post-<?php the_ID(); ?>">
 	<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
@@ -3370,19 +3412,24 @@ function widget_any_posts_control($widget_args) {
 			$options[$widget_number]['title'] = wp_filter_nohtml_kses( $widget_var['title'] );
 			$options[$widget_number]['what'] = in_array( $widget_var['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $widget_var['what']: '';
 			$options[$widget_number]['blog'] = absint( $widget_var['blog'] );
+
+			$options[$widget_number]['categoriesbool'] = in_array( $widget_var['categoriesbool'], array( 'in', 'and', 'not_in') ) ? $widget_var['categoriesbool']: '';
 			$options[$widget_number]['categories'] = array_filter( array_map( 'absint', $widget_var['categories'] ));
+			$options[$widget_number]['tagsbool'] = in_array( $widget_var['tagsbool'], array( 'in', 'and', 'not_in') ) ? $widget_var['tagsbool']: '';
+			$options[$widget_number]['tags'] = array();
 			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $widget_var['tags'] )))) as $tag_name ){
-				$temp = is_term( $tag_name, 'post_tag' );
-				$options[$widget_number]['tags'][] = $temp->term_id;
+				if( $temp = is_term( $tag_name, 'post_tag' ))
+					$options[$widget_number]['tags'][] = $temp['term_id'];
 			}
-			$options[$widget_number]['ids'] = array_filter( array_map( 'absint', explode( ',', $widget_var['ids'] )));
+			$options[$widget_number]['post__in'] = array_filter( array_map( 'absint', explode( ',', $widget_var['post__in'] )));
+			$options[$widget_number]['post__not_in'] = array_filter( array_map( 'absint', explode( ',', $widget_var['post__not_in'] )));
 			$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
-			$options[$widget_number]['age'] = in_array( $widget_var['age'], array( 'age_new', 'age_old', 'age_from') ) ? $widget_var['age']: '';
+			$options[$widget_number]['age'] = in_array( $widget_var['age'], array( 'after', 'before', 'around') ) ? $widget_var['age']: '';
 			$options[$widget_number]['agestrtotime'] = strtotime( $widget_var['agestrtotime'] ) ? $widget_var['agestrtotime'] : '';
-			$options[$widget_number]['relationship'] = in_array( $widget_var['relationship'], array( 'none', 'similar', 'excluding') ) ? $widget_var['relationship']: '';
+			$options[$widget_number]['relationship'] = in_array( $widget_var['relationship'], array( 'similar', 'excluding') ) ? $widget_var['relationship']: '';
 			$options[$widget_number]['relatedto'] = array_filter( array_map( 'absint', $widget_var['relatedto'] ));
 			$options[$widget_number]['count'] = absint( $widget_var['count'] );
-			$options[$widget_number]['order'] = in_array( $widget_var['order'], array( 'age_new', 'age_old', 'pop_most', 'pop_least', 'comment_recent', 'rand' ) ) ? $widget_var['order']: '';
+			$options[$widget_number]['order'] = in_array( $widget_var['order'], array( 'age_new', 'age_old', 'pop_most', 'pop_least', 'relevance_most', 'comment_recent', 'rand' ) ) ? $widget_var['order']: '';
 			$options[$widget_number]['template'] = wp_filter_nohtml_kses( $widget_var['template'] );
 			$options[$widget_number]['columns'] = absint( $widget_var['columns'] );
 		}
@@ -3443,16 +3490,28 @@ function widget_any_posts_control($widget_args) {
 	<fieldset>
 
 	<fieldset class="bsuite-any-posts-tags">
-	<p><label for="bsuite-any-posts-tags-<?php echo $number; ?>"><?php _e('Tags:'); ?> <select id="bsuite-any-posts-tagsbool-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][tagsbool]">
+	<p><?php _e('Tags:'); ?> <select id="bsuite-any-posts-tagsbool-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][tagsbool]">
 		<option value="in" <?php selected( $options[$number]['tagsbool'], 'in' ) ?>>Any</option>
 		<option value="and" <?php selected( $options[$number]['tagsbool'], 'and' ) ?>>All</option>
 		<option value="not_in" <?php selected( $options[$number]['tagsbool'], 'not_in' ) ?>>None</option>
-	</select> 
-	<input style="width: 250px" id="bsuite-any-posts-tags-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][tags]" type="text" value="<?php echo implode( ', ', $options[$number]['tags'] ); ?>" /></label></p>
+	</select>
+
+<?php
+	foreach( $options[$number]['tags'] as $tag_id ){
+		$temp = get_term( $tag_id, 'post_tag' );
+		$tags[] = $temp->name;
+	}
+?>
+
+	<input style="width: 250px" id="bsuite-any-posts-tags-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][tags]" type="text" value="<?php echo implode( ', ', $tags ); ?>" /></p>
 	<fieldset>
 
-	<fieldset class="bsuite-any-posts-ids">
-	<p><label for="bsuite-any-posts-ids-<?php echo $number; ?>"><?php _e('IDs:'); ?> <input style="width: 250px" id="bsuite-any-posts-ids-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][ids]" type="text" value="<?php echo implode( ', ', $options[$number]['ids'] ); ?>" /></label></p>
+	<fieldset class="bsuite-any-posts-post__in">
+	<p><label for="bsuite-any-posts-post__in-<?php echo $number; ?>"><?php _e('IDs:'); ?> <input style="width: 250px" id="bsuite-any-posts-post__in-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][post__in]" type="text" value="<?php echo implode( ', ', $options[$number]['post__in'] ); ?>" /></label></p>
+	<fieldset>
+
+	<fieldset class="bsuite-any-posts-post__not_in">
+	<p><label for="bsuite-any-posts-post__not_in-<?php echo $number; ?>"><?php _e('Excluding IDs:'); ?> <input style="width: 250px" id="bsuite-any-posts-post__not_in-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][post__not_in]" type="text" value="<?php echo implode( ', ', $options[$number]['post__not_in'] ); ?>" /></label></p>
 	<fieldset>
 
 	<fieldset class="bsuite-any-posts-activity">
@@ -3472,26 +3531,23 @@ function widget_any_posts_control($widget_args) {
 	<fieldset class="bsuite-any-posts-age">
 	<p><label for="bsuite-any-posts-age-<?php echo $number; ?>"><?php _e('Post date:'); ?>
 	<select id="bsuite-any-posts-age-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][age]">
-		<option value="age_new" <?php selected( $options[$number]['age'], 'age_new' ) ?>>Newer items</option>
-		<option value="age_old" <?php selected( $options[$number]['age'], 'age_old' ) ?>>Older items</option>
-		<option value="age_from" <?php selected( $options[$number]['age'], 'age_from' ) ?>>Items from...</option>
+		<option value="age_new" <?php selected( $options[$number]['age'], 'after' ) ?>>After</option>
+		<option value="age_old" <?php selected( $options[$number]['age'], 'before' ) ?>>Before</option>
+		<option value="age_from" <?php selected( $options[$number]['age'], 'around' ) ?>>Around</option>
 	</select>
-	</label></p>
-
-	<p><label for="bsuite-any-posts-agestrtotime-<?php echo $number; ?>"><?php _e('When:'); ?> <input style="width: 250px" id="bsuite-any-posts-agestrtotime-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][agestrtotime]" type="text" value="<?php echo attribute_escape( $options[$number]['agestrtotime'] ); ?>" /></label></p>
+	</label> 
+	<label for="bsuite-any-posts-agestrtotime-<?php echo $number; ?>"><input style="width: 150px" id="bsuite-any-posts-agestrtotime-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][agestrtotime]" type="text" value="<?php echo attribute_escape( $options[$number]['agestrtotime'] ); ?>" /></label></p>
 	<fieldset>
 
 	<?php if( $other_instances = $this->widget_any_posts_instances( $number, $options[$number]['relatedto']) ): ?>
 		<fieldset class="bsuite-any-posts-relationship">
-			<p><label for="bsuite-any-posts-relationship-<?php echo $number; ?>"><?php _e('Relationship to other items:'); ?>
+			<p><label for="bsuite-any-posts-relationship-<?php echo $number; ?>">
 			<select id="bsuite-any-posts-relationship-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][relationship]">
-				<option value="none" <?php selected( $options[$number]['relationship'], 'none' ) ?>>None</option>
 				<option value="similar" <?php selected( $options[$number]['relationship'], 'similar' ) ?>>Similar to</option>
 				<option value="excluding" <?php selected( $options[$number]['relationship'], 'excluding' ) ?>>Excluding those</option>
 			</select>
-			</label></p>
-		
-			<p><?php _e('...items shown in:'); ?> <?php echo $other_instances; ?></p>
+			</label>
+			<?php _e('items shown in:'); ?> <?php echo $other_instances; ?></p>
 		<fieldset>
 	<?php endif; ?>
 
@@ -3508,6 +3564,8 @@ function widget_any_posts_control($widget_args) {
 
 		<option value="pop_most" <?php selected( $options[$number]['order'], 'pop_most' ) ?>>Most popular</option>
 		<option value="pop_least" <?php selected( $options[$number]['order'], 'pop_least' ) ?>>Least popular</option>
+
+		<option value="relevance_most" <?php selected( $options[$number]['order'], 'relevance_most' ) ?>>Most relevant</option>
 
 		<option value="comment_recent" <?php selected( $options[$number]['order'], 'comment_recent' ) ?>>Recently commented</option>
 
