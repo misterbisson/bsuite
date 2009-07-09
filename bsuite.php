@@ -3293,7 +3293,7 @@ function get_widget_templates() {
 
 	return array_merge( 
 			$this->get_widget_templates_readdir( get_template_directory(). 'bsuite_templates' ), 
-			$this->get_widget_templates_readdir( '/Users/bisson/WebDocs/test27_wpopac/wp-content/plugins/bsuite/templates/' )
+			$this->get_widget_templates_readdir( plugin_dir_path( basename( dirname( __FILE__ ))) .'/templates/' )
 		);
 }
 
@@ -3309,7 +3309,7 @@ function widget_any_posts( $args, $widget_args = 1 ) {
 
 	$options = get_option('bsuite_any_posts');
 
-print_r( $options[ $number ] );
+//print_r( $options[ $number ] );
 
 	$title = empty($options[ $number ]['title']) ? __('Any Posts', 'bsuite') : $options[ $number ]['title'];
 
