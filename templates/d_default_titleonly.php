@@ -1,6 +1,6 @@
 <?php
 /*
-Template Name: Default Excerpt Tiny
+Template Name: Default Title Only
 */
 ?>
 
