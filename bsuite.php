@@ -33,11 +33,11 @@ class bSuite {
 
 		// register and queue javascripts
 		wp_register_script( 'bsuite', $this->path_web . '/js/bsuite.js', array('jquery'), '20080503' );
-		wp_enqueue_script( 'bsuite' );	
+		wp_enqueue_script( 'bsuite' );
 
 		// jQuery text highlighting plugin http://johannburkard.de/blog/programming/javascript/highlight-javascript-text-higlighting-jquery-plugin.html
 		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
-		wp_enqueue_script( 'highlight' );	
+		wp_enqueue_script( 'highlight' );
 
 		// is this wpmu?
 		if( function_exists( 'is_site_admin' ))
@@ -73,7 +73,7 @@ class bSuite {
 		add_action('wp_ajax_bsuite_icon_upload', array( &$this, 'icon_ajax_upload' ));
 		add_action('wp_ajax_bsuite_icon_delete', array( &$this, 'icon_ajax_delete' ));
 		$this->icon_sizes_default(); // initialize default icons
-	
+
 		// tokens
 		// tokens are deprecated. please use shortcode functionality instead.
 		add_filter('bsuite_tokens', array(&$this, 'tokens_default'));
@@ -83,7 +83,7 @@ class bSuite {
 		add_filter('the_excerpt_rss', array(&$this, 'tokens_the_excerpt_rss'), 0);
 		add_filter('get_the_excerpt ', array(&$this, 'tokens_the_excerpt'), 0);
 		add_filter('widget_text', array(&$this, 'tokens'), 0);
-		
+
 		//innerindex
 		add_filter('content_save_pre', array(&$this, 'innerindex_nametags'));
 		add_filter('save_post', array(&$this, 'innerindex_delete_cache'));
@@ -127,7 +127,7 @@ class bSuite {
 		}
 
 		// machine tags
-		add_action('save_post', array(&$this, 'machtag_save_post'), 2, 2);		
+		add_action('save_post', array(&$this, 'machtag_save_post'), 2, 2);
 
 		// cms goodies
 		add_filter('user_has_cap', array(&$this, 'edit_current_user_can'), 10, 3);
@@ -177,7 +177,7 @@ class bSuite {
 		register_setting( 'bsuite-options', 'bsuite_insert_css', 'absint' );
 		register_setting( 'bsuite-options', 'bsuite_migration_interval', 'absint' );
 		register_setting( 'bsuite-options', 'bsuite_migration_count', 'absint' );
-		register_setting( 'bsuite-options', 'bsuite_load_max', 'absint' );	
+		register_setting( 'bsuite-options', 'bsuite_load_max', 'absint' );
 	}
 
 	function init(){
@@ -215,7 +215,7 @@ class bSuite {
 
 		// the machine tags js and style
 		wp_register_script( 'bsuite-machtags', $this->path_web . '/js/bsuite-machtags.js', array('jquery-ui-sortable'), '1' );
-		wp_enqueue_script( 'bsuite-machtags' );	
+		wp_enqueue_script( 'bsuite-machtags' );
 		wp_register_style( 'bsuite-machtags', $this->path_web .'/css/machtags.css' );
 		wp_enqueue_style( 'bsuite-machtags' );
 
@@ -230,7 +230,7 @@ class bSuite {
 
 		// add the options page
 		add_options_page('bSuite Settings', 'bSuite', 'manage_options', plugin_basename( dirname( __FILE__ )) .'/ui_options.php' );
-		
+
 		// the bstat reports are handled in a seperate file
 		add_submenu_page('index.php', 'bSuite bStat Reports', 'bStat Reports', 'edit_posts', plugin_basename( dirname( __FILE__ )) .'/ui_stats.php' );
 
@@ -304,19 +304,19 @@ class bSuite {
 
 	function shortcode_list_pages_callback( $arg ){
 		global $id, $post;
-	
+
 		if( $this->list_pages->show_excerpt ){
 			$post_orig = unserialize( serialize( $post )); // how else to prevent passing object by reference?
 			$id_orig = $id;
-		
+
 			$post = get_post( $arg[1] );
 			$id = $post->ID;
-			
+
 			$content = ( $this->list_pages->show_icon ? '<a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a>' : '' ) . apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
-		
+
 			$post = $post_orig;
 			$id = $id_orig;
-	
+
 			if( 5 < strlen( $content ))
 				return( $arg[0] .'<ul><li class="page_excerpt page_excerpt-'. $arg[1] .'">'. $content .'</li></ul>' );
 			return( $arg[0] );
@@ -351,7 +351,7 @@ class bSuite {
 			'title' => 'Contents',
 			'div_class' => 'contents innerindex',
 		), $arg );
-		
+
 		$prefix = $suffix = '';
 		if( $arg['div_class'] ){
 			$prefix .= '<div class="'. $arg['div_class'] .'">';
@@ -385,7 +385,7 @@ class bSuite {
 
 		if( isset( $arg[ 'url' ] ))
 			$include_id = url_to_postid( $arg[ 'url' ] );
-		
+
 		if( (int) $arg[ 'post_id' ] )
 			$include_id = (int) $arg[ 'post_id' ];
 
@@ -400,7 +400,7 @@ class bSuite {
 
 		if( ( 'post_excerpt' == $arg[ 'field' ] ) && !( get_post_field( $arg[ 'field' ], $include_id )))
 			$arg[ 'field' ] = 'post_content';
-		
+
 		$content = apply_filters( 'the_content', get_post_field( $arg[ 'field' ], $include_id ));
 
 		$post = $post_orig;
@@ -459,10 +459,10 @@ class bSuite {
 	//
 	function tokens_get(){
 		// establish list of tokens
-		static $tokens = FALSE;	
+		static $tokens = FALSE;
 		if($tokens)
 			return($tokens);
-	
+
 		$tokens = array();
 		$tokens = apply_filters('bsuite_tokens', $tokens);
 
@@ -534,12 +534,12 @@ class bSuite {
 
 		return($tokens);
 	}
-	
+
 	function token_get_date($stuff = 'F j, Y, g:i a'){
 		// [[date|options]]
 		return(date($stuff));
 	}
-	
+
 	function token_get_pagemenu($stuff = NULL){
 		// [[pagemenu|depth|extra]]
 		// [[pagemenu|1|sort_column=post_date&sort_order=DESC]]
@@ -547,7 +547,7 @@ class bSuite {
 		$stuff = explode('|', $stuff);
 		return(wp_list_pages("child_of=$id&depth=1&echo=0&sort_column=menu_order&title_li=&$stuff[0]"));
 	}
-	
+
 	function token_get_redirect($stuff){
 		// [[redirect|$url]]
 		if(!headers_sent())
@@ -583,7 +583,7 @@ class bSuite {
 			return( '<div class="innerindex"><h3>'. $title .'</h3>'. str_replace( '%%the_permalink%%', get_permalink( $id ), $menu ) .'</div>' );
 		}
 	}
-	
+
 	function innerindex_build($content){
 		// find <h*> tags with IDs in the content and build an index of them
 		preg_match_all(
@@ -600,7 +600,7 @@ class bSuite {
 
 			if(!$last)
 				$last = $low = $h[1];
-			
+
 			if($anchor[1]){
 				if($h[1] > $last){
 					$menu .= '<ol>';
@@ -613,9 +613,9 @@ class bSuite {
 					$menu .= '</ol></li>';
 					$closers--;
 				}
-				
+
 				$last = $h[1];
-		
+
 				$menu .= '<li><a href="%%the_permalink%%#'. $anchor[1] .'">'. strip_tags($thing) .'</a>';
 				$count++;
 			}
@@ -684,15 +684,15 @@ class bSuite {
 
 	function icon_is_editing( $post_id ) {
 		global $current_user;
-	
+
 		if ( !$post = get_post( $post_id ) )
 			return false;
-	
+
 		$lock = get_post_meta( $post->ID, '_edit_lock', true );
 		$last = get_post_meta( $post->ID, '_edit_last', true );
 
 		$time_window = apply_filters( 'wp_check_post_lock_window', AUTOSAVE_INTERVAL * 2 );
-	
+
 		if ( $lock && $lock > time() - $time_window && $last == $current_user->ID )
 			return( TRUE );
 		return( FALSE );
@@ -702,7 +702,7 @@ class bSuite {
 		$_FILES['import']['name'] = substr( md5( uniqid( microtime())), 0, 4 ) . strrchr( $_FILES['import']['name'] , '.' );
 		$overrides = array( 'test_form' => false );
 		$file = wp_handle_upload( $_FILES['import'], $overrides );
-	
+
 		return( $file );
 	}
 
@@ -744,7 +744,7 @@ class bSuite {
 	(<?php printf( __('%s max' ), $size ); ?>)
 	</form></html>
 <?php
-	}	
+	}
 
 	function icon_ajax_delete( ){
 		if (!current_user_can('upload_files'))
@@ -795,96 +795,141 @@ class bSuite {
 
 		// make sure that we've got an image
 		if( 'image' === strtolower( substr( $file['type'], 0, strpos( $file['type'], '/' )))){
-			// set a new directory for the file
+
+			// get the post id
 			$post_id = (int) $_REQUEST['post_ID'];
-			$uploads = wp_upload_dir( 'icon-'. substr( str_pad( $post_id, 2, '0', STR_PAD_LEFT ), -2) );
-			$uploads['path'] .= '/'. $post_id;
-	
-			// create the directory, remove any previous if existing
-			if(!is_dir( $uploads['path'] ))
-				mkdir( $uploads['path'], 0775, TRUE );
-			else
-				$this->unlink_recursive($uploads['path']);
-	
-			// move the uploaded file into that directory, delete the old file (redundent, i know)
-			$uploads['path'] .= '/o'. strrchr( basename( $file['file'] ) , '.' );
-			rename( $file['file'], $uploads['path']);
-			unlink( $file['file'] );
-	
-			// set base paths and urls
-			$file['file'] = $uploads['path'];
-			$url_base = $uploads['url'] .'/'. $post_id .'/';
-	
-			// okay, let's process that image
-			$img = array();
-			// make the square version
-			if( $img_tmp = image_resize( $file['file'], 150, 150, TRUE, 's' )){
-				$img_dims = @getimagesize( $img_tmp );
-				$img_scale = wp_crop_image( $img_tmp, ( $img_dims[0] / 2 ) - 50 , ( $img_dims[1] / 2 ) - 50, 100, 100, 100, 100, FALSE, $img_tmp );
 
-				if( $img_tmp <> $img_scale )
-					unlink( $img_tmp );
-				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
-				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+			if( $this->icon_resize( $file['file'], $post_id ) ){
 
-				$img['s']['file'] = $img_scale;
-				$img['s']['url'] = $url_base . basename( $img_scale );
-				list( $img['s']['w'],$img['s']['h'] ) = getimagesize( $img_scale );
+				sleep(1); // give the database a moment to process the input
+
+				// die with the editor form
+				die( $this->icon_form( $post_id ) );
 			}
-
-			// make the medium version
-			if( $img_tmp = image_resize( $file['file'], 278, 278, FALSE, 'm' )){
-				$img_dims = @getimagesize( $img_tmp );
-				$img_scale = wp_crop_image( $img_tmp, $img_dims[0] * .05 , $img_dims[1] * .05, $img_dims[0] * .9, $img_dims[1] * .9, $img_dims[0] * .9, $img_dims[1] * .9, FALSE, $img_tmp );
-
-				if( $img_tmp <> $img_scale )
-					unlink( $img_tmp );
-				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
-				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
-
-				$img['m']['file'] = $img_scale;
-				$img['m']['url'] = $url_base . basename( $img_scale );
-				list( $img['m']['w'],$img['m']['h'] ) = getimagesize( $img_scale );
-
-			}
-
-			// make the large version
-			if( $img_scale = image_resize( $file['file'], 500, 500, FALSE, 'l' )){
-
-				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
-				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
-
-				$img['l']['file'] = $img_scale;
-				$img['l']['url'] = $url_base . basename( $img_scale );
-				list( $img['l']['w'],$img['l']['h'] ) = getimagesize( $img_scale );
-			}
-			
-			// make the big version
-			if( $img_scale = image_resize( $file['file'], 1280, 1280, FALSE, 'b' )){
-
-				rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
-				$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
-
-				$img['b']['file'] = $img_scale;
-				$img['b']['url'] = $url_base . basename( $img_scale );
-				list( $img['b']['w'],$img['b']['h'] ) = getimagesize( $img_scale );
-			}
-			
-			// finally, delete the original
-			unlink( $file['file'] );
-
-			// the the image to the post_meta
-			add_post_meta( $post_id, 'bsuite_post_icon', $img, TRUE ) or update_post_meta( $post_id, 'bsuite_post_icon', $img);
-			sleep(1); // give the database a moment to process the input
-
-			// die with the editor form
-			die( $this->icon_form( $post_id ) );
+			die(0);
 
 		}else{
 			// don't know what to do with it, so delete it and die
-			unlink( $file['file'] );
+			@unlink( $file['file'] );
 			die(0);
-		}		
+		}
+	}
+
+	function icon_resize( $image_ori , $post_id , $freshen = FALSE ){
+
+		// set a new directory for the file
+		$uploads = wp_upload_dir( 'icon-'. substr( str_pad( $post_id, 2, '0', STR_PAD_LEFT ), -2) );
+		$uploads['path'] .= '/'. $post_id;
+
+		// create the directory, remove any previous if existing
+		if( is_dir( $uploads['path'] )){
+			if( preg_match( '/^http/i', $image_ori )){	
+				$headers = wp_remote_head( $image_ori );
+				if( filectime( $uploads['path'] ) > strtotime( $headers['headers']['last-modified'] ) && !$freshen )
+					return( get_post_meta( $post_id, 'bsuite_post_icon', TRUE ) );
+			}
+
+			$this->unlink_recursive( $uploads['path'] );
+			mkdir( $uploads['path'], 0775, TRUE );
+
+		}else{
+			mkdir( $uploads['path'], 0775, TRUE );
+		}
+
+		// set the destination path of the file
+		$uploads['path'] .= '/o'. strrchr( basename( $image_ori ) , '.' );
+
+		// check if it's a remote image, get it if it is
+		if( preg_match( '/^http/i', $image_ori )){
+
+			// fetch the remote url and write it to the placeholder file
+			$headers = wp_get_http( $image_ori, $uploads['path'] );
+
+//print_r( $headers );
+
+			//Did we get a result?
+			if( !$headers ) {
+				@unlink( $uploads['path'] );
+				return FALSE;
+			}elseif ( $headers['response'] != '200' ) {
+				@unlink( $uploads['path'] );
+				return FALSE;
+			}elseif ( isset( $headers['content-length'] ) && filesize( $uploads['path'] ) != $headers['content-length'] ) {
+				@unlink( $uploads['path'] );
+				return FALSE;
+			}
+		}else{
+			// move the uploaded file into that directory, delete the old file (redundent, i know)
+			rename( $image_ori, $uploads['path']);
+			@unlink( $image_ori );
+		}
+
+		// set base paths and urls
+		$image_ori = $uploads['path'];
+		$url_base = $uploads['url'] .'/'. $post_id .'/';
+
+		// okay, let's process that image
+		$img = array();
+		// make the square version
+		if( $img_tmp = image_resize( $image_ori, 150, 150, TRUE, 's' )){
+			$img_dims = @getimagesize( $img_tmp );
+			$img_scale = wp_crop_image( $img_tmp, ( $img_dims[0] / 2 ) - 50 , ( $img_dims[1] / 2 ) - 50, 100, 100, 100, 100, FALSE, $img_tmp );
+
+			if( $img_tmp <> $img_scale )
+				@unlink( $img_tmp );
+			rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
+			$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+
+			$img['s']['file'] = $img_scale;
+			$img['s']['url'] = $url_base . basename( $img_scale );
+			list( $img['s']['w'],$img['s']['h'] ) = getimagesize( $img_scale );
+		}
+
+		// make the medium version
+		if( $img_tmp = image_resize( $image_ori, 278, 278, FALSE, 'm' )){
+			$img_dims = @getimagesize( $img_tmp );
+			$img_scale = wp_crop_image( $img_tmp, $img_dims[0] * .05 , $img_dims[1] * .05, $img_dims[0] * .9, $img_dims[1] * .9, $img_dims[0] * .9, $img_dims[1] * .9, FALSE, $img_tmp );
+
+			if( $img_tmp <> $img_scale )
+				@unlink( $img_tmp );
+			rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
+			$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+
+			$img['m']['file'] = $img_scale;
+			$img['m']['url'] = $url_base . basename( $img_scale );
+			list( $img['m']['w'],$img['m']['h'] ) = getimagesize( $img_scale );
+
+		}
+
+		// make the large version
+		if( $img_scale = image_resize( $image_ori, 500, 500, FALSE, 'l' )){
+
+			rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
+			$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+
+			$img['l']['file'] = $img_scale;
+			$img['l']['url'] = $url_base . basename( $img_scale );
+			list( $img['l']['w'],$img['l']['h'] ) = getimagesize( $img_scale );
+		}
+
+		// make the big version
+		if( $img_scale = image_resize( $image_ori, 1280, 1280, FALSE, 'b' )){
+
+			rename( $img_scale, str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale ));
+			$img_scale = str_replace( basename( $img_scale ), substr( basename( $img_scale ), 2), $img_scale );
+
+			$img['b']['file'] = $img_scale;
+			$img['b']['url'] = $url_base . basename( $img_scale );
+			list( $img['b']['w'],$img['b']['h'] ) = getimagesize( $img_scale );
+		}
+
+		// finally, delete the original
+		@unlink( $image_ori );
+
+		// the the image to the post_meta
+		add_post_meta( $post_id, 'bsuite_post_icon', $img, TRUE ) or update_post_meta( $post_id, 'bsuite_post_icon', $img);
+
+		return $img;
 	}
 
 	function icon_editor_iframe( ){
@@ -963,7 +1008,7 @@ class bSuite {
 
 
 	// end post icon related functions
-	
+
 
 
 
@@ -984,11 +1029,11 @@ class bSuite {
 	function mycss_sanitize( $input ){
 		$input = wp_filter_nohtml_kses( $input );
 		$input = preg_replace('/\/\*.*?\*\//sm', '', $input); // strip comments
-		
+
 		$safecss = '';
 		foreach( explode( "\n", $input ) as $line )
 			$safecss .= $this->mycss_cleanline( $line );
-		
+
 		return( $safecss );
 	}
 
@@ -1039,11 +1084,11 @@ class bSuite {
 	//
 	function sharelinks(){
 		global $wp_query;
-	
+
 		// exit if 404
 		if($wp_query->is_404)
 			return(FALSE);
-	
+
 		// identify the based post ID, if any, and establish some basics
 		$post_id = FALSE;
 		if(!empty($wp_query->is_singular) && !empty($wp_query->query_vars['p']))
@@ -1052,30 +1097,30 @@ class bSuite {
 			$post_id = $wp_query->queried_object_id;
 		else if( !empty( $this->bsuggestive_to ))
 			$post_id = $this->bsuggestive_to;
-	
+
 		if($post_id){
 			$the_permalink = urlencode(get_permalink($post_id));
 			$the_title = urlencode(get_the_title($post_id));
 			$the_excerpt = apply_filters('the_excerpt', get_the_excerpt());
 		}else{
 			$the_permalink = strtolower(substr($_SERVER['SERVER_PROTOCOL'], 0, strpos($_SERVER['SERVER_PROTOCOL'], '/'))) . '://' . $_SERVER['HTTP_HOST'] . add_query_arg('bsuite_share');
-	
+
 			unset($wp_query->query['bsuite_share']);
 			unset($wp_query->query['attachment']);
 			if(count($wp_query->query))
 				$the_title = get_bloginfo('name') .' ('. wp_specialchars( implode(array_unique(explode('|', strtolower(implode(array_values($wp_query->query), '|')))), ', ')) .')';
 			else
 				$the_title = get_bloginfo('name');
-	
+
 			$the_excerpt = '';
 		}
 		$content = '<ul class="bsuite_sharelinks">';
-	
+
 		// the embed links 
 		if( $post_id && ( $embed = $this->link2me( $post_id ))){
 			$content .= '<li id="bsuite_share_embed" class="bsuite_share_embed"><h3>Link or embed this</h3>' . $embed .'</li>';
 		}
-	
+
 		// the bookmark links 
 		$content .= '<li id="bsuite_share_bookmark" class="bsuite_share_bookmark"><h3>Bookmark this at</h3><ul>';
 		global $services_bookmark;
@@ -1083,10 +1128,10 @@ class bSuite {
 			$content .= '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/'. $key .'.gif" width="16" height="16" alt="'. attribute_escape($data['name']) .' sharing icon">&nbsp;<a href="'. str_replace(array('{title}', '{url}'), array($the_title, $the_permalink), $data['url']) .'">'. $data['name'] .'</a></li>';
 		}
 		$content .= '</ul></li>';
-	
+
 		// the email links
 		$content .= '<li id="bsuite_share_email" class="bsuite_share_email"><h3>Email this page</h3><ul><li><a href="mailto:?MIME-Version=1.0&Content-Type=text/html;&subject='. attribute_escape(urldecode($the_title)) .'&body=%0D%0AI found this at '.  attribute_escape(get_bloginfo('name')) .'%0D%0A'. attribute_escape(urldecode($the_permalink)) .'%0D%0A">Send this page using your computer&#039;s emailer</a></li></ul></li>';
-	
+
 		// the feed links
 		$content .= '<li id="bsuite_share_feed" class="bsuite_share_feed"><h3>Stay up to date</h3><ul>';
 		$feeds = array();
@@ -1096,18 +1141,18 @@ class bSuite {
 			$feeds[] = array('title' => 'This Search', 'url' => $this->feedlink());
 		$feeds[] = array('title' => 'All Posts', 'url' => get_bloginfo('atom_url'));
 		$feeds[] = array('title' => 'All Comments', 'url' => get_bloginfo('comments_atom_url'));
-	
+
 		global $services_feed;
 		foreach ($feeds as $feed) {
 			$subscribe_links = array();
 			foreach ($services_feed as $key => $data) {
 				$subscribe_links[] = '<a href="'. str_replace(array('{url}', '{url_raw}'), array(urlencode($feed['url']), $feed['url']), $data['url']) .'">'. $data['name'] .'</a>';
 			}
-	
+
 			$content .= '<li><img src="' . get_settings('siteurl') .'/'. PLUGINDIR .'/'. plugin_basename(dirname(__FILE__))  . '/img/icon-feed-16x16.png" width="16" height="16" alt="'. attribute_escape($feed['title']) .' feed icon">&nbsp;<a href="'. $feed['url'] .'">'. $feed['title'] .'</a>. Subscribe via '.  implode($subscribe_links, ', ') .'.</li>';
 		}
 		$content .= '</ul></li>';
-	
+
 		// the translation links
 		$content .= '<li id="bsuite_share_translate" class="bsuite_share_translate"><h3>Automatically translate this to</h3><ul>';
 		global $services_translate;
@@ -1117,10 +1162,10 @@ class bSuite {
 		$content .= '</ul></li>';
 
 		$content .= '</ul>';
-	
+
 		// powered by
 		$content .= '<p class="bsuite_share_bsuitetag">Powered by <a href="http://maisonbisson.com/blog/bsuite">bSuite</a>.</p>';
-	
+
 		return( $content );
 		//return(array('the_id' => $post_id, 'the_title' => urldecode($the_title), 'the_permalink' => urldecode($the_permalink), 'the_content' => $content, ));
 	}
@@ -1183,7 +1228,7 @@ bsuite.log();
 <?php
 		}
 	}
-	
+
 	function bstat_get_term( $id ) {
 		global $wpdb;
 
@@ -1193,21 +1238,21 @@ bsuite.log();
 		}
 		return( $name );
 	}
-	
+
 	function bstat_is_term( $term ) {
 		global $wpdb;
 
-		$cache_key = md5( substr( $term, 0, 255 ) );	
+		$cache_key = md5( substr( $term, 0, 255 ) );
 		if ( !$term_id = wp_cache_get( $cache_key, 'bstat_termids' )) {
 			$term_id = (int) $wpdb->get_var("SELECT term_id FROM $this->hits_terms WHERE ". $wpdb->prepare( "name = %s", substr( $term, 0, 255 )));
 			wp_cache_add( $cache_key, $term_id, 'bstat_termids', 0 );
 		}
 		return( $term_id );
 	}
-	
+
 	function bstat_insert_term( $term ) {
 		global $wpdb;
-	
+
 		if ( !$term_id = $this->bstat_is_term( $term )) {
 			if ( false === $wpdb->insert( $this->hits_terms, array( 'name' => $term ))){
 				new WP_Error('db_insert_error', __('Could not insert term into the database'), $wpdb->last_error);
@@ -1227,14 +1272,14 @@ bsuite.log();
 		}
 		return($sess_id);
 	}
-	
+
 	function bstat_insert_session( $session ) {
 		global $wpdb;
 
 		$s = array();
 		if ( !$session_id = $this->bstat_is_session( $session->in_session )) {
 			$this->session_new = TRUE;
-		
+
 			$s['sess_cookie'] = $session->in_session;
 			$s['sess_date'] = $session->in_time;
 
@@ -1252,7 +1297,7 @@ bsuite.log();
 				return( FALSE );
 			}
 			$session_id = (int) $wpdb->insert_id;
-			
+
 			wp_cache_add($session->in_session, $session_id, 'bstat_sessioncookies', 10800 );
 		}
 		return( $session_id );
@@ -1273,14 +1318,14 @@ bsuite.log();
 
 		$getcount = get_option( 'bsuite_migration_count' );
 		$since = date('Y-m-d H:i:s', strtotime('-1 minutes'));
-		
+
 		$res = $targets = $searchwords = $shistory = array();
 		$res = $wpdb->get_results( "SELECT * 
 			FROM $this->hits_incoming
 			WHERE in_time < '$since'
 			ORDER BY in_time ASC
 			LIMIT $getcount" );
-		
+
 		$status['count_incoming'] = count( $res );
 		update_option( 'bsuite_doing_migration_status', $status );
 
@@ -1290,7 +1335,7 @@ bsuite.log();
 			if( !strlen( $hit->in_to ))
 				$hit->in_to = get_option( 'siteurl' ) .'/';
 
-			if( $hit->in_session )			
+			if( $hit->in_session )
 				$session_id = $this->bstat_insert_session( $hit );
 
 			$object_id = url_to_postid( $hit->in_to );
@@ -1301,13 +1346,13 @@ bsuite.log();
 				$object_type = 1;
 			}
 			$targets[] = "($object_id, $object_type, 1, '$hit->in_time')";
-		
+
 			// look for search words
 			if( ( $referers = implode( $this->get_search_terms( $hit->in_from ), ' ') ) && ( 0 < strlen( $referers ))) {
 				$term_id = $this->bstat_insert_term( $referers );
 				$searchwords[] = "($object_id, $object_type, $term_id, 1)";
 			}
-			
+
 			if( $session_id ){
 				if( $referers )
 					$shistory[] = "($session_id, $term_id, 2)";
@@ -1334,7 +1379,7 @@ bsuite.log();
 			$status['did_targets'] = 1 ;
 			update_option( 'bsuite_doing_migration_status', $status );
 		}
-		
+
 		if( count( $searchwords ) && !$status['did_searchwords'] ){
 			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchphrases (object_id, object_type, term_id, hit_count) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_searchword into the database'), $wpdb->last_error);
@@ -1390,7 +1435,7 @@ bsuite.log();
 			update_option( 'bsuite_doing_migration_popr', time() + 1500 );
 		}
 
-/*		
+/*
 		$posts = $wpdb->get_results("SELECT object_id, AVG(hit_count) AS hit_avg
 				FROM $this->hits_targets
 				WHERE hit_date >= DATE_SUB(CURDATE(),INTERVAL 30 DAY)
@@ -1400,7 +1445,7 @@ bsuite.log();
 		$avg = array();
 		foreach($posts as $post)
 			$avg[$post['object_id']] = $post['hit_avg'];
-		
+
 		$posts = $wpdb->get_results("SELECT object_id, hit_count * (86400/TIME_TO_SEC(TIME(NOW()))) AS hit_now
 				FROM $this->hits_targets
 				WHERE hit_date = CURDATE()
@@ -1409,24 +1454,24 @@ bsuite.log();
 		$now = array();
 		foreach($posts as $post)
 			$now[$post['object_id']] = $post['hit_now'];
-		
+
 		$diff = array();
 		foreach($posts as $post)
 			$diff[$post['object_id']] = intval(($now[$post['object_id']] - $avg[$post['object_id']]) * 1000 );
-		
+
 		$win = count(array_filter($diff, create_function('$a', 'if($a > 0) return(TRUE);')));
 		$lose = count($diff) - $win;
-		
+
 		$sort = array_flip($diff);
 		ksort($sort);
-		
+
 		if(!empty($sort)){
 			foreach(array_slice(array_reverse($sort), 0, $detail_lines) as $object_id){
 				echo '<li><a href="'. get_permalink($object_id) .'">'. get_the_title($object_id) .'</a><br><small>Up: '. number_format($diff[$object_id] / 1000, 0) .' Avg: '. number_format($avg[$object_id], 0) .' Today: '. number_format($now[$object_id], 0) ."</small></li>\n";
 			}
 		}
 */
-		
+
 //print_r($wpdb->queries);
 
 		update_option( 'bsuite_doing_migration', 0 );
@@ -1444,7 +1489,7 @@ bsuite.log();
 		$referer = urldecode( $ref );
 		if (preg_match('|^http://(www)?\.?google.*|i', $referer))
 			return('google');
-	
+
 		if (preg_match('|^http://search\.yahoo.*|i', $referer))
 			return('yahoo');
 
@@ -1458,10 +1503,10 @@ bsuite.log();
 			return('lycos');
 
 		$home = parse_url( get_settings( 'siteurl' ));
-		$ref = parse_url( $referer );	
+		$ref = parse_url( $referer );
 		if ( strpos( ' '. $ref['host'] , $home['host'] ))
 			return('internal');
-	
+
 		return(FALSE);
 	}
 
@@ -1482,27 +1527,27 @@ $engine = $this->get_search_engine( $ref );
 			if( $query_vars['q'] )
 				$query_array = explode(' ', urldecode( $query_vars['q'] ));
 			break;
-	
+
 		case 'yahoo':
 			if( $query_vars['p'] )
 				$query_array = explode(' ', urldecode( $query_vars['p'] ));
 			break;
-			
+
 		case 'windowslive':
 			if( $query_vars['q'] )
 				$query_array = explode(' ', urldecode( $query_vars['q'] ));
 			break;
-	
+
 		case 'msn':
 			if( $query_vars['q'] )
 				$query_array = explode(' ', urldecode( $query_vars['q'] ));
 			break;
-	
+
 		case 'lycos':
 			if( $query_vars['query'] )
 				$query_array = explode(' ', urldecode( $query_vars['query'] ));
 			break;
-	
+
 		case 'internal':
 			if( $query_vars['s'] )
 				$query_array = explode(' ', urldecode( $query_vars['s'] ));
@@ -1527,11 +1572,11 @@ $engine = $this->get_search_engine( $ref );
 		$args = wp_parse_args( $args, $defaults );
 
 		$post_id = (int) $args['post_id'] > 1 ? 'AND object_id = '. (int) $args['post_id'] : '';
-	
+
 		$date = '';
 		if($args['days'] > 1)
 			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
-	
+
 		// here's the query, but let's try to get the data from cache first
 		$request = "SELECT
 			FORMAT(SUM(hit_count), 0) AS hits, 
@@ -1578,7 +1623,7 @@ $engine = $this->get_search_engine( $ref );
 		$date = 'AND hit_date = DATE(NOW())';
 		if($args['days'] > 1)
 			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
-	
+
 		$limit = 'LIMIT '. (0 + $args['count']);
 
 		$request = "SELECT object_id, SUM(hit_count) AS hit_count
@@ -1618,9 +1663,9 @@ $engine = $this->get_search_engine( $ref );
 			'template' => '<li>%%title%%&nbsp;(%%hits%%)</li>'
 		);
 		$args = wp_parse_args( $args, $defaults );
-	
+
 		$limit = 'LIMIT '. (int) $args['count'];
-	
+
 		$request = "SELECT COUNT(*) AS hit_count, name
 			FROM (
 				SELECT object_id
@@ -1635,7 +1680,7 @@ $engine = $this->get_search_engine( $ref );
 			$limit";
 
 		$result = $wpdb->get_results($request, ARRAY_A);
-		
+
 		if(empty($result))
 			return(NULL);
 
@@ -1646,7 +1691,7 @@ $engine = $this->get_search_engine( $ref );
 			$list = '';
 			foreach($result as $row){
 				$list .= str_replace(array('%%title%%','%%hits%%'), array($row['name'], $row['hit_count']), $args['template']);
-			}		
+			}
 			return($list);
 		}
 	}
@@ -1671,17 +1716,17 @@ $engine = $this->get_search_engine( $ref );
 				$paged = $wp_query->query_vars['paged'];
 				if(!$paged)
 					$paged = 1;
-	
+
 				$posts_per_page = $wp_query->query_vars['posts_per_page'];
 				if(!$posts_per_page)
 					$posts_per_page = get_settings('posts_per_page');
-	
+
 				$limit = explode('LIMIT', $query);
 				if(!$limit[1])
 					$limit[1] = ($paged - 1) * $posts_per_page .', '. $posts_per_page;
 			}
 
-//print_r($wp_query);			
+//print_r($wp_query);
 //echo '<h2>'. $this->searchsmart_query( $wp_query->query_vars['s'], 'LIMIT '. $limit[1] ) .'</h2>';
 			return( $this->searchsmart_query( $wp_query->query_vars['s'], 'LIMIT '. $limit[1] ));
 		}
@@ -1750,7 +1795,7 @@ $engine = $this->get_search_engine( $ref );
 		return($content);
 	}
 
-	function searchsmart_delpost( $post_id ){		
+	function searchsmart_delpost( $post_id ){
 		global $wpdb;
 		$wpdb->get_results( "DELETE FROM $this->search_table WHERE post_id = $post_id" );
 	}
@@ -1861,14 +1906,14 @@ $engine = $this->get_search_engine( $ref );
 	<a href="<?php the_permalink() ?>" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_icon( 'm' ) ?></a>
 	<h3 class="entry-title"><a href="<?php the_permalink() ?>" title="<?php printf(__('Permalink to %s', 'sandbox'), wp_specialchars(get_the_title(), 1)) ?>" rel="bookmark"><?php the_title() ?></a></h3>
 	<div class="entry-excerpt">
-		<?php the_excerpt(''.__( 'Read the rest of this entry' ).'') ?>	
+		<?php the_excerpt(''.__( 'Read the rest of this entry' ).'') ?>
 	</div>
 	<div class="entry-meta">
-		<span class="author vcard"><?php printf(__('Posted by %s'), '<a class="url fn n" href="'.get_author_link(false, $authordata->ID, $authordata->user_nicename).'" title="' . sprintf(__('View all posts by %s', 'sandbox'), $authordata->display_name) . '">'.get_the_author().'</a>') ?></span>					
+		<span class="author vcard"><?php printf(__('Posted by %s'), '<a class="url fn n" href="'.get_author_link(false, $authordata->ID, $authordata->user_nicename).'" title="' . sprintf(__('View all posts by %s', 'sandbox'), $authordata->display_name) . '">'.get_the_author().'</a>') ?></span>
 		<span class="meta-sep">&middot;</span>
 		<span class="entry-date"><abbr class="published" title="<?php the_time('Y-m-d\TH:i:sO'); ?>"><?php unset($previousday); printf(__('%1$s &#8211; %2$s', 'sandbox'), the_date('', '', '', false), get_the_time()) ?></abbr></span>
 		<span class="meta-sep">&middot;</span>
-		
+
 		<?php edit_post_link(__( 'Edit' ), '<span class="edit-link">', "</span> <span class=\"meta-sep\">&middot;</span>\n"); ?>
 			<span class="comments-link"><?php comments_popup_link(__( 'Comments (0)' ), __( 'Comments (1)' ), __( 'Comments (%)' )) ?></span>
 	</div>
@@ -1921,7 +1966,7 @@ die();
 		}
 		return FALSE;
 	}
-	
+
 	function bsuggestive_getposts( $id ) {
 		global $wpdb;
 
@@ -2070,10 +2115,10 @@ die;
 		// identify the family tree of a page, return an array
 		global $wp_query;
 		$tree = NULL;
-		
+
 		if ($wp_query->is_page){
 			$object = $wp_query->get_queried_object();
-		
+
 			// cycle through the tree and build an array
 			$parent_id = $object->post_parent;
 			$tree[]  = $object->ID;
@@ -2082,7 +2127,7 @@ die;
 				$tree[]  = $page->ID;
 				$parent_id  = $page->post_parent;
 			}
-		
+
 			// the tree is in reverse order.
 			$tree = array_reverse($tree);
 		}
@@ -2138,10 +2183,10 @@ die;
 	// loadaverage related functions
 	//
 	function get_loadavg(){
-		static $result = FALSE;	
+		static $result = FALSE;
 		if($result)
 			return($result);
-	
+
 		if(function_exists('sys_getloadavg')){
 			$load_avg = sys_getloadavg();
 		}else{
@@ -2159,7 +2204,7 @@ die;
 	}
 	// end load average related functions
 
-	
+
 	// A short but powerfull recursive function
 	// that works also if the dirs contain hidden files
 	//
@@ -2178,7 +2223,7 @@ die;
 			if($obj=='.' || $obj=='..') continue;
 			if (!@unlink($dir.'/'.$obj)) $this->unlink_recursive($dir.'/'.$obj, true);
 		}
-	
+
 		closedir($dh);
 		if ($DeleteMe){
 			@rmdir($dir);
@@ -2206,7 +2251,7 @@ die;
 	function trimquotes( $in ) {
 		return( trim( trim( $in ), "'\"" ));
 	}
-	
+
 	function feedlink(){
 		return(strtolower(substr($_SERVER['SERVER_PROTOCOL'], 0, strpos($_SERVER['SERVER_PROTOCOL'], '/'))) . '://' . $_SERVER['HTTP_HOST'] . add_query_arg('feed', 'rss', add_query_arg('bsuite_share')));
 	}
@@ -2234,7 +2279,7 @@ die;
 			require_once (ABSPATH . WPINC . '/rss.php');
 		$rss = fetch_rss($feed);
 		//print_r($rss);
-	
+
 		$i = $list = NULL;
 //print_r($rss);
 		foreach($rss->items as $item){
@@ -2252,7 +2297,7 @@ die;
 //echo $template;
 
 		}
-		
+
 		if($return)
 			return($list);
 		echo $list;
@@ -2271,7 +2316,7 @@ die;
 					wp_set_post_tags($post_id, $tags, TRUE);
 					continue;
 				}
-	
+
 				if(!is_taxonomy( $taxonomy ))
 					register_taxonomy($taxonomy, 'post');
 				wp_set_object_terms($post_id, $tags, $taxonomy);
@@ -2334,7 +2379,7 @@ die;
 		// this bit of code taken from Blicki and used under the terms of the GPL
 		// Blicki info: http://wordpress.org/extend/plugins/blicki/
 		// http://www.blicki.com/
-	
+
 		global $post_ID, $page_ID;
 
 		$requested_cap = $cap_data[0];
@@ -2347,7 +2392,7 @@ die;
 		else if ( isset($page_ID) && ( 0 < (int) $page_ID ))
 			$post_id = $page_ID;
 		//$current_user = new WP_User($user_id);
-	
+
 		switch( $requested_cap ){
 			case 'publish_pages':
 				foreach ($requested_caps as $req_cap)
@@ -2452,7 +2497,7 @@ die;
 	function edit_publish_page( $post_ID ) {
 		if ( !isset($_POST['bsuite_who_can_edit']) )
 			return;
-	
+
 		$who = $_POST['bsuite_who_can_edit'];
 		if ( ! update_post_meta($post_ID, '_bsuite_who_can_edit',  $who))
 			add_post_meta($post_ID, '_bsuite_who_can_edit',  $who, true);
@@ -2467,7 +2512,7 @@ die;
 //		$this->edit_insert_tools();
 		$this->edit_insert_machinetag_form();
 	}
-	
+
 	function edit_post_form() {
 //		$this->edit_insert_tools();
 		$this->edit_insert_machinetag_form();
@@ -2479,12 +2524,12 @@ die;
 		$this->edit_insert_tools();
 		$this->edit_insert_machinetag_form();
 	}
-	
+
 	function edit_insert_perms_form() {
 		global $post_ID;
 		if ( !current_user_can( 'bsuite_change_access' ) )
 			return;
-	
+
 		$who = get_post_meta( $post_ID, '_bsuite_who_can_edit', TRUE );
 		if ( empty($who) )
 			$who = get_settings( 'bsuite_who_can_edit' );
@@ -2541,7 +2586,7 @@ die;
 		global $post_ID;
 
 		$tags = wp_get_object_terms($post_ID, get_object_taxonomies('post'));
-		
+
 		$tags_to_edit = array();
 		foreach($tags as $key => $tag){
 			if($tag->taxonomy == 'post_tag' || $tag->taxonomy == 'category')
@@ -2641,16 +2686,16 @@ die;
 			'wordcount' => 35 , 
 			'output' => 'php' 
 		);
-		
+
 		// Get the curl session object
 		$session = curl_init($request);
-		
+
 		// Set the POST options.
 		curl_setopt ($session, CURLOPT_POST, TRUE);
 		curl_setopt ($session, CURLOPT_POSTFIELDS, $postargs);
 		curl_setopt($session, CURLOPT_HEADER, FALSE);
 		curl_setopt($session, CURLOPT_RETURNTRANSFER, TRUE);
-		
+
 		// Do the POST and then close the session
 		$response = curl_exec($session);
 		curl_close($session);
@@ -2716,14 +2761,14 @@ die;
 	// widgets
 	function widget_related_posts($args) {
 		global $post, $wpdb;
-		
+
 		if(!is_singular()) // can only run on single pages/posts
 			return(NULL);
-		
+
 		$id = (int) $post->ID; // needs an ID of that page/post
 		if(!$id)
 			return(NULL);
-		
+
 		extract($args, EXTR_SKIP);
 		$options = get_option('bsuite_related_posts');
 		$title = empty($options['title']) ? __('Related Posts', 'bsuite') : $options['title'];
@@ -2736,7 +2781,7 @@ die;
 
 		if ( $related_posts = array_slice( $this->bsuggestive_getposts( $id ), 0, $number )) {
 ?>
-	
+
 			<?php echo $before_widget; ?>
 				<?php echo $before_title . $title . $after_title; ?>
 				<ul id="relatedposts"><?php
@@ -2747,7 +2792,7 @@ die;
 <?php
 		}
 	}
-	
+
 	function widget_related_posts_control() {
 		$options = $newoptions = get_option('bsuite_related_posts');
 		if ( $_POST['bsuite-related-posts-submit'] ) {
@@ -2787,7 +2832,7 @@ die;
 		echo '</ul>';
 		echo $after_widget;
 	}
-	
+
 	function widget_recently_commented_posts( $args, $widget_args = 1) {
 		// this code pretty much directly rips off WordPress' native recent comments widget,
 		// the difference here is that I'm displaying recently commented posts, not recent comments.
@@ -2838,7 +2883,7 @@ die;
 	function widget_recently_commented_posts_control( $widget_args ) {
 		global $wp_registered_widgets;
 		static $updated = false;
-	
+
 		if ( is_numeric($widget_args) )
 			$widget_args = array( 'number' => $widget_args );
 		$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
@@ -2847,16 +2892,16 @@ die;
 		$options = get_option('bsuite_recently_commented_posts');
 		if ( !is_array($options) )
 			$options = array();
-	
+
 		if ( !$updated && !empty($_POST['sidebar']) ) {
 			$sidebar = (string) $_POST['sidebar'];
-	
+
 			$sidebars_widgets = wp_get_sidebars_widgets();
 			if ( isset($sidebars_widgets[$sidebar]) )
 				$this_sidebar =& $sidebars_widgets[$sidebar];
 			else
 				$this_sidebar = array();
-	
+
 			foreach ( $this_sidebar as $_widget_id ) {
 				if ( array( &$this, 'widget_recently_commented_posts' ) == $wp_registered_widgets[$_widget_id]['callback'] && isset($wp_registered_widgets[$_widget_id]['params'][0]['number']) ) {
 					$widget_number = $wp_registered_widgets[$_widget_id]['params'][0]['number'];
@@ -2864,7 +2909,7 @@ die;
 						unset($options[$widget_number]);
 				}
 			}
-	
+
 			foreach ( (array) $_POST['bsuite-commented-posts'] as $widget_number => $widget_var ) {
 				if ( !isset($widget_var['number']) && isset($options[$widget_number]) ) // user clicked cancel
 					continue;
@@ -2876,7 +2921,7 @@ die;
 				$options[$widget_number]['show_icon'] = (int) $widget_var['show_icon'];
 				$options[$widget_number]['icon_size'] = $widget_var['icon_size'] ? 's' : 0;
 			}
-	
+
 			update_option('bsuite_recently_commented_posts', $options);
 			$this->widget_recently_commented_posts_delete_cache();
 			$updated = true;
@@ -2889,8 +2934,8 @@ die;
 			$show_icon = '';
 			$show_title = 'checked="checked"';
 			$show_counts = 'checked="checked"';
-	
-			// we reset the widget number via JS	
+
+			// we reset the widget number via JS
 			$number = '%i%';
 		} else {
 			$title = attribute_escape( $options[$number]['title'] );
@@ -2914,14 +2959,14 @@ die;
 		<input type="hidden" id="bsuite-commented-posts-submit" name="bsuite-commented-posts[<?php echo $number; ?>][submit]" value="1" />
 	<?php
 	}
-	
+
 	function widget_recently_commented_posts_register() {
 		if ( !$options = get_option('bsuite_recently_commented_posts') )
 			$options = array();
 		$widget_ops = array('classname' => 'bsuite-recently-commented-posts', 'description' => __('A list of posts and pages with recent comments', 'bsuite'));
 		$control_ops = array('width' => 320, 'height' => 90, 'id_base' => 'bsuite-commented-posts');
 		$name = 'bSuite<br /> '. __( 'Recently Commented Posts', 'bsuite' );
-	
+
 		$id = false;
 		foreach ( array_keys($options) as $o ) {
 			// Old widgets can have null values for some reason
@@ -3007,25 +3052,25 @@ die;
 	function widget_popular_posts_control($widget_args) {
 		global $wp_registered_widgets;
 		static $updated = false;
-	
+
 		if ( is_numeric($widget_args) )
 			$widget_args = array( 'number' => $widget_args );
 		$widget_args = wp_parse_args( $widget_args, array( 'number' => -1 ) );
 		extract( $widget_args, EXTR_SKIP );
-	
+
 		$options = get_option('bstat_pop_posts');
 		if ( !is_array($options) )
 			$options = array();
-	
+
 		if ( !$updated && !empty($_POST['sidebar']) ) {
 			$sidebar = (string) $_POST['sidebar'];
-	
+
 			$sidebars_widgets = wp_get_sidebars_widgets();
 			if ( isset($sidebars_widgets[$sidebar]) )
 				$this_sidebar =& $sidebars_widgets[$sidebar];
 			else
 				$this_sidebar = array();
-	
+
 			foreach ( $this_sidebar as $_widget_id ) {
 				if ( array(&$this, 'widget_popular_posts') == $wp_registered_widgets[$_widget_id]['callback'] && isset($wp_registered_widgets[$_widget_id]['params'][0]['number']) ) {
 					$widget_number = $wp_registered_widgets[$_widget_id]['params'][0]['number'];
@@ -3033,11 +3078,11 @@ die;
 						unset($options[$widget_number]);
 				}
 			}
-	
+
 			foreach ( (array) $_POST['bstat-pop-posts'] as $widget_number => $widget_var ) {
 				if ( !isset($widget_var['number']) && isset($options[$widget_number]) ) // user clicked cancel
 					continue;
-	
+
 				$options[$widget_number]['title'] = strip_tags(stripslashes($widget_var['title']));
 				$options[$widget_number]['number'] = (int) $widget_var['number'];
 				$options[$widget_number]['days'] = (int) $widget_var['days'];
@@ -3046,12 +3091,12 @@ die;
 				$options[$widget_number]['show_icon'] = (int) $widget_var['show_icon'];
 				$options[$widget_number]['icon_size'] = $widget_var['icon_size'] ? 's' : 0;
 			}
-	
+
 			update_option('bstat_pop_posts', $options);
 			$this->widget_popular_posts_delete_cache();
 			$updated = true;
 		}
-	
+
 		if ( -1 == $number ) {
 			$title = __( 'Popular Posts', 'bsuite' );
 			$posts = 5;
@@ -3059,8 +3104,8 @@ die;
 			$show_icon = '';
 			$show_title = 'checked="checked"';
 			$show_counts = 'checked="checked"';
-	
-			// we reset the widget number via JS	
+
+			// we reset the widget number via JS
 			$number = '%i%';
 		} else {
 			$title = attribute_escape( $options[$number]['title'] );
@@ -3072,7 +3117,7 @@ die;
 			$show_title = $options[$number]['show_title'] ? 'checked="checked"' : '';
 			$show_counts = $options[$number]['show_counts'] ? 'checked="checked"' : '';
 		}
-	
+
 ?>
 		<p><label for="bstat-pop-posts-title-<?php echo $number; ?>"><?php _e('Title:'); ?> <input style="width: 250px;" id="bstat-pop-posts-title-<?php echo $number; ?>" name="bstat-pop-posts[<?php echo $number; ?>][title]" type="text" value="<?php echo $title; ?>" /></label></p>
 
@@ -3096,7 +3141,7 @@ die;
 		$widget_ops = array('classname' => 'bstat-pop-posts', 'description' => __('Your site&#8217;s most popular posts and pages', 'bsuite'));
 		$control_ops = array('width' => 320, 'height' => 90, 'id_base' => 'bstat-pop-posts');
 		$name = 'bSuite<br /> '. __( 'Popular Posts', 'bsuite' );
-	
+
 		$id = false;
 		foreach ( array_keys($options) as $o ) {
 			// Old widgets can have null values for some reason
@@ -3106,7 +3151,7 @@ die;
 			wp_register_sidebar_widget($id, $name, array(&$this, 'widget_popular_posts'), $widget_ops, array( 'number' => $o ));
 			wp_register_widget_control($id, $name, array(&$this, 'widget_popular_posts_control'), $control_ops, array( 'number' => $o ));
 		}
-	
+
 		// If there are none, we register the widget's existance with a generic template
 		if ( !$id ) {
 			wp_register_sidebar_widget( 'bstat-pop-posts-1', $name, array(&$this, 'widget_popular_posts'), $widget_ops, array( 'number' => -1 ) );
@@ -3226,7 +3271,7 @@ function get_widget_templates_readdir( $template_base ){
 				$template_files[] = get_template_directory() . $file;
 
 				$template_data = implode( '', file( $template_base . $file ));
-	
+
 				$name = '';
 				if ( preg_match( '|Template Name:(.*)$|mi', $template_data, $name ) )
 					$name = _cleanup_header_comment($name[1]);
@@ -3277,21 +3322,21 @@ print_r( $options[ $number ] );
 	}else{
 		if( in_array( $options[$number]['what'], array( 'post', 'page', 'attachment' )))
 			$criteria['post_type'] = $options[$number]['what'];
-		
+
 		if( !empty( $options[$number]['categories'] ))
 			$criteria['category__'. ( in_array( $options[$number]['categoriesbool'], array( 'in', 'and', 'not_in' )) ? $options[$number]['categoriesbool'] : 'in' ) ] = $options[$number]['categories'];
-		
+
 		if( !empty( $options[$number]['tags'] ))
 			$criteria['category__'. ( in_array( $options[$number]['tagsbool'], array( 'in', 'and', 'not_in' )) ? $options[$number]['tagsbool'] : 'in' ) ] = $options[$number]['tags'];
-		
+
 		if( !empty( $options[$number]['post__in'] ))
 			$criteria['post__in'] = $options[$number]['post__in'];
-		
+
 		if( !empty( $options[$number]['post__not_in'] ))
 			$criteria['post__not_in'] = $options[$number]['post__not_in'];
-		
+
 		$criteria['showposts'] = $options[$number]['count'];
-		
+
 		switch( $options[$number]['order'] ){
 			case 'age_new':
 				$criteria['orderby'] = 'post_date';
@@ -3320,15 +3365,13 @@ $options[$widget_number]['agestrtotime'] = strtotime( $widget_var['agestrtotime'
 
 $options[$widget_number]['relationship'] = in_array( $widget_var['relationship'], array( 'similar', 'excluding') ) ? $widget_var['relationship']: '';
 $options[$widget_number]['relatedto'] = array_filter( array_map( 'absint', $widget_var['relatedto'] ));
-
-
 */
 	}
 
 	if( $ourposts->have_posts() ){
 		while( $ourposts->have_posts() ){
 			$ourposts->the_post();
-			
+
 			if( ! include $templates[ $options[ $number ]['template'] ]['fullpath'] ){
 ?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 <div <?php post_class() ?> id="post-<?php the_ID(); ?>">
@@ -3408,7 +3451,7 @@ function widget_any_posts_control($widget_args) {
 				continue;
 
 			$widget_var = stripslashes_deep( $widget_var );
-			
+
 			$options[$widget_number]['title'] = wp_filter_nohtml_kses( $widget_var['title'] );
 			$options[$widget_number]['what'] = in_array( $widget_var['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $widget_var['what']: '';
 			$options[$widget_number]['blog'] = absint( $widget_var['blog'] );
@@ -3442,7 +3485,7 @@ function widget_any_posts_control($widget_args) {
 	if ( -1 == $number ) {
 		$title = __( 'Any Posts', 'bsuite' );
 
-		// we reset the widget number via JS	
+		// we reset the widget number via JS
 		$number = '%i%';
 	} else {
 		$title = attribute_escape( $options[$number]['title'] );
@@ -3784,7 +3827,7 @@ function widget_any_posts_register() {
 		$added = array( 'bsuite' => array( 'bsuite_insert_related', 'bsuite_insert_sharelinks', 'bsuite_searchsmart', 'bsuite_swhl', 'bsuite_who_can_edit' ));
 
 		$options = add_option_whitelist( $added, $options );
-	
+
 		return( $options );
 	}
 
@@ -3812,14 +3855,14 @@ function widget_any_posts_register() {
 		xml_parser_set_option($parser,XML_OPTION_SKIP_WHITE,1);
 		xml_parse_into_struct($parser,$data,$values,$tags);
 		xml_parser_free($parser);
-		
+
 		// we store our path here
 		$hash_stack = array();
-		
+
 		// this is our target
 		$ret = array();
 		foreach ($values as $key => $val) {
-	
+
 			switch ($val['type']) {
 				case 'open':
 					array_push($hash_stack, $val['tag']);
@@ -3828,22 +3871,22 @@ function widget_any_posts_register() {
 					else
 						$ret = $this->composeArray($ret, $hash_stack);
 				break;
-	
+
 				case 'close':
 					array_pop($hash_stack);
 				break;
-				
+
 				case 'cdata':
 					array_push($hash_stack, 'cdata');
 					$ret = $this->composeArray($ret, $hash_stack, $val['value']);
 					array_pop($hash_stack);
 				break;
-	
+
 				case 'complete':
 					array_push($hash_stack, $val['tag']);
 					$ret = $this->composeArray($ret, $hash_stack, $val['value']);
 					array_pop($hash_stack);
-					
+
 					// handle attributes
 					if (isset($val['attributes'])){
 						foreach($val['attributes'] as $a_k=>$a_v){
@@ -3855,32 +3898,32 @@ function widget_any_posts_register() {
 				break;
 			}
 		}
-		
+
 		return($ret);
 	} // end makeXMLTree
-	
+
 	function &composeArray($array, $elements, $value=array()){
-		// function used exclusively by makeXMLTree to help turn XML into an array	
-	
+		// function used exclusively by makeXMLTree to help turn XML into an array
+
 		// get current element
 		$element = array_shift($elements);
-		
+
 		// does the current element refer to a list
 		if(sizeof($elements) > 0){
 			$array[$element][sizeof($array[$element])-1] = &$this->composeArray($array[$element][sizeof($array[$element])-1], $elements, $value);
 		}else{ // if (is_array($value))
 			$array[$element][sizeof($array[$element])] = $value;
 		}
-		
+
 		return($array);
 	} // end composeArray
-	
+
 
 
 	function command_rebuild_searchsmart() {
 		// update search table with content from all posts
 		global $wpdb; 
-	
+
 		set_time_limit(0);
 		ignore_user_abort(TRUE);
 		$interval = 25;
@@ -3888,7 +3931,7 @@ function widget_any_posts_register() {
 
 		if( !isset( $_REQUEST[ 'n' ] ) ) {
 			$n = 0;
-			$this->createtables();		
+			$this->createtables();
 			$wpdb->get_results( 'TRUNCATE TABLE '. $this->search_table );
 		} else {
 			$n = (int) $_REQUEST[ 'n' ] ;
@@ -3929,7 +3972,7 @@ function widget_any_posts_register() {
 	function command_rebuild_autoksum() {
 		// update search table with content from all posts
 		global $wpdb; 
-	
+
 		set_time_limit(0);
 		ignore_user_abort(TRUE);
 		$interval = 5;
@@ -4025,7 +4068,7 @@ class bSuite_sms {
 
 	function bSuite_sms( $api_id = '', $user = '', $password = '' ) {
 
-		/* authentication details */	
+		/* authentication details */
 		if(( !$api_id ) || ( !$user ) || ( !$password )){
 			$this->error = 'You must specify an api id, username, and password.';
 			return( FALSE );
@@ -4299,14 +4342,14 @@ function paginated_links(){
 	if( (int) $wp_query->query_vars['paged'] )
 		$page = (int) $wp_query->query_vars['paged'];
 	$total = (int) $wp_query->max_num_pages;
-	
+
 	$page_links = paginate_links( array(
 		'base' => add_query_arg( 'paged', '%#%' ),
 		'format' => '',
 		'total' => $total,
 		'current' => $page
 	));
-	
+
 	if ( $page_links )
 		echo "<p class='pagenav'>$page_links</p>";
 }
@@ -4339,7 +4382,7 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 	$post_id = (int) $post_id;
 
 	$for_post_id = $post_id > 1 ? 'AND post_id = '. $post_id : '';
-	
+
 	// here's the query, but let's try to get the data from cache first
 	$request = "SELECT
 		SUM(hit_count) AS hits, 
@@ -4359,7 +4402,7 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 		return(NULL);
 
 	$tot = count($result);
-	
+
 	if(count($result)>0){
 		$point = null;
 		$point[] = 0;
@@ -4375,10 +4418,10 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 		}else{
 			$graphaccurate = $accurate;
 		}
-		
+
 		$minwidth = ($maxwidth / 8.1);
 		if($graphaccurate) $minwidth = ($maxwidth / 4.1);
-		
+
 		while(count($point) <= $minwidth){
 			$newpoint = null;
 			for ($i = 0; $i < count($point); $i++) {
@@ -4412,13 +4455,13 @@ function bstat_pulse($post_id = 0, $maxwidth = 400, $disptext = 1, $dispcredit =
 				}
 			$i++;
 		}
-			
+
 		$pre = "<div id=\"bstat_pulse\">";
 		$post = "</div>";
 		$disptext = ($disptext == 1) ? (number_format($sum) .' total reads, averaging '. number_format($avg) .' daily') : ("");
 		$dispcredit = ($dispcredit == 1) ? ("<small><a href='http://maisonbisson.com/blog/search/bsuite' title='a pretty good WordPress plugin'>stats powered by bSuite bStat</a></small>") : ("");
 		$disptext = (($disptext) || ($dispcredit)) ? ("\n<p>$disptext\n<br />$dispcredit</p>") : ("");
-		
+
 		echo($pre . $hit_chart . "\n" . $disptext . $post);
 	}
 }
