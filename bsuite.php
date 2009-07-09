@@ -3293,7 +3293,7 @@ function get_widget_templates() {
 
 	return array_merge( 
 			$this->get_widget_templates_readdir( get_template_directory(). 'bsuite_templates' ), 
-			$this->get_widget_templates_readdir( plugin_dir_path( basename( dirname( __FILE__ ))) .'/templates/' )
+			$this->get_widget_templates_readdir( dirname( __FILE__ ) .'/templates/' )
 		);
 }
 
