@@ -3274,7 +3274,10 @@ function get_widget_templates_readdir( $template_base ){
 
 				$name = '';
 				if ( preg_match( '|Template Name:(.*)$|mi', $template_data, $name ) )
-					$name = _cleanup_header_comment($name[1]);
+					if( function_exists( '_cleanup_header_comment' ))
+						$name = _cleanup_header_comment($name[1]);
+					else
+						$name = $name[1];
 
 				if ( !empty( $name ) ) {
 					$file = basename( $file );
