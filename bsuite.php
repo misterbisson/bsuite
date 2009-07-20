@@ -1624,7 +1624,7 @@ $engine = $this->get_search_engine( $ref );
 		if($args['days'] > 1)
 			$date  = "AND hit_date > '". date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $args['days'], date("Y"))) ."'";
 
-		$limit = 'LIMIT '. (0 + $args['count']);
+		$limit = 'LIMIT '. ( absint( $args['count'] ) * 2 );
 
 		$request = "SELECT object_id, SUM(hit_count) AS hit_count
 			FROM $this->hits_targets
@@ -3227,6 +3227,9 @@ die;
 
 function widget_any_posts_categories( $number , $selected = array() ){
 	$items = get_categories( array( 'style' => FALSE, 'echo' => FALSE, 'hierarchical' => FALSE ));
+	
+	if( !is_array( $selected ))
+		$selected =  array();
 
 	foreach( $items as $item ){
 		$list[] = '<label for="bsuite-any-posts-categories-'. $item->term_id .'-'. $number .'"><input class="checkbox" type="checkbox" value="'. $item->term_id .'" '.( in_array( $item->term_id, $selected ) ? 'checked="checked"' : '' ) .' id="bsuite-any-posts-categories-'. $item->term_id .'-'. $number .'" name="bsuite-any-posts['. $number .'][categories][]" /> '. $item->name .'</label>';
@@ -3242,6 +3245,7 @@ function widget_any_posts_instances( $self = 0 , $selected = array() ){
 		if( isset( $options[ $self ] ))
 			unset( $options[ $self ] );
 
+	$list = array();
 	foreach( $options as $number => $option ){
 		$list[] = '<label for="bsuite-any-posts-relatedto-'. $self .'-'. $number .'"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, $selected ) ? 'checked="checked"' : '' ) .' id="bsuite-any-posts-relatedto-'. $self .'-'. $number .'" name="bsuite-any-posts['. $self .'][relatedto][]" /> '. $option['title'] .'</label>';
 	}
@@ -3323,6 +3327,8 @@ function widget_any_posts( $args, $widget_args = 1 ) {
 		global $wp_query;
 		$ourposts = &$wp_query;
 	}else{
+		$criteria['suppress_filters'] = TRUE;
+
 		if( in_array( $options[$number]['what'], array( 'post', 'page', 'attachment' )))
 			$criteria['post_type'] = $options[$number]['what'];
 
@@ -3543,6 +3549,7 @@ function widget_any_posts_control($widget_args) {
 	</select>
 
 <?php
+	$tags = array();
 	foreach( $options[$number]['tags'] as $tag_id ){
 		$temp = get_term( $tag_id, 'post_tag' );
 		$tags[] = $temp->name;
@@ -4476,5 +4483,4 @@ if(!function_exists('str_ireplace')){
 	function str_ireplace($a, $b, $c){
 		return str_replace($a, $b, $c);
 	}
-} 
-?>
+}
