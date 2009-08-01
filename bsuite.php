@@ -3272,8 +3272,6 @@ function get_widget_templates_readdir( $template_base ){
 			if ( preg_match('|^\.+$|', $file) )
 				continue;
 			if ( preg_match('|\.php$|', $file) ) {
-				$template_files[] = get_template_directory() . $file;
-
 				$template_data = implode( '', file( $template_base . $file ));
 
 				$name = '';
@@ -3297,10 +3295,10 @@ function get_widget_templates_readdir( $template_base ){
 }
 
 function get_widget_templates() {
-
 	return array_merge( 
-			$this->get_widget_templates_readdir( get_template_directory(). 'bsuite_templates' ), 
-			$this->get_widget_templates_readdir( dirname( __FILE__ ) .'/templates/' )
+			$this->get_widget_templates_readdir( dirname( __FILE__ ) .'/templates/' ),
+			$this->get_widget_templates_readdir( TEMPLATEPATH . '/bsuite_templates/' ), 
+			$this->get_widget_templates_readdir( STYLESHEETPATH . '/bsuite_templates/' ) 
 		);
 }
 
