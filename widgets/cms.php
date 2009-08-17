@@ -83,7 +83,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			while( $ourposts->have_posts() ){
 				$ourposts->the_post();
 	
-				if( ! include $templates[ $options[ $number ]['template'] ]['fullpath'] ){
+				if( !isset( $instance['template'] ) || !include $templates[ $instance['template'] ]['fullpath'] ){
 	?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 	<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
 		<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
