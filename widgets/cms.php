@@ -14,22 +14,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	function widget( $args, $instance ) {
 		extract( $args );
 
-		$title = apply_filters('widget_title', empty( $instance['title'] ) ? __( 'Pages' ) : $instance['title']);
-		$sortby = empty( $instance['sortby'] ) ? 'menu_order' : $instance['sortby'];
-		$exclude = empty( $instance['exclude'] ) ? '' : $instance['exclude'];
-		$depth = isset( $instance['depth'] ) ? $instance['depth'] : 1;
-
-		if ( $sortby == 'menu_order' )
-			$sortby = 'menu_order, post_title';
-
-
-
-	
-	
-	
-	
-	
-	
 		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
 	
 		$templates = $this->get_templates();
@@ -116,15 +100,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			}
 		}
 	
-	
-	
-	
-	
-	
-	
-
-
-
 
 		if ( !empty( $out ) ) {
 			echo $before_widget;
@@ -179,6 +154,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 	function form( $instance ) {
 		//Defaults
+
 		$instance = wp_parse_args( (array) $instance, 
 			array( 
 				'what' => 'normal', 
@@ -196,7 +172,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				<option value="normal" <?php selected( $instance['what'], 'normal' ); ?>><?php _e('The default content'); ?></option>
 				<option value="post" <?php selected( $instance['what'], 'post' ); ?>><?php _e('Posts'); ?></option>
 				<option value="page" <?php selected( $instance['what'], 'page' ); ?>><?php _e('Pages'); ?></option>
-				<option value="attachment" <?php selected( $instance['what'], 'normal' ); ?>><?php _e('Attachments'); ?></option>
+				<option value="attachment" <?php selected( $instance['what'], 'attachment' ); ?>><?php _e('Attachments'); ?></option>
 				<option value="any" <?php selected( $instance['what'], 'any' ); ?>><?php _e('Any content'); ?></option>
 			</select>
 		</p>
