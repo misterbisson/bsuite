@@ -22,31 +22,109 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		if ( $sortby == 'menu_order' )
 			$sortby = 'menu_order, post_title';
 
-		$out = wp_list_pages( array('title_li' => '', 'echo' => 0, 'sort_column' => $sortby, 'exclude' => $exclude, 'depth' => $depth ));
 
-		if( $instance['expandtree'] && is_page() ){
-			global $post;
 
-			// get the ancestor tree, including the current page
-			$ancestors = $post->ancestors;
-			$ancestors[] = $post->ID;
-			$pages = get_pages( array( 'include' => implode( ',', $ancestors )));
+	
+	
+	
+	
+	
+	
+		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
+	
+		$templates = $this->get_templates();
+	
+		if( 'normal' == $instance['what'] ){
+			global $wp_query;
+			$ourposts = &$wp_query;
+		}else{
+			$criteria['suppress_filters'] = TRUE;
+	
+			if( in_array( $instance['what'], array( 'post', 'page', 'attachment' )))
+				$criteria['post_type'] = $instance['what'];
+	
+			if( !empty( $instance['categories_in'] ))
+				$criteria['category__'. ( in_array( $instance['categoriesbool'], array( 'in', 'and', 'not_in' )) ? $instance['categoriesbool'] : 'in' ) ] = array_keys( $instance['categories_in'] );
 
-			if ( !empty( $pages )){
-				$subtree .= walk_page_tree( $pages, 0, $post->ID, array() );
+			if( !empty( $instance['categories_not_in'] ))
+				$criteria['category__not_in'] = array_keys( $instance['categories_not_in'] );
+	
+			if( !empty( $instance['tags_in'] ))
+				$criteria['tag__'. ( in_array( $instance['tagsbool'], array( 'in', 'and', 'not_in' )) ? $instance['tagsbool'] : 'in' ) ] = $instance['tags_in'];
 
-				// get any children, insert them into the tree
-				if( $children = wp_list_pages( array( 'child_of' => $post->ID, 'title_li' => '', 'echo' => 0, 'sort_column' => $sortby, 'exclude' => $exclude, 'depth' => $depth ))){
-					$subtree = preg_replace( '/current_page_item[^<]*<a([^<]*)/i', 'current_page_item"><a\1<ul>'. $children .'</ul>', $subtree );
-				}
+			if( !empty( $instance['tags_not_in'] ))
+				$criteria['tag__not_in'] = $instance['tags_not_in'];
+	
+			if( !empty( $instance['post__in'] ))
+				$criteria['post__in'] = $instance['post__in'];
+	
+			if( !empty( $instance['post__not_in'] ))
+				$criteria['post__not_in'] = $instance['post__not_in'];
+	
+			$criteria['showposts'] = $instance['count'];
+	
+			switch( $instance['order'] ){
+				case 'age_new':
+					$criteria['orderby'] = 'post_date';
+					$criteria['order'] = 'DESC';
+					break;
+				case 'age_old':
+					$criteria['orderby'] = 'post_date';
+					$criteria['order'] = 'ASC';
+					break;
+				case 'pop_most':
+				case 'pop_least':
+				case 'comment_recent':
+				case 'rand':
+				default:
+					$criteria['orderby'] = 'rand';
+					break;
+			}
 
-				// insert this extended page tree into the larger list
-				if( !empty( $subtree )){
-					$out = preg_replace( '/<li[^>]*page-item-'. ( count( $post->ancestors ) ? end( $post->ancestors ) : $post->ID ) .'[^>]*.*?<\/li>.*?($|<li)/si', $subtree .'\1', $out );
-					reset( $post->ancestors );
+
+			$ourposts = new WP_Query( $criteria );
+
+	/*
+	$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
+	
+	$options[$widget_number]['age'] = in_array( $widget_var['age'], array( 'after', 'before', 'around') ) ? $widget_var['age']: '';
+	$options[$widget_number]['agestrtotime'] = strtotime( $widget_var['agestrtotime'] ) ? $widget_var['agestrtotime'] : '';
+	
+	$options[$widget_number]['relationship'] = in_array( $widget_var['relationship'], array( 'similar', 'excluding') ) ? $widget_var['relationship']: '';
+	$options[$widget_number]['relatedto'] = array_filter( array_map( 'absint', $widget_var['relatedto'] ));
+	*/
+		}
+	
+		if( $ourposts->have_posts() ){
+			while( $ourposts->have_posts() ){
+				$ourposts->the_post();
+	
+				if( ! include $templates[ $options[ $number ]['template'] ]['fullpath'] ){
+	?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
+	<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
+		<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
+		<small><?php the_time('F jS, Y') ?> <!-- by <?php the_author() ?> --></small>
+	
+		<div class="entry">
+			<?php the_content('Read the rest of this entry &raquo;'); ?>
+		</div>
+	
+		<p class="postmetadata"><?php the_tags('Tags: ', ', ', '<br />'); ?> Posted in <?php the_category(', ') ?> | <?php edit_post_link('Edit', '', ' | '); ?>  <?php comments_popup_link('No Comments &#187;', '1 Comment &#187;', '% Comments &#187;'); ?></p>
+	</div>
+	<?php
 				}
 			}
 		}
+	
+	
+	
+	
+	
+	
+	
+
+
+
 
 		if ( !empty( $out ) ) {
 			echo $before_widget;
@@ -63,27 +141,52 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 	function update( $new_instance, $old_instance ) {
 		$instance = $old_instance;
-		$instance['title'] = strip_tags( $new_instance['title'] );
-		if ( in_array( $new_instance['sortby'], array( 'post_title', 'menu_order', 'ID' ))) {
-			$instance['sortby'] = $new_instance['sortby'];
-		} else {
-			$instance['sortby'] = 'menu_order';
+
+		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
+		$instance['what'] = in_array( $new_instance['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $new_instance['what']: '';
+		$instance['blog'] = absint( $new_instance['blog'] );
+
+		$instance['categoriesbool'] = in_array( $new_instance['categoriesbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['categoriesbool']: '';
+		$instance['categories_in'] = array_filter( array_map( 'absint', $new_instance['categories_in'] ));
+		$instance['categories_not_in'] = array_filter( array_map( 'absint', $new_instance['categories_not_in'] ));
+		$instance['tagsbool'] = in_array( $new_instance['tagsbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['tagsbool']: '';
+		$tag_name = '';
+		$instance['tags_in'] = array();
+		foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_in'] )))) as $tag_name ){
+			if( $temp = is_term( $tag_name, 'post_tag' ))
+				$instance['tags_in'][] = $temp['term_id'];
 		}
-		$instance['depth'] = absint( $new_instance['depth'] );
-		$instance['expandtree'] = absint( $new_instance['expandtree'] );
-		$instance['exclude'] = strip_tags( $new_instance['exclude'] );
+		$tag_name = '';
+		$instance['tags_not_in'] = array();
+		foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_not_in'] )))) as $tag_name ){
+			if( $temp = is_term( $tag_name, 'post_tag' ))
+				$instance['tags_not_in'][] = $temp['term_id'];
+		}
+		$instance['post__in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__in'] )));
+		$instance['post__not_in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__not_in'] )));
+		$instance['activity'] = in_array( $new_instance['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $new_instance['activity']: '';
+		$instance['age'] = in_array( $new_instance['age'], array( 'after', 'before', 'around') ) ? $new_instance['age']: '';
+		$instance['agestrtotime'] = strtotime( $new_instance['agestrtotime'] ) ? $new_instance['agestrtotime'] : '';
+		$instance['relationship'] = in_array( $new_instance['relationship'], array( 'similar', 'excluding') ) ? $new_instance['relationship']: '';
+		$instance['relatedto'] = array_filter( array_map( 'absint', $new_instance['relatedto'] ));
+		$instance['count'] = absint( $new_instance['count'] );
+		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'pop_most', 'pop_least', 'relevance_most', 'comment_recent', 'rand' ) ) ? $new_instance['order']: '';
+		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
+		$instance['columns'] = absint( $new_instance['columns'] );
 
 		return $instance;
 	}
 
 	function form( $instance ) {
 		//Defaults
-		$instance = wp_parse_args( (array) $instance, array( 'sortby' => 'post_title', 'title' => '', 'exclude' => '', 'depth' => 1, 'expandtree' => 1) );
+		$instance = wp_parse_args( (array) $instance, 
+			array( 
+				'what' => 'normal', 
+				'template' => 'a_default_full.php' 
+				) 
+			);
 		$title = esc_attr( $instance['title'] );
-		$exclude = esc_attr( $instance['exclude'] );
 	?>
-
-
 
 		<p><label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" /></p>
 
@@ -98,29 +201,18 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			</select>
 		</p>
 
-
-<!--
-		<p>
-			<label for="<?php echo $this->get_field_id('blog'); ?>"><?php _e( 'What to show:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('blog'); ?>" id="<?php echo $this->get_field_id('blog'); ?>" class="widefat">
-		<?php
-	//global $current_user;
-	//get_blogs_of_user( $current_user->ID );
-	// must allow for situations where the current user doesn't have access to the previously selected other blog
-		?>
-				<option value="any" <?php selected( $instance['blog'], 'any' ); ?>><?php _e('Any content'); ?></option>
-			</select>
-		</p>
--->
-
 		<p>
 			<label for="<?php echo $this->get_field_id('categoriesbool'); ?>"><?php _e( 'Categories:' ); ?></label>
 			<select name="<?php echo $this->get_field_name('categoriesbool'); ?>" id="<?php echo $this->get_field_id('categoriesbool'); ?>" class="widefat">
 				<option value="in" <?php selected( $instance['categoriesbool'], 'in' ); ?>><?php _e('Any of these categories'); ?></option>
 				<option value="and" <?php selected( $instance['categoriesbool'], 'and' ); ?>><?php _e('All of these categories'); ?></option>
-				<option value="not_in" <?php selected( $instance['categoriesbool'], 'not_in' ); ?>><?php _e('None of these categories'); ?></option>
 			</select>
-			<ul><?php echo $this->control_categories( $instance ); ?></ul>
+			<ul><?php echo $this->control_categories( $instance , 'categories_in' ); ?></ul>
+		</p>
+
+		<p>
+			Not in any of these categories
+			<ul><?php echo $this->control_categories( $instance , 'categories_not_in' ); ?></ul>
 		</p>
 
 		<p>
@@ -128,17 +220,30 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			<select name="<?php echo $this->get_field_name('tagsbool'); ?>" id="<?php echo $this->get_field_id('tagsbool'); ?>" class="widefat">
 				<option value="in" <?php selected( $instance['tagsbool'], 'in' ); ?>><?php _e('Any of these tags'); ?></option>
 				<option value="and" <?php selected( $instance['tagsbool'], 'and' ); ?>><?php _e('All of these tags'); ?></option>
-				<option value="not_in" <?php selected( $instance['tagsbool'], 'not_in' ); ?>><?php _e('None of these tags'); ?></option>
 			</select>
-<?php
-			$tags = array();
-			foreach( $instance['tags'] as $tag_id ){
-				$temp = get_term( $tag_id, 'post_tag' );
-				$tags[] = $temp->name;
-			}
-?>
 
-			<input type="text" value="<?php echo implode( ', ', (array) $tags ); ?>" name="<?php echo $this->get_field_name('tags'); ?>" id="<?php echo $this->get_field_id('tags'); ?>" class="widefat" />
+			<?php
+			$tags_in = array();
+			foreach( $instance['tags_in'] as $tag_id ){
+				$temp = get_term( $tag_id, 'post_tag' );
+				$tags_in[] = $temp->name;
+			}
+			?>
+			<input type="text" value="<?php echo implode( ', ', (array) $tags_in ); ?>" name="<?php echo $this->get_field_name('tags_in'); ?>" id="<?php echo $this->get_field_id('tags_in'); ?>" class="widefat" />
+			<br />
+			<small><?php _e( 'Tags, separated by commas.' ); ?></small>
+		</p>
+
+		<p>
+			With none of these tags
+			<?php
+			$tags_not_in = array();
+			foreach( $instance['tags_not_in'] as $tag_id ){
+				$temp = get_term( $tag_id, 'post_tag' );
+				$tags_not_in[] = $temp->name;
+			}
+			?>
+			<input type="text" value="<?php echo implode( ', ', (array) $tags_not_in ); ?>" name="<?php echo $this->get_field_name('tags_not_in'); ?>" id="<?php echo $this->get_field_id('tags_not_in'); ?>" class="widefat" />
 			<br />
 			<small><?php _e( 'Tags, separated by commas.' ); ?></small>
 		</p>
@@ -158,14 +263,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		<p>
 			<label for="<?php echo $this->get_field_id('count'); ?>"><?php _e( 'Number of items to show:' ); ?></label>
 			<select name="<?php echo $this->get_field_name('count'); ?>" id="<?php echo $this->get_field_id('count'); ?>" class="widefat">
-
-<?php
-				for( $i = 1; $i < 51; $i++ ){
-?>
-					<option value="<?php echo $i; ?>" <?php selected( $instance['count'], $i ); ?>><?php echo $i; ?></option>
-<?php
-				}
-?>
+			<?php for( $i = 1; $i < 51; $i++ ){ ?>
+				<option value="<?php echo $i; ?>" <?php selected( $instance['count'], $i ); ?>><?php echo $i; ?></option>
+			<?php } ?>
 			</select>
 		</p>
 
@@ -186,6 +286,33 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		</p>
 
 
+
+
+
+
+
+
+<?php
+	}
+
+
+	function holding_area(){
+?>
+
+
+<!--
+		<p>
+			<label for="<?php echo $this->get_field_id('blog'); ?>"><?php _e( 'What to show:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('blog'); ?>" id="<?php echo $this->get_field_id('blog'); ?>" class="widefat">
+		<?php
+	//global $current_user;
+	//get_blogs_of_user( $current_user->ID );
+	// must allow for situations where the current user doesn't have access to the previously selected other blog
+		?>
+				<option value="any" <?php selected( $instance['blog'], 'any' ); ?>><?php _e('Any content'); ?></option>
+			</select>
+		</p>
+-->
 
 
 
@@ -237,21 +364,14 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	
 
 
-
-
-
-
-
-
 <?php
 	}
 
-
-	function control_categories( $instance ){
+	function control_categories( $instance , $whichfield = 'categories_in' ){
 		$items = get_categories( array( 'style' => FALSE, 'echo' => FALSE, 'hierarchical' => FALSE ));
 		foreach( $items as $item ){
 			$list[] = '<li>
-				<label for="'. $this->get_field_id('categories-'. $item->term_id) .'"><input id="'. $this->get_field_id('categories-'. $item->term_id) .'" name="'. $this->get_field_name('categories') .'['. $item->term_id .']" type="checkbox" value="1" '. ( isset( $instance['categories'][ $item->term_id ] ) ? 'checked="checked"' : '' ) .'/> '. $item->name .'</label>
+				<label for="'. $this->get_field_id( $whichfield .'-'. $item->term_id) .'"><input id="'. $this->get_field_id( $whichfield .'-'. $item->term_id) .'" name="'. $this->get_field_name( $whichfield ) .'['. $item->term_id .']" type="checkbox" value="1" '. ( isset( $instance[ $whichfield ][ $item->term_id ] ) ? 'checked="checked"' : '' ) .'/> '. $item->name .'</label>
 			</li>';
 		}
 	

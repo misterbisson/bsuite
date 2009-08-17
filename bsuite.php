@@ -3318,7 +3318,6 @@ function widget_any_posts( $args, $widget_args = 1 ) {
 
 	$title = empty($options[ $number ]['title']) ? __('Any Posts', 'bsuite') : $options[ $number ]['title'];
 
-
 	$templates = $this->get_widget_templates();
 
 	if( 'normal' == $options[$number]['what'] ){
