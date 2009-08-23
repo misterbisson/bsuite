@@ -132,10 +132,10 @@ class bSuite {
 		// cms goodies
 		add_filter('user_has_cap', array(&$this, 'edit_current_user_can'), 10, 3);
 		add_filter('save_post', array(&$this, 'edit_publish_page'));
-		add_action('dbx_page_advanced', array(&$this, 'edit_insert_excerpt_form'));
-		add_action('dbx_page_sidebar', array(&$this, 'edit_insert_category_form'));
-		add_action('edit_form_advanced', array(&$this, 'edit_post_form'));
-		add_action('edit_page_form', array(&$this, 'edit_page_form'));
+//		add_action('dbx_page_advanced', array(&$this, 'edit_insert_excerpt_form'));
+//		add_action('dbx_page_sidebar', array(&$this, 'edit_insert_category_form'));
+//		add_action('edit_form_advanced', array(&$this, 'edit_post_form'));
+//		add_action('edit_page_form', array(&$this, 'edit_page_form'));
 
 		add_action('widgets_init', array(&$this, 'widgets_register'));
 
@@ -216,12 +216,15 @@ class bSuite {
 			die( wp_redirect( admin_url( basename( $_SERVER['PHP_SELF'] ) .'?s'. ( get_option( 'bsuite_managefocus_author' ) ? '&author='. $current_user->id : '' ) . ( ( get_option( 'bsuite_managefocus_month' ) && ( 'edit-pages.php' <> basename( $_SERVER['PHP_SELF'] )) ) ? '&m='. date( 'Ym' ) : '') )));
 		}
 
+/*
 		// the machine tags js and style
 		wp_register_script( 'bsuite-machtags', $this->path_web . '/js/bsuite-machtags.js', array('jquery-ui-sortable'), '1' );
 		wp_enqueue_script( 'bsuite-machtags' );
 		wp_register_style( 'bsuite-machtags', $this->path_web .'/css/machtags.css' );
 		wp_enqueue_style( 'bsuite-machtags' );
+*/
 
+/*
 		// add the sweet categories and tags JS from the post editor to the page editor
 		wp_register_script( 'edit_page', $this->path_web . '/js/edit_page.js', array('jquery'), '1' ); 
 		if( strpos( $_SERVER['REQUEST_URI'], 'admin/page' )){
@@ -230,6 +233,7 @@ class bSuite {
 			wp_enqueue_script( 'suggest' );
 			wp_enqueue_script( 'ajaxcat' );
 		}
+*/
 
 		// add the options page
 		add_options_page('bSuite Settings', 'bSuite', 'manage_options', plugin_basename( dirname( __FILE__ )) .'/ui_options.php' );
@@ -2499,11 +2503,13 @@ die;
 
 	function edit_publish_page( $post_ID ) {
 		if ( !isset($_POST['bsuite_who_can_edit']) )
-			return;
+			return $post_ID;
 
 		$who = $_POST['bsuite_who_can_edit'];
 		if ( ! update_post_meta($post_ID, '_bsuite_who_can_edit',  $who))
 			add_post_meta($post_ID, '_bsuite_who_can_edit',  $who, true);
+
+		return $post_ID;
 	}
 
 	function edit_page_form() {
