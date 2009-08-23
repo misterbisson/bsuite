@@ -195,6 +195,9 @@ class bSuite {
 			$GLOBALS['content_width'] = absint( get_option( 'bsuite_mycss_maxwidth' ));
 		if( !isset( $GLOBALS['content_width'] ))
 			$GLOBALS['content_width'] = 500;
+
+		load_plugin_textdomain( 'bsuite', FALSE, basename( dirname( __FILE__ )) .'/lang/' );
+
 /*
 		// handle user-contributed tags via comments
 		if( strpos( $_SERVER['PHP_SELF'], 'wp-comments-post.php' ) && ( !empty( $_REQUEST['bsuite_uctags'] )))
