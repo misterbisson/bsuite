@@ -51,11 +51,6 @@ bSuite is a set of tools that help surface interesting and popular stories as we
 1. Set any options you want in Settings -> bSuite.
 1. bSuite will begin collecting new stats immediately, but it will take at least a day before you'll see much of interest in Dashboard -> bStat Reports.
 
-= Upgrading = 
-
-Those upgrading from bSuite 3 should delete the old plugin and it's entire folder from `wp-content/plugins/`. Following the installation, users will need to activate the bStat Importer plugin and complete the upgrade process in Manage -> Import.
-
-There is no direct upgrade path from bStat 1 or 2 to bSuite 4. Users of that version must upgrade to bSuite bStat 3 first.
 
 == Frequently Asked Questions ==
 
