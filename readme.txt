@@ -2,9 +2,9 @@
 Contributors: misterbisson
 Donate link: http://MaisonBisson.com/
 Tags: cms, content management, tags, stats, statistics, formatting, pages, widgets, related posts, keyword searching, post, posts, page, pages, admin, related content
-Requires at least: 2.6.0
-Tested up to: 2.7.1
-Stable tag: 4.0.6
+Requires at least: 2.7.0
+Tested up to: 2.8.4
+Stable tag: 4.0.7
 
 A suite of tools used to help surface interesting and popular stories as well as improve WordPress' CMS capabilities as an application platform.
 
@@ -24,6 +24,8 @@ bSuite is a set of tools that help surface interesting and popular stories as we
 
 <a href="http://maisonbisson.com/bsuite/widgets/">bSuite widgets</a> include: 
 
+1. Post Loop allows you to build your own, um, post loop, and put it anywhere a widget will fit.
+1. Pages replaces WP's built in Pages widget and adds the option to expand the page list to include the parents and immediate children of the page your currently viewing.
 1. bSuite Popular Posts
 1. bSuite Related Posts
 1. bSuite Recently Commented Posts
@@ -39,9 +41,9 @@ bSuite is a set of tools that help surface interesting and popular stories as we
 1. Embed Slideshare items
 1. Embed Wufoo forms
 
-= Accessories =
+= Language Translations =
 
-Included companion plugins include a <a href="http://maisonbisson.com/bsuite/tag-importer/">universal tag importer</a>, and an upgrader to help you move from bSuite 3.
+1. RU translation by FatCow (<a href="www.fatcow.com">www.fatcow.com</a>).
 
 == Installation ==
 
