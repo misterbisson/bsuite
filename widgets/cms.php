@@ -82,6 +82,12 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		}
 	
 		if( $ourposts->have_posts() ){
+			echo str_replace( 'class="widget ', 'class="widget widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
+
+			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
+			if ( $instance['title_show'] && $title )
+				echo $before_title . $title . $after_title;
+
 			while( $ourposts->have_posts() ){
 				$ourposts->the_post();
 	
@@ -100,18 +106,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	<?php
 				}
 			}
-		}
-	
-
-		if ( !empty( $out ) ) {
-			echo $before_widget;
-			if ( $title)
-				echo $before_title . $title . $after_title;
-		?>
-		<ul>
-			<?php echo $out; ?>
-		</ul>
-		<?php
 			echo $after_widget;
 		}
 	}
@@ -120,6 +114,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance = $old_instance;
 
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
+		$instance['title_show'] = absint( $new_instance['title_show'] );
 		$instance['what'] = in_array( $new_instance['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $new_instance['what']: '';
 		$instance['blog'] = absint( $new_instance['blog'] );
 
@@ -164,9 +159,12 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				) 
 			);
 		$title = esc_attr( $instance['title'] );
+
 	?>
 
-		<p><label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" /></p>
+		<p><label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" />
+		<label for="<?php echo $this->get_field_id( 'title_show' ) ?>"><input id="<?php echo $this->get_field_id( 'title_show' ) ?>" name="<?php echo $this->get_field_name( 'title_show' ) ?>" type="checkbox" value="1" <?php echo ( $instance[ 'title_show' ] ? 'checked="checked"' : '' ) ?>/> Show Title?</label>
+		</p>
 
 		<p>
 			<label for="<?php echo $this->get_field_id('what'); ?>"><?php _e( 'What to show:' ); ?></label>
@@ -438,7 +436,8 @@ class bSuite_Widget_Pages extends WP_Widget {
 	function widget( $args, $instance ) {
 		extract( $args );
 
-		$title = apply_filters('widget_title', empty( $instance['title'] ) ? __( 'Pages' ) : $instance['title']);
+		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
+		$homelink = empty( $instance['homelink'] ) ? '' : $instance['homelink'];
 		$sortby = empty( $instance['sortby'] ) ? 'menu_order' : $instance['sortby'];
 		$exclude = empty( $instance['exclude'] ) ? '' : $instance['exclude'];
 		$depth = isset( $instance['depth'] ) ? $instance['depth'] : 1;
@@ -459,6 +458,11 @@ class bSuite_Widget_Pages extends WP_Widget {
 			if ( !empty( $pages )){
 				$subtree .= walk_page_tree( $pages, 0, $post->ID, array() );
 
+				// get any siblings, insert them into the tree
+				if( count( $post->ancestors ) && ( $siblings = wp_list_pages( array( 'child_of' => array_shift( $ancestors ), 'title_li' => '', 'echo' => 0, 'sort_column' => $sortby, 'exclude' => $exclude, 'depth' => 1 )))){
+					$subtree = preg_replace( '/<li.+?current_page_item.+?<\/li>/i', $siblings .'</ul>', $subtree );
+				}
+
 				// get any children, insert them into the tree
 				if( $children = wp_list_pages( array( 'child_of' => $post->ID, 'title_li' => '', 'echo' => 0, 'sort_column' => $sortby, 'exclude' => $exclude, 'depth' => $depth ))){
 					$subtree = preg_replace( '/current_page_item[^<]*<a([^<]*)/i', 'current_page_item"><a\1<ul>'. $children .'</ul>', $subtree );
@@ -474,10 +478,13 @@ class bSuite_Widget_Pages extends WP_Widget {
 
 		if ( !empty( $out ) ) {
 			echo $before_widget;
-			if ( $title)
+			if ( $title )
 				echo $before_title . $title . $after_title;
 		?>
 		<ul>
+			<?php if ( $homelink )
+				echo '<li class="page_item page_item-home"><a href="'. get_option('home') .'">'. $homelink .'</a></li>';
+			?>
 			<?php echo $out; ?>
 		</ul>
 		<?php
@@ -488,6 +495,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 	function update( $new_instance, $old_instance ) {
 		$instance = $old_instance;
 		$instance['title'] = strip_tags( $new_instance['title'] );
+		$instance['homelink'] = strip_tags( $new_instance['homelink'] );
 		if ( in_array( $new_instance['sortby'], array( 'post_title', 'menu_order', 'ID' ))) {
 			$instance['sortby'] = $new_instance['sortby'];
 		} else {
@@ -502,8 +510,19 @@ class bSuite_Widget_Pages extends WP_Widget {
 
 	function form( $instance ) {
 		//Defaults
-		$instance = wp_parse_args( (array) $instance, array( 'sortby' => 'post_title', 'title' => '', 'exclude' => '', 'depth' => 1, 'expandtree' => 1) );
+		$instance = wp_parse_args( (array) $instance, 
+			array( 
+				'sortby' => 'post_title', 
+				'title' => '', 
+				'exclude' => '', 
+				'depth' => 1, 
+				'expandtree' => 1,
+				'homelink' => bloginfo('name'),
+			)
+		);
+
 		$title = esc_attr( $instance['title'] );
+		$homelink = esc_attr( $instance['homelink'] );
 		$exclude = esc_attr( $instance['exclude'] );
 	?>
 		<p><label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" /></p>
@@ -525,6 +544,9 @@ class bSuite_Widget_Pages extends WP_Widget {
 				<option value="0"<?php selected( $instance['depth'], '0' ); ?>><?php _e( 'All' ); ?></option>
 			</select>
 		</p>
+
+		<p><label for="<?php echo $this->get_field_id('homelink'); ?>"><?php _e('Link to blog home:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('homelink'); ?>" name="<?php echo $this->get_field_name('homelink'); ?>" type="text" value="<?php echo $homelink; ?>" /><br /><small><?php _e( 'Optional, leave empty to hide.' ); ?></small></p>
+
 		<p><input id="<?php echo $this->get_field_id('expandtree'); ?>" name="<?php echo $this->get_field_name('expandtree'); ?>" type="checkbox" value="1" <?php if ( $instance['expandtree'] ) echo 'checked="checked"'; ?>/>
 		<label for="<?php echo $this->get_field_id('expandtree'); ?>"><?php _e('Expand current page tree?'); ?></label></p>
 		<p>
