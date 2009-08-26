@@ -460,7 +460,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 
 				// get any siblings, insert them into the tree
 				if( count( $post->ancestors ) && ( $siblings = wp_list_pages( array( 'child_of' => array_shift( $ancestors ), 'title_li' => '', 'echo' => 0, 'sort_column' => $sortby, 'exclude' => $exclude, 'depth' => 1 )))){
-					$subtree = preg_replace( '/<li.+?current_page_item.+?<\/li>/i', $siblings .'</ul>', $subtree );
+					$subtree = preg_replace( '/<li.+?current_page_item.+?<\/li>/i', $siblings, $subtree );
 				}
 
 				// get any children, insert them into the tree
