@@ -6,7 +6,6 @@ Requires at least: 2.7.0
 Tested up to: 2.8.4
 Stable tag: 4.0.7
 
-
 A suite of tools used to help surface interesting and popular stories as well as improve WordPress' CMS capabilities as an application platform.
 
 == Description ==
@@ -44,7 +43,7 @@ bSuite is a set of tools that help surface interesting and popular stories as we
 
 = Language Translations =
 
-1. RU translation by FatCow (<a href="www.fatcow.com">www.fatcow.com</a>).
+1. RU translation by <a href="http://www.fatcow.com">FatCow.com</a>.
 
 == Installation ==
 

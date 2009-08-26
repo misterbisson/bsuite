@@ -26,6 +26,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	
 			if( in_array( $instance['what'], array( 'post', 'page', 'attachment' )))
 				$criteria['post_type'] = $instance['what'];
+
+			if( $instance['what'] == 'attachment' )
+				$criteria['post_status'] = 'inherit';
 	
 			if( !empty( $instance['categories_in'] ))
 				$criteria['category__'. ( in_array( $instance['categoriesbool'], array( 'in', 'and', 'not_in' )) ? $instance['categoriesbool'] : 'in' ) ] = array_keys( $instance['categories_in'] );
@@ -64,7 +67,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					$criteria['orderby'] = 'rand';
 					break;
 			}
-
 
 			$ourposts = new WP_Query( $criteria );
 
