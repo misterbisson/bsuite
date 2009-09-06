@@ -3602,8 +3602,10 @@ $bsuite = & new bSuite;
 // get the social bookmarking and sharing stuff
 require_once( dirname( __FILE__) .'/inc_social.php' );
 
-// get the externally defined widgets
-require_once( dirname( __FILE__) .'/widgets/cms.php' );
+// get the externall components
+//require_once( dirname( __FILE__) .'/widgets/cms.php' );
+require_once( dirname( __FILE__) .'/components/widgets-cms.php' );
+require_once( dirname( __FILE__) .'/components/options-privacy.php' );
 
 
 
