@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/bsuite/">Documentation here</a>.
-Version: 4.0.8
+Version: 5 alpha 1
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -3603,9 +3603,12 @@ $bsuite = & new bSuite;
 require_once( dirname( __FILE__) .'/inc_social.php' );
 
 // get the externall components
-//require_once( dirname( __FILE__) .'/widgets/cms.php' );
-require_once( dirname( __FILE__) .'/components/widgets-cms.php' );
-require_once( dirname( __FILE__) .'/components/options-privacy.php' );
+//require_once( dirname( __FILE__) .'/components/bstat.php' );
+//require_once( dirname( __FILE__) .'/components/bstat-widgets.php' );
+//require_once( dirname( __FILE__) .'/components/cms-shortcodes.php' );
+require_once( dirname( __FILE__) .'/components/cms-widgets.php' );
+require_once( dirname( __FILE__) .'/components/privacy.php' );
+require_once( dirname( __FILE__) .'/components/head-meta.php' );
 
 
 

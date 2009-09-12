@@ -122,7 +122,7 @@ class bSuite_options_privacy {
 		if( is_object( $current_site )): // blog community only appropriate if running WPMU ?>
 			<p>
 				<input id="blog-private" type="radio" name="blog_public" value="-1" <?php checked('-1', get_option('blog_public')); ?> />
-				<label for="blog-private"><?php _e('I would like my blog to be visible only to registered users from blog community.'); ?></label>
+				<label for="blog-private"><?php _e('I would like my blog to be visible only to registered members of any blog on this server.'); ?></label>
 			</p>
 		<?php endif; ?>
 		<p>
