@@ -63,8 +63,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				case 'pop_least':
 				case 'comment_recent':
 				case 'rand':
-				default:
 					$criteria['orderby'] = 'rand';
+					break;
+				default:
+					$criteria['orderby'] = 'post_date';
+					$criteria['order'] = 'DESC';
 					break;
 			}
 
@@ -90,7 +93,10 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			while( $ourposts->have_posts() ){
 				$ourposts->the_post();
-	
+				global $id, $post;
+
+				$this->post_ids[ $this->number ][] = $id;
+
 				if( !isset( $instance['template'] ) || !include $templates[ $instance['template'] ]['fullpath'] ){
 	?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 	<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
@@ -140,7 +146,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['age'] = in_array( $new_instance['age'], array( 'after', 'before', 'around') ) ? $new_instance['age']: '';
 		$instance['agestrtotime'] = strtotime( $new_instance['agestrtotime'] ) ? $new_instance['agestrtotime'] : '';
 		$instance['relationship'] = in_array( $new_instance['relationship'], array( 'similar', 'excluding') ) ? $new_instance['relationship']: '';
-		$instance['relatedto'] = array_filter( array_map( 'absint', $new_instance['relatedto'] ));
+		$instance['relatedto'] = array_filter( (array) array_map( 'absint', (array) $new_instance['relatedto'] ));
 		$instance['count'] = absint( $new_instance['count'] );
 		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'pop_most', 'pop_least', 'relevance_most', 'comment_recent', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
@@ -162,8 +168,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 	?>
 
-		<p><label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" />
-		<label for="<?php echo $this->get_field_id( 'title_show' ) ?>"><input id="<?php echo $this->get_field_id( 'title_show' ) ?>" name="<?php echo $this->get_field_name( 'title_show' ) ?>" type="checkbox" value="1" <?php echo ( $instance[ 'title_show' ] ? 'checked="checked"' : '' ) ?>/> Show Title?</label>
+		<p>
+			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" />
+			<label for="<?php echo $this->get_field_id( 'title_show' ) ?>"><input id="<?php echo $this->get_field_id( 'title_show' ) ?>" name="<?php echo $this->get_field_name( 'title_show' ) ?>" type="checkbox" value="1" <?php echo ( $instance[ 'title_show' ] ? 'checked="checked"' : '' ) ?>/> Show Title?</label>
 		</p>
 
 		<p>
@@ -177,7 +184,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			</select>
 		</p>
 
-		<p>
+		<div id="<?php echo $this->get_field_id('categories_in'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('categories_in'); ?>-contents" class="contents">
 			<label for="<?php echo $this->get_field_id('categoriesbool'); ?>"><?php _e( 'Categories:' ); ?></label>
 			<select name="<?php echo $this->get_field_name('categoriesbool'); ?>" id="<?php echo $this->get_field_id('categoriesbool'); ?>" class="widefat">
 				<option value="in" <?php selected( $instance['categoriesbool'], 'in' ); ?>><?php _e('Any of these categories'); ?></option>
@@ -185,13 +193,17 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			</select>
 			<ul><?php echo $this->control_categories( $instance , 'categories_in' ); ?></ul>
 		</p>
+		</div>
 
-		<p>
-			Not in any of these categories
+		<div id="<?php echo $this->get_field_id('categories_not_in'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('categories_not_in'); ?>-contents" class="contents">
+			<label for="<?php echo $this->get_field_id('categories_not_in'); ?>"><?php _e( 'Not in any of these categories:' ); ?></label>
 			<ul><?php echo $this->control_categories( $instance , 'categories_not_in' ); ?></ul>
 		</p>
+		</div>
 
-		<p>
+		<div id="<?php echo $this->get_field_id('post_tag'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('post_tag'); ?>-contents" class="contents">
 			<label for="<?php echo $this->get_field_id('tagsbool'); ?>"><?php _e( 'Tags:' ); ?></label>
 			<select name="<?php echo $this->get_field_name('tagsbool'); ?>" id="<?php echo $this->get_field_id('tagsbool'); ?>" class="widefat">
 				<option value="in" <?php selected( $instance['tagsbool'], 'in' ); ?>><?php _e('Any of these tags'); ?></option>
@@ -209,9 +221,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			<br />
 			<small><?php _e( 'Tags, separated by commas.' ); ?></small>
 		</p>
+		</div>
 
-		<p>
-			With none of these tags
+		<div id="<?php echo $this->get_field_id('tags_not_in'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('tags_not_in'); ?>-contents" class="contents">
+			<label for="<?php echo $this->get_field_id('tags_not_in'); ?>"><?php _e( 'With none of these tags:' ); ?></label>
 			<?php
 			$tags_not_in = array();
 			foreach( $instance['tags_not_in'] as $tag_id ){
@@ -223,18 +237,40 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			<br />
 			<small><?php _e( 'Tags, separated by commas.' ); ?></small>
 		</p>
+		</div>
 
-		<p>
+		<div id="<?php echo $this->get_field_id('post__in'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('post__in'); ?>-contents" class="contents">
 			<label for="<?php echo $this->get_field_id('post__in'); ?>"><?php _e( 'Matching any post ID:' ); ?></label> <input type="text" value="<?php echo implode( ', ', (array) $instance['post__in'] ); ?>" name="<?php echo $this->get_field_name('post__in'); ?>" id="<?php echo $this->get_field_id('post__in'); ?>" class="widefat" />
 			<br />
 			<small><?php _e( 'Page IDs, separated by commas.' ); ?></small>
 		</p>
+		</div>
 
-		<p>
+		<div id="<?php echo $this->get_field_id('post__not_in'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('post__not_in'); ?>-contents" class="contents">
 			<label for="<?php echo $this->get_field_id('post__not_in'); ?>"><?php _e( 'Excluding all these post IDs:' ); ?></label> <input type="text" value="<?php echo implode( ', ', (array) $instance['post__not_in'] ); ?>" name="<?php echo $this->get_field_name('post__not_in'); ?>" id="<?php echo $this->get_field_id('post__not_in'); ?>" class="widefat" />
 			<br />
 			<small><?php _e( 'Page IDs, separated by commas.' ); ?></small>
 		</p>
+		</div>
+
+
+		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
+			<div id="<?php echo $this->get_field_id('what'); ?>-container" class="container">
+			<p id="<?php echo $this->get_field_id('what'); ?>-contents" class="contents">
+				<label for="<?php echo $this->get_field_id('relationship'); ?>"><?php _e('Related to other posts:'); ?></label>
+				<select id="<?php echo $this->get_field_id('relationship'); ?>" name="<?php echo $this->get_field_name('relationship'); ?>">
+					<option value="excluding" <?php selected( $instance['relationship'], 'excluding' ) ?>>Excluding those</option>
+					<option value="similar" <?php selected( $instance['relationship'], 'similar' ) ?>>Similar to</option>
+				</select>
+				<?php _e('items shown in:'); ?>
+				<ul>
+				<?php echo $other_instances; ?>
+				</ul>
+			</p>
+			</div>
+		<?php endif; ?>
 
 		<p>
 			<label for="<?php echo $this->get_field_id('count'); ?>"><?php _e( 'Number of items to show:' ); ?></label>
@@ -323,7 +359,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		<label for="bsuite-any-posts-agestrtotime-<?php echo $number; ?>"><input style="width: 150px" id="bsuite-any-posts-agestrtotime-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][agestrtotime]" type="text" value="<?php echo attribute_escape( $options[$number]['agestrtotime'] ); ?>" /></label></p>
 		<fieldset>
 
-		<?php if( $other_instances = $this->control_instances( $number, $options[$number]['relatedto']) ): ?>
+		<?php if( $other_instances = $this->control_instances( $instance['relatedto']) ): ?>
 			<fieldset class="bsuite-any-posts-relationship">
 				<p><label for="bsuite-any-posts-relationship-<?php echo $number; ?>">
 				<select id="bsuite-any-posts-relationship-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][relationship]">
@@ -354,19 +390,23 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		return implode( "\n", $list );
 	}
 	
-	function control_instances( $self = 0 , $selected = array() ){
-		if ( !$options = get_option('bsuite_any_posts') )
+	function control_instances( $selected = array() ){
+		if ( !$options = get_option('widget_postloop') )
 			return FALSE;
-	
-			if( isset( $options[ $self ] ))
-				unset( $options[ $self ] );
-	
+			if( isset( $options[ $this->number ] ))
+				unset( $options[ $this->number ] );
+
 		$list = array();
 		foreach( $options as $number => $option ){
-			$list[] = '<label for="bsuite-any-posts-relatedto-'. $self .'-'. $number .'"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, (array) $selected ) ? 'checked="checked"' : '' ) .' id="bsuite-any-posts-relatedto-'. $self .'-'. $number .'" name="bsuite-any-posts['. $self .'][relatedto][]" /> '. $option['title'] .'</label>';
+			if( empty( $option['title'] ))
+				continue;
+
+			$list[] = '<li>
+				<label for="'. $this->get_field_id( 'relatedto-'. $number) .'"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, (array) $selected ) ? 'checked="checked"' : '' ) .' id="'. $this->get_field_id( 'relatedto-'. $number) .'" name="'. $this->get_field_name( 'relatedto' ) .'['. $number .']" /> '. $option['title'] .'<small> (id:'. $number .')</small></label>
+			</li>';
 		}
 	
-		return implode( ', ', $list );
+		return implode( "\n", $list );
 	}
 	
 	function control_template_dropdown( $default = '' ) {
