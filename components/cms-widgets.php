@@ -599,9 +599,125 @@ class bSuite_Widget_Pages extends WP_Widget {
 }// end bSuite_Widget_Pages
 
 
+
+/**
+ * Pages widget class
+ *
+ */
+class bSuite_Widget_Crumbs extends WP_Widget {
+
+	function bSuite_Widget_Crumbs() {
+		$widget_ops = array('classname' => 'widget_breadcrumbs', 'description' => __( 'A breadcrumb navigation path') );
+		$this->WP_Widget('breadcrumbs', __('Breadcrumbs'), $widget_ops);
+	}
+
+	function widget( $args, $instance ) {
+		extract( $args );
+
+		global $wp_query;
+
+		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
+		$maxchars = absint( $instance['maxchars'] ) > 10 ? absint( $instance['maxchars'] ) : 10;
+
+		$crumbs = array();
+
+		if( !empty( $instance['homelink'] ))
+			$crumbs[] = '<li class="bloghome"><a href="'. get_option('home') .'">'. $instance['homelink'] .'</a></li>';
+
+		if( is_singular() ){
+			setup_postdata( $wp_query->post );
+			global $post, $page, $multipage;
+
+			// get the ancestor tree, if exists
+			$ancestors = array();
+			if( is_array( $post->ancestors )){
+				foreach( array_reverse( $post->ancestors ) as $post_id ){
+					$crumbs[] = '<li><a href="'. get_permalink( $post_id ) .'"
+					rel="bookmark" title="'. sprintf( __('Permanent Link to %s') , esc_attr( strip_tags( get_the_title( $post_id )))) .' ">'. ( strlen( get_the_title( $post_id )) > $maxchars ? trim( substr( get_the_title( $post_id ), 0, $maxchars )) .'&#8230;' : get_the_title( $post_id ) ) .'</a></li>';
+				}
+			}
+
+			// add the current page to the tree
+			$crumbs[] = '<li class="'. $post->post_type .'_item '. $post->post_type .'-item-'. $post->ID .' current_'. $post->post_type .'_item" ><a href="'. get_permalink( $post->ID ) .'" rel="bookmark" title="'. sprintf( __('Permanent Link to %s') , esc_attr( strip_tags( get_the_title( $post->ID )))) .'">'. ( strlen( get_the_title( $post->ID )) > $maxchars ? trim( substr( get_the_title( $post->ID ), 0, $maxchars )) .'&#8230;' : get_the_title( $post->ID ) ) .'</a></li>';
+
+			//if this is a multi-page post/page...
+			if( $multipage ){
+
+				// generate a permalink to this page
+				if ( 1 == $page ) {
+					$link = get_permalink( $post->ID );
+				} else {
+					if ( '' == get_option('permalink_structure') || in_array($post->post_status, array('draft', 'pending')) )
+						$link = get_permalink( $post->ID ) . '&amp;page='. $page;
+					else
+						$link = trailingslashit( get_permalink( $post->ID )) . user_trailingslashit( $page, 'single_paged' );
+				}
+
+				// add it to the crumbs
+				$crumbs[] = '<li class="'. $post->post_type .'_item '. $post->post_type .'-item-'. $post->ID .' current_'. $post->post_type .'_item" ><a href="'. $link .'" rel="bookmark" title="'. sprintf( __('Permanent Link to page %d of %s') , (int) $page , esc_attr( strip_tags( get_the_title( $post->ID ))) ) .'">'. sprintf( __('Page %d') , (int) $page ) .'</a></li>';
+			}
+		}else{
+
+			if( is_search() )
+				$crumbs[] = '<li><a href="'. $link .'">'. __('Search') .'</a></li>';
+
+//			if( is_paged() && $wp_query->query_vars['paged'] > 1 )
+//				$page_text = sprintf( __('Page %d') , $wp_query->query_vars['paged'] );
+		}
+
+		if ( count( $crumbs ) ) {
+			echo $before_widget;
+//			if ( $title )
+//				echo $before_title . $title . $after_title;
+		?>
+			<ul>
+				<?php echo implode( "\n", $crumbs ); ?>
+			</ul>
+		<?php
+			echo $after_widget;
+		}
+	}
+
+	function update( $new_instance, $old_instance ) {
+		$instance = $old_instance;
+		$instance['title'] = strip_tags( $new_instance['title'] );
+		$instance['homelink'] = strip_tags( $new_instance['homelink'] );
+		$instance['maxchars'] = absint( $new_instance['maxchars'] );
+
+		return $instance;
+	}
+
+	function form( $instance ) {
+		//Defaults
+		$instance = wp_parse_args( (array) $instance, 
+			array( 
+				'title' => '', 
+				'homelink' => get_option('blogname'),
+				'maxchars' => 35,
+			)
+		);
+
+		$title = esc_attr( $instance['title'] );
+		$homelink = esc_attr( $instance['homelink'] );
+?>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('homelink'); ?>"><?php _e('Link to blog home:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('homelink'); ?>" name="<?php echo $this->get_field_name('homelink'); ?>" type="text" value="<?php echo $homelink; ?>" /><br /><small><?php _e( 'Optional, leave empty to hide.' ); ?></small>
+		</p>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('maxchars'); ?>"><?php _e('Maximum crumb length:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('maxchars'); ?>" name="<?php echo $this->get_field_name('maxchars'); ?>" type="text" value="<?php echo absint( $instance['maxchars'] ); ?>" /><br /><small><?php _e( 'Maximum number of characters per crumb.' ); ?></small>
+		</p>
+<?php
+	}
+}// end bSuite_Widget_Crumbs
+
+
 // register these widgets
 function bsuite_widgets_init() {
 	register_widget( 'bSuite_Widget_PostLoop' );
+
+	register_widget( 'bSuite_Widget_Crumbs' );
 
 	unregister_widget('WP_Widget_Pages');
 	register_widget( 'bSuite_Widget_Pages' );
