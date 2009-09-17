@@ -56,6 +56,8 @@ class bSuite {
 		// shortcodes
 		add_shortcode('pagemenu', array(&$this, 'shortcode_list_pages'));
 		add_shortcode('list_pages', array(&$this, 'shortcode_list_pages'));
+		add_shortcode('attachmentsmenu', array(&$this, 'shortcode_list_attachments'));
+		add_shortcode('list_attachments', array(&$this, 'shortcode_list_attachments'));
 		add_shortcode('innerindex', array(&$this, 'shortcode_innerindex'));
 		add_shortcode('include', array(&$this, 'shortcode_include'));
 		add_shortcode('icon', array(&$this, 'shortcode_icon'));
@@ -334,6 +336,49 @@ class bSuite {
 
 		}
 
+	}
+
+	function shortcode_list_attachments($attr) {
+		global $post;
+	
+		static $instance = 0;
+		$instance++;
+	
+		// Allow plugins/themes to override the default gallery template.
+		$output = apply_filters('post_gallery', '', $attr);
+		if ( $output != '' )
+			return $output;
+	
+		// We're trusting author input, so let's at least make sure it looks like a valid orderby statement
+		if ( isset( $attr['orderby'] ) ) {
+			$attr['orderby'] = sanitize_sql_orderby( $attr['orderby'] );
+			if ( !$attr['orderby'] )
+				unset( $attr['orderby'] );
+		}
+	
+		extract( shortcode_atts( array(
+			'order'      => 'ASC',
+			'orderby'    => 'menu_order ID',
+			'id'         => $post->ID,
+			'itemtag'    => 'dl',
+			'icontag'    => 'dt',
+			'captiontag' => 'dd',
+		), $attr ));
+	// 			'columns'    => 3,
+	// 'size' => 'thumbnail'
+	// 'post_mime_type' => 'image',
+	
+		$id = intval($id);
+		$attachments = get_children( array('post_parent' => $id, 'post_status' => 'inherit', 'post_type' => 'attachment',  'order' => $order, 'orderby' => $orderby) );
+	
+		if ( empty($attachments) )
+			return '';
+	
+		$output = "\n";
+		foreach ( $attachments as $att_id => $attachment )
+			$output .= '<li>'. wp_get_attachment_link( $att_id, FALSE, FALSE ) . "</li>\n";
+		return '<ul>'. $output .'</ul>';
+	
 	}
 
 	function shortcode_icon( $arg ){
