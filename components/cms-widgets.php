@@ -476,18 +476,32 @@ class bSuite_Widget_Pages extends WP_Widget {
 	function widget( $args, $instance ) {
 		extract( $args );
 
+		if(( $instance['startpage'] == -1 ) && is_singular() ){
+			global $wp_query;
+			setup_postdata( $wp_query->post );
+			global $post;
+		}
+
 		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
 		$homelink = empty( $instance['homelink'] ) ? '' : $instance['homelink'];
 		$sortby = empty( $instance['sortby'] ) ? 'menu_order' : $instance['sortby'];
 		$exclude = empty( $instance['exclude'] ) ? '' : $instance['exclude'];
+		$startpage = isset( $instance['startpage'] ) ? ( $instance['startpage'] == -1 ? $post->ID : absint( $instance['startpage'] )) : 0;
 		$depth = isset( $instance['depth'] ) ? $instance['depth'] : 1;
 
 		if ( $sortby == 'menu_order' )
 			$sortby = 'menu_order, post_title';
 
-		$out = wp_list_pages( array('title_li' => '', 'echo' => 0, 'sort_column' => $sortby, 'exclude' => $exclude, 'depth' => $depth ));
+		$out = wp_list_pages( array(
+			'child_of' => $startpage, 
+			'title_li' => '', 
+			'echo' => 0, 
+			'sort_column' => $sortby, 
+			'exclude' => $exclude, 
+			'depth' => $depth 
+		));
 
-		if( $instance['expandtree'] && is_page() ){
+		if( $instance['expandtree'] && ( $instance['startpage'] >= 0 ) && is_page() ){
 			global $post;
 
 			// get the ancestor tree, including the current page
@@ -542,6 +556,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 			$instance['sortby'] = 'menu_order';
 		}
 		$instance['depth'] = absint( $new_instance['depth'] );
+		$instance['startpage'] = intval( $new_instance['startpage'] );
 		$instance['expandtree'] = absint( $new_instance['expandtree'] );
 		$instance['exclude'] = strip_tags( $new_instance['exclude'] );
 
@@ -556,6 +571,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 				'title' => '', 
 				'exclude' => '', 
 				'depth' => 1, 
+				'startpage' => 0,
 				'expandtree' => 1,
 				'homelink' => bloginfo('name'),
 			)
@@ -581,14 +597,31 @@ class bSuite_Widget_Pages extends WP_Widget {
 				<option value="2"<?php selected( $instance['depth'], '2' ); ?>><?php _e( '2' ); ?></option>
 				<option value="3"<?php selected( $instance['depth'], '3' ); ?>><?php _e( '3' ); ?></option>
 				<option value="4"<?php selected( $instance['depth'], '4' ); ?>><?php _e( '4' ); ?></option>
+				<option value="5"<?php selected( $instance['depth'], '5' ); ?>><?php _e( '5' ); ?></option>
+				<option value="6"<?php selected( $instance['depth'], '6' ); ?>><?php _e( '6' ); ?></option>
+				<option value="7"<?php selected( $instance['depth'], '7' ); ?>><?php _e( '7' ); ?></option>
 				<option value="0"<?php selected( $instance['depth'], '0' ); ?>><?php _e( 'All' ); ?></option>
 			</select>
 		</p>
 
 		<p><label for="<?php echo $this->get_field_id('homelink'); ?>"><?php _e('Link to blog home:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('homelink'); ?>" name="<?php echo $this->get_field_name('homelink'); ?>" type="text" value="<?php echo $homelink; ?>" /><br /><small><?php _e( 'Optional, leave empty to hide.' ); ?></small></p>
 
+		<p>
+			<label for="<?php echo $this->get_field_id('startpage'); ?>"><?php _e( 'Start page hierarchy at:' ); ?></label>
+			<?php echo str_replace( 
+				'<select name="page_id" id="page_id">',
+				
+				'<select name="'. $this->get_field_name('startpage') .'" id="'. $this->get_field_id('startpage') .'" class="widefat">
+				<option value="0"'. selected( $instance['startpage'], '0', FALSE ) .'>'. __( 'Root' ) .'</option>
+				<option value="-1"'. selected( $instance['startpage'], '-1', FALSE ) .'>'. __( 'Current Page' ) .'</option>
+				<option value="0">---------------------</option>',
+				
+				wp_dropdown_pages( array( 'echo' => 0 , 'selected' => $instance['startpage'] > 0 ? absint( $instance['startpage'] ) : 0 ))); ?>
+		</p>
+
 		<p><input id="<?php echo $this->get_field_id('expandtree'); ?>" name="<?php echo $this->get_field_name('expandtree'); ?>" type="checkbox" value="1" <?php if ( $instance['expandtree'] ) echo 'checked="checked"'; ?>/>
 		<label for="<?php echo $this->get_field_id('expandtree'); ?>"><?php _e('Expand current page tree?'); ?></label></p>
+
 		<p>
 			<label for="<?php echo $this->get_field_id('exclude'); ?>"><?php _e( 'Exclude:' ); ?></label> <input type="text" value="<?php echo $exclude; ?>" name="<?php echo $this->get_field_name('exclude'); ?>" id="<?php echo $this->get_field_id('exclude'); ?>" class="widefat" />
 			<br />
