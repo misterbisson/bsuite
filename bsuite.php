@@ -639,7 +639,7 @@ class bSuite {
 	function innerindex_build($content){
 		// find <h*> tags with IDs in the content and build an index of them
 		preg_match_all(
-			'|<h[^>]+>[^<]+</h[^>]+>|U',
+			'|<h[^>]+>.+?</h[^>]+>|U',
 			$content,
 			$things
 			);
