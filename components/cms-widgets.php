@@ -118,10 +118,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			}
 			echo $after_widget;
 		}
-
-global $wp_widget_factory;
-print_r( $wp_widget_factory );
-
 	}
 
 	function update( $new_instance, $old_instance ) {
