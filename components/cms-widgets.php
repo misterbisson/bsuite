@@ -10,7 +10,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$widget_ops = array('classname' => 'widget_postloop', 'description' => __( 'Build your own post loop') );
 		$this->WP_Widget('postloop', __('Post Loop'), $widget_ops);
 
-		$this->post_templates = $this->get_templates();
+		if( ! is_array( $this->post_templates ))
+			$this->post_templates = $this->get_templates();
 	}
 
 	function widget( $args, $instance ) {
@@ -424,7 +425,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 	
 	function get_templates_readdir( $template_base ){
-echo "<h2>Hi!</h2>";
 		$page_templates = array();
 		$template_dir = @ dir( $template_base );
 		if ( $template_dir ) {
@@ -451,12 +451,13 @@ echo "<h2>Hi!</h2>";
 			}
 			@ $template_dir->close();
 		}
+
 		return $page_templates;
 	}
 	
 	function get_templates() {
 		return array_merge( 
-				(array) $this->get_templates_readdir( dirname( __FILE__ ) .'/templates-post/' ),
+				(array) $this->get_templates_readdir( dirname( dirname( __FILE__ )) .'/templates-post/' ),
 				(array) $this->get_templates_readdir( TEMPLATEPATH . '/templates-post/' ), 
 				(array) $this->get_templates_readdir( STYLESHEETPATH . '/templates-post/' ) 
 			);
