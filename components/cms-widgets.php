@@ -9,6 +9,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	function bSuite_Widget_PostLoop() {
 		$widget_ops = array('classname' => 'widget_postloop', 'description' => __( 'Build your own post loop') );
 		$this->WP_Widget('postloop', __('Post Loop'), $widget_ops);
+
+		$this->post_templates = $this->get_templates();
 	}
 
 	function widget( $args, $instance ) {
@@ -16,11 +18,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
 	
-		$templates = $this->get_templates();
-	
 		if( 'normal' == $instance['what'] ){
+			wp_reset_query();
 			global $wp_query;
 			$ourposts = &$wp_query;
+
 		}else{
 			$criteria['suppress_filters'] = TRUE;
 	
@@ -97,7 +99,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 				$this->post_ids[ $this->number ][] = $id;
 
-				if( !isset( $instance['template'] ) || !include $templates[ $instance['template'] ]['fullpath'] ){
+				if( !isset( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] ){
 	?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 	<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
 		<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
@@ -410,8 +412,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 	
 	function control_template_dropdown( $default = '' ) {
-		$templates = $this->get_templates();
-		foreach ($templates as $template => $info ) :
+		foreach ( $this->post_templates as $template => $info ) :
 			if ( $default == $template )
 				$selected = " selected='selected'";
 			else
@@ -573,7 +574,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 				'depth' => 1, 
 				'startpage' => 0,
 				'expandtree' => 1,
-				'homelink' => bloginfo('name'),
+				'homelink' => sprintf( __('%s Home', 'Bsuite ') , get_bloginfo('name') ),
 			)
 		);
 
@@ -646,6 +647,8 @@ class bSuite_Widget_Crumbs extends WP_Widget {
 
 	function widget( $args, $instance ) {
 		extract( $args );
+
+		wp_reset_query();
 
 		global $wp_query;
 
