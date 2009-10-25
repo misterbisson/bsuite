@@ -100,18 +100,18 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				$this->post_ids[ $this->number ][] = $id;
 
 				if( !isset( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] ){
-	?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
-	<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
-		<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
-		<small><?php the_time('F jS, Y') ?> <!-- by <?php the_author() ?> --></small>
-	
-		<div class="entry">
-			<?php the_content('Read the rest of this entry &raquo;'); ?>
-		</div>
-	
-		<p class="postmetadata"><?php the_tags('Tags: ', ', ', '<br />'); ?> Posted in <?php the_category(', ') ?> | <?php edit_post_link('Edit', '', ' | '); ?>  <?php comments_popup_link('No Comments &#187;', '1 Comment &#187;', '% Comments &#187;'); ?></p>
+?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
+<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
+	<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
+	<small><?php the_time('F jS, Y') ?> <!-- by <?php the_author() ?> --></small>
+
+	<div class="entry">
+		<?php the_content('Read the rest of this entry &raquo;'); ?>
 	</div>
-	<?php
+
+	<p class="postmetadata"><?php the_tags('Tags: ', ', ', '<br />'); ?> Posted in <?php the_category(', ') ?> | <?php edit_post_link('Edit', '', ' | '); ?>  <?php comments_popup_link('No Comments &#187;', '1 Comment &#187;', '% Comments &#187;'); ?></p>
+</div>
+<?php
 				}
 			}
 			echo $after_widget;
@@ -635,7 +635,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 
 
 /**
- * Pages widget class
+ * Crumbs widget class
  *
  */
 class bSuite_Widget_Crumbs extends WP_Widget {
@@ -749,11 +749,49 @@ class bSuite_Widget_Crumbs extends WP_Widget {
 }// end bSuite_Widget_Crumbs
 
 
+
+/**
+ * Pagednav widget class
+ *
+ */
+class bSuite_Widget_Pagednav extends WP_Widget {
+
+	function bSuite_Widget_Pagednav() {
+		$widget_ops = array('classname' => 'widget_pagednav', 'description' => __( 'Prev/Next page navigation') );
+		$this->WP_Widget('pagednav', __('Paged Navigation Links'), $widget_ops);
+	}
+
+	function widget( $args, $instance ) {
+		extract( $args );
+
+		wp_reset_query();
+
+		global $wp_query, $wp_rewrite;
+
+		$urlbase = preg_replace( '#/page/[0-9]+?(/+)?$#' , '/', remove_query_arg( 'paged' ) );
+		$prettylinks = ( $wp_rewrite->using_permalinks() && ( !strpos( $urlbase , '?' )));
+		
+		$page_links = paginate_links( array(
+			'base' => $urlbase . '%_%',
+			'format' => $prettylinks ? user_trailingslashit( trailingslashit( 'page/%#%' )) : ( strpos( $urlbase , '?' ) ? '&paged=%#%' : '?paged=%#%' ),
+			'total' => absint( $wp_query->max_num_pages ),
+			'current' => absint( $wp_query->query_vars['paged'] ) ? absint( $wp_query->query_vars['paged'] ) : 1,
+		));
+		
+		if ( $page_links )
+			echo $before_widget . $page_links . $after_widget;
+	}
+
+}// end bSuite_Widget_Pagednav
+
+
 // register these widgets
 function bsuite_widgets_init() {
 	register_widget( 'bSuite_Widget_PostLoop' );
 
 	register_widget( 'bSuite_Widget_Crumbs' );
+
+	register_widget( 'bSuite_Widget_Pagednav' );
 
 	unregister_widget('WP_Widget_Pages');
 	register_widget( 'bSuite_Widget_Pages' );
