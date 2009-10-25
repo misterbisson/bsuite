@@ -21,7 +21,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		if( 'normal' == $instance['what'] ){
 			wp_reset_query();
 			global $wp_query;
-			$ourposts = &$wp_query;
+			$this->wp_query[ $this->number ] = $wp_query;
+			$ourposts = &$this->wp_query[ $this->number ];
 
 		}else{
 			$criteria['suppress_filters'] = TRUE;
@@ -73,7 +74,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					break;
 			}
 
-			$ourposts = new WP_Query( $criteria );
+			$this->wp_query[ $this->number ] = new WP_Query( $criteria );
+			$ourposts = &$this->wp_query[ $this->number ];
 
 	/*
 	$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
@@ -116,6 +118,10 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			}
 			echo $after_widget;
 		}
+
+global $wp_widget_factory;
+print_r( $wp_widget_factory );
+
 	}
 
 	function update( $new_instance, $old_instance ) {
@@ -422,6 +428,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 	
 	function get_templates_readdir( $template_base ){
+echo "<h2>Hi!</h2>";
 		$page_templates = array();
 		$template_dir = @ dir( $template_base );
 		if ( $template_dir ) {
@@ -797,3 +804,11 @@ function bsuite_widgets_init() {
 	register_widget( 'bSuite_Widget_Pages' );
 }
 add_action('widgets_init', 'bsuite_widgets_init', 1);
+
+/*
+Reminder to self: the widget objects and their vars can be found in here:
+
+global $wp_widget_factory;
+print_r( $wp_widget_factory );
+
+*/
