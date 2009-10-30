@@ -126,7 +126,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			echo $after_widget;
 		}
 
-		restore_current_blog();
+		$this->restore_current_blog();
 	}
 
 	function update( $new_instance, $old_instance ) {
@@ -281,7 +281,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 <?php 
 		// go back to the other blog
 		endif;
-		restore_current_blog(); 
+		$this->restore_current_blog(); 
 ?>
 
 		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
@@ -521,7 +521,12 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				(array) $this->get_templates_readdir( STYLESHEETPATH . '/templates-post/' ) 
 			);
 	}
-	
+
+	function restore_current_blog() {
+		if ( function_exists('restore_current_blog') )
+			return restore_current_blog();
+		return TRUE;
+	}
 
 }// end bSuite_Widget_Pages
 
