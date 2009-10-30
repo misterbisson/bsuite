@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 /**
  * PostLoop widget class
@@ -75,8 +75,14 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					break;
 			}
 
+			if( 0 < $instance['blog'] )
+				switch_to_blog( $instance['blog'] ); // switch to the other blog
+
 			$this->wp_query[ $this->number ] = new WP_Query( $criteria );
+
 			$ourposts = &$this->wp_query[ $this->number ];
+
+
 
 	/*
 	$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
@@ -102,7 +108,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 				$this->post_ids[ $this->number ][] = $id;
 
-				if( !isset( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] ){
+				if( !empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] ){
 ?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 <div <?php post_class() ?> id="post-<?php the_ID(); ?>">
 	<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
@@ -119,6 +125,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			}
 			echo $after_widget;
 		}
+
+		restore_current_blog();
 	}
 
 	function update( $new_instance, $old_instance ) {
@@ -127,26 +135,29 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
 		$instance['title_show'] = absint( $new_instance['title_show'] );
 		$instance['what'] = in_array( $new_instance['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $new_instance['what']: '';
-		$instance['blog'] = absint( $new_instance['blog'] );
 
-		$instance['categoriesbool'] = in_array( $new_instance['categoriesbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['categoriesbool']: '';
-		$instance['categories_in'] = array_filter( array_map( 'absint', $new_instance['categories_in'] ));
-		$instance['categories_not_in'] = array_filter( array_map( 'absint', $new_instance['categories_not_in'] ));
-		$instance['tagsbool'] = in_array( $new_instance['tagsbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['tagsbool']: '';
-		$tag_name = '';
-		$instance['tags_in'] = array();
-		foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_in'] )))) as $tag_name ){
-			if( $temp = is_term( $tag_name, 'post_tag' ))
-				$instance['tags_in'][] = $temp['term_id'];
+		if( $this->control_blogs( $instance , FALSE , FALSE ))
+		{
+			$instance['blog'] = absint( $new_instance['blog'] );
+			$instance['categoriesbool'] = in_array( $new_instance['categoriesbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['categoriesbool']: '';
+			$instance['categories_in'] = array_filter( array_map( 'absint', $new_instance['categories_in'] ));
+			$instance['categories_not_in'] = array_filter( array_map( 'absint', $new_instance['categories_not_in'] ));
+			$instance['tagsbool'] = in_array( $new_instance['tagsbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['tagsbool']: '';
+			$tag_name = '';
+			$instance['tags_in'] = array();
+			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_in'] )))) as $tag_name ){
+				if( $temp = is_term( $tag_name, 'post_tag' ))
+					$instance['tags_in'][] = $temp['term_id'];
+			}
+			$tag_name = '';
+			$instance['tags_not_in'] = array();
+			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_not_in'] )))) as $tag_name ){
+				if( $temp = is_term( $tag_name, 'post_tag' ))
+					$instance['tags_not_in'][] = $temp['term_id'];
+			}
+			$instance['post__in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__in'] )));
+			$instance['post__not_in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__not_in'] )));
 		}
-		$tag_name = '';
-		$instance['tags_not_in'] = array();
-		foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_not_in'] )))) as $tag_name ){
-			if( $temp = is_term( $tag_name, 'post_tag' ))
-				$instance['tags_not_in'][] = $temp['term_id'];
-		}
-		$instance['post__in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__in'] )));
-		$instance['post__not_in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__not_in'] )));
 		$instance['activity'] = in_array( $new_instance['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $new_instance['activity']: '';
 		$instance['age'] = in_array( $new_instance['age'], array( 'after', 'before', 'around') ) ? $new_instance['age']: '';
 		$instance['agestrtotime'] = strtotime( $new_instance['agestrtotime'] ) ? $new_instance['agestrtotime'] : '';
@@ -161,16 +172,18 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 
 	function form( $instance ) {
+		global $current_blog;
 		//Defaults
 
 		$instance = wp_parse_args( (array) $instance, 
 			array( 
 				'what' => 'normal', 
-				'template' => 'a_default_full.php' 
+				'template' => 'a_default_full.php',
+				'blog' => $current_blog->blog_id,
 				) 
 			);
-		$title = esc_attr( $instance['title'] );
 
+		$title = esc_attr( $instance['title'] );
 	?>
 
 		<p>
@@ -188,6 +201,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				<option value="any" <?php selected( $instance['what'], 'any' ); ?>><?php _e('Any content'); ?></option>
 			</select>
 		</p>
+
+<?php
+		// from what blog?
+		if( $this->control_blogs( $instance )):
+?>
 
 		<div id="<?php echo $this->get_field_id('categories_in'); ?>-container" class="container">
 		<p id="<?php echo $this->get_field_id('categories_in'); ?>-contents" class="contents">
@@ -217,7 +235,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			<?php
 			$tags_in = array();
-			foreach( $instance['tags_in'] as $tag_id ){
+			foreach( (array) $instance['tags_in'] as $tag_id ){
 				$temp = get_term( $tag_id, 'post_tag' );
 				$tags_in[] = $temp->name;
 			}
@@ -233,7 +251,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			<label for="<?php echo $this->get_field_id('tags_not_in'); ?>"><?php _e( 'With none of these tags:' ); ?></label>
 			<?php
 			$tags_not_in = array();
-			foreach( $instance['tags_not_in'] as $tag_id ){
+			foreach( (array) $instance['tags_not_in'] as $tag_id ){
 				$temp = get_term( $tag_id, 'post_tag' );
 				$tags_not_in[] = $temp->name;
 			}
@@ -260,6 +278,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		</p>
 		</div>
 
+<?php 
+		// go back to the other blog
+		endif;
+		restore_current_blog(); 
+?>
 
 		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
 			<div id="<?php echo $this->get_field_id('what'); ?>-container" class="container">
@@ -315,25 +338,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 	function holding_area(){
 ?>
-
-
-<!--
-		<p>
-			<label for="<?php echo $this->get_field_id('blog'); ?>"><?php _e( 'What to show:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('blog'); ?>" id="<?php echo $this->get_field_id('blog'); ?>" class="widefat">
-		<?php
-	//global $current_user;
-	//get_blogs_of_user( $current_user->ID );
-	// must allow for situations where the current user doesn't have access to the previously selected other blog
-		?>
-				<option value="any" <?php selected( $instance['blog'], 'any' ); ?>><?php _e('Any content'); ?></option>
-			</select>
-		</p>
--->
-
-
-
-
 	
 <!--	
 <?php
@@ -382,6 +386,61 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 
 <?php
+	}
+
+	function control_blogs( $instance , $do_output = TRUE , $switch = TRUE ){
+		// return of TRUE means the user either has permission to the selected blog, or this isn't MU
+
+//$instance['blog'] = 3;
+
+		global $current_user, $current_blog, $bsuite;
+
+		if( !$bsuite->is_mu )
+			return TRUE; // The user has permission by virtue of it not being MU
+
+		$blogs = get_blogs_of_user( $current_user->ID );
+
+		if( ! $blogs )
+			return TRUE; // There was an error, but we assume the user has permission
+
+		if( ! $instance['blog'] ) // the blog isn't set, so we assume it's the current blog
+			$instance['blog'] = $current_blog->blog_id;
+
+		foreach( (array) $blogs as $item )
+		{
+
+			if( $item->userblog_id == $instance['blog'] ) 
+			{
+				// The user has permisson in here, any return will be TRUE
+				if( count( $blogs ) < 2 ) // user has permission, but there's only one choice
+					return TRUE; // there's only one choice, and the user has permssion to it
+
+				if( $do_output )
+				{
+					echo '<div id="'. $this->get_field_id('blog') .'-container" class="container"><p id="'. $this->get_field_id('blog') .'-contents" class="container"><label for="'. $this->get_field_id('blog') .'">'. __( 'From:' ) .'</label><select name="'. $this->get_field_name('blog') .'" id="'. $this->get_field_id('blog') .'" class="widefat">';
+					foreach( get_blogs_of_user( $current_user->ID ) as $blog )
+					{
+							?><option value="<?php echo $blog->userblog_id; ?>" <?php selected( $instance['blog'], $blog->userblog_id ); ?>><?php echo $blog->userblog_id == $current_blog->blog_id ? __('This blog') : $blog->blogname; ?></option><?php
+					}
+					echo '</select></p></div>';
+				}
+
+				if( $switch && ( $instance['blog'] <> $current_blog->blog_id ))
+					switch_to_blog( $instance['blog'] ); // switch to the other blog
+
+				return TRUE; // the user has permission, and many choices
+			}
+		}
+?>
+		<div id="<?php echo $this->get_field_id('blog'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('blog'); ?>-contents" class="contents">
+			<label for="<?php echo $this->get_field_id('blog'); ?>"><?php _e( 'From:' ); ?></label>
+			<input type="text" value="<?php echo attribute_escape( get_blog_details( $instance['blog'] )->blogname ); ?>" name="<?php echo $this->get_field_name('blog'); ?>" id="<?php echo $this->get_field_id('blog'); ?>" class="widefat" disabled="disabled" />
+		</p>
+		</div>
+<?php
+
+		return FALSE; // the user doesn't have permission to the selected blog
 	}
 
 	function control_categories( $instance , $whichfield = 'categories_in' ){
