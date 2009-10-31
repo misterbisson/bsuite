@@ -108,7 +108,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 				$this->post_ids[ $this->number ][] = $id;
 
-				if( !empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] ){
+				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] ){
 ?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 <div <?php post_class() ?> id="post-<?php the_ID(); ?>">
 	<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
@@ -451,9 +451,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			// i have to do this because get_blog_list() doesn't allow me to select private blogs
 			foreach( (array) $wpdb->get_results( $wpdb->prepare("SELECT blog_id, public FROM $wpdb->blogs WHERE site_id = %d AND archived = '0' AND mature = '0' AND spam = '0' AND deleted = '0' ORDER BY registered DESC", $wpdb->siteid), ARRAY_A ) as $k => $v )
 			{
-
-print_r( $v );
-
 				$this->bloglist[ get_blog_details( $v['blog_id'] )->blogname . $k ] = array( 'blog_id' => $v['blog_id'] , 'blogname' => get_blog_details( $v['blog_id'] )->blogname . ( 1 == $v['public'] ? '' : ' ('. __('private') .')' ) );
 			}
 		}
