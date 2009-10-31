@@ -441,17 +441,20 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 
 	function get_blog_list( $current_user_id ){
-		global $current_site;
+		global $current_site, $wpdb;
 
 		if( isset( $this->bloglist ))
 			return $this->bloglist;
 
 		if( is_site_admin() )
 		{
-			foreach( (array) get_blog_list() as $k => $v )
+			// i have to do this because get_blog_list() doesn't allow me to select private blogs
+			foreach( (array) $wpdb->get_results( $wpdb->prepare("SELECT blog_id, public FROM $wpdb->blogs WHERE site_id = %d AND archived = '0' AND mature = '0' AND spam = '0' AND deleted = '0' ORDER BY registered DESC", $wpdb->siteid), ARRAY_A ) as $k => $v )
 			{
-				if( $current_site->id == get_blog_details( $v['blog_id'] )->site_id ) // only include blogs from this site
-					$this->bloglist[ get_blog_details( $v['blog_id'] )->blogname . $k ] = array( 'blog_id' => $v['blog_id'] , 'blogname' => get_blog_details( $v['blog_id'] )->blogname );
+
+print_r( $v );
+
+				$this->bloglist[ get_blog_details( $v['blog_id'] )->blogname . $k ] = array( 'blog_id' => $v['blog_id'] , 'blogname' => get_blog_details( $v['blog_id'] )->blogname . ( 1 == $v['public'] ? '' : ' ('. __('private') .')' ) );
 			}
 		}
 		else
