@@ -391,14 +391,12 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	function control_blogs( $instance , $do_output = TRUE , $switch = TRUE ){
 		// return of TRUE means the user either has permission to the selected blog, or this isn't MU
 
-//$instance['blog'] = 3;
-
 		global $current_user, $current_blog, $bsuite;
 
 		if( !$bsuite->is_mu )
 			return TRUE; // The user has permission by virtue of it not being MU
 
-		$blogs = get_blogs_of_user( $current_user->ID );
+		$blogs = $this->get_blog_list( $current_user->ID );
 
 		if( ! $blogs )
 			return TRUE; // There was an error, but we assume the user has permission
@@ -408,8 +406,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 		foreach( (array) $blogs as $item )
 		{
-
-			if( $item->userblog_id == $instance['blog'] ) 
+			if( $item['blog_id'] == $instance['blog'] ) 
 			{
 				// The user has permisson in here, any return will be TRUE
 				if( count( $blogs ) < 2 ) // user has permission, but there's only one choice
@@ -418,9 +415,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				if( $do_output )
 				{
 					echo '<div id="'. $this->get_field_id('blog') .'-container" class="container"><p id="'. $this->get_field_id('blog') .'-contents" class="container"><label for="'. $this->get_field_id('blog') .'">'. __( 'From:' ) .'</label><select name="'. $this->get_field_name('blog') .'" id="'. $this->get_field_id('blog') .'" class="widefat">';
-					foreach( get_blogs_of_user( $current_user->ID ) as $blog )
+					foreach( $this->get_blog_list( $current_user->ID ) as $blog )
 					{
-							?><option value="<?php echo $blog->userblog_id; ?>" <?php selected( $instance['blog'], $blog->userblog_id ); ?>><?php echo $blog->userblog_id == $current_blog->blog_id ? __('This blog') : $blog->blogname; ?></option><?php
+							?><option value="<?php echo $blog['blog_id']; ?>" <?php selected( $instance['blog'], $blog['blog_id'] ); ?>><?php echo $blog['blog_id'] == $current_blog->blog_id ? __('This blog') : $blog['blogname']; ?></option><?php
 					}
 					echo '</select></p></div>';
 				}
@@ -441,6 +438,32 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 <?php
 
 		return FALSE; // the user doesn't have permission to the selected blog
+	}
+
+	function get_blog_list( $current_user_id ){
+		global $current_site;
+
+		if( isset( $this->bloglist ))
+			return $this->bloglist;
+
+		if( is_site_admin() )
+		{
+			foreach( (array) get_blog_list() as $k => $v )
+			{
+				if( $current_site->id == get_blog_details( $v['blog_id'] )->site_id ) // only include blogs from this site
+					$this->bloglist[ get_blog_details( $v['blog_id'] )->blogname . $k ] = array( 'blog_id' => $v['blog_id'] , 'blogname' => get_blog_details( $v['blog_id'] )->blogname );
+			}
+		}
+		else
+		{
+			foreach( (array) get_blogs_of_user( $current_user_id ) as $k => $v )
+			{
+				$this->bloglist[ get_blog_details( $v->userblog_id )->blogname . $k ] = array( 'blog_id' => $v->userblog_id , 'blogname' => $v->blogname );
+			}
+		}
+
+		ksort( $this->bloglist );
+		return $this->bloglist;
 	}
 
 	function control_categories( $instance , $whichfield = 'categories_in' ){
