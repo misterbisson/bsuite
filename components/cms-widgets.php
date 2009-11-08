@@ -574,7 +574,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 			global $post;
 		}
 
-		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
+		$title = apply_filters('widget_title', empty( $instance['title'] ) ? FALSE : $instance['title']);
 		$homelink = empty( $instance['homelink'] ) ? '' : $instance['homelink'];
 		$sortby = empty( $instance['sortby'] ) ? 'menu_order' : $instance['sortby'];
 		$exclude = empty( $instance['exclude'] ) ? '' : $instance['exclude'];
