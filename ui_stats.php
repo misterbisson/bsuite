@@ -40,16 +40,16 @@ $date  = date("Y-m-d", mktime(0, 0, 0, date("m")  , date("d") - $bstat_period, d
 
 ?>
 <table><tr valign='top'>
-<td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $bsuite->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
+<td><h4>Today's Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $bsuite->hits_targets WHERE hit_date = CURDATE() AND object_blog = ". absint( $blog_id ) ." AND object_type IN (0,1)"); ?></ul></td>
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<td><h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $bsuite->hits_targets WHERE hit_date > '$date' AND object_type IN (0,1)"); ?></ul></td>
+<td><h4>Avg Daily Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT((SUM(hit_count)/ ((TO_DAYS(CURDATE()) - TO_DAYS(MIN(hit_date))) + 1)), 0) FROM $bsuite->hits_targets WHERE hit_date > '$date' AND object_blog = ". absint( $blog_id ) ." AND object_type IN (0,1)"); ?></ul></td>
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<td><h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $bsuite->hits_targets WHERE hit_date = CURDATE() AND object_type IN (0,1)"); ?></ul></td>
+<td><h4>Today's Prediction</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count) * (86400/TIME_TO_SEC(TIME(NOW()))), 0) FROM $bsuite->hits_targets WHERE hit_date = CURDATE() AND object_blog = ". absint( $blog_id ) ." AND object_type IN (0,1)"); ?></ul></td>
 <td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 
-<td><h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $bsuite->hits_targets WHERE object_type IN (0,1)"); ?></ul></td>
+<td><h4>Total Page Loads</h4><ul><?php echo $wpdb->get_var("SELECT FORMAT(SUM(hit_count), 0) FROM $bsuite->hits_targets WHERE object_type IN (0,1) AND object_blog = ". absint( $blog_id )); ?></ul></td>
 </tr></table>
 <?php
 
@@ -74,15 +74,22 @@ $dates = $wpdb->get_col( "SELECT sess_date
 	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	GROUP BY sess_date, sess_hour" );
 
-$sessions_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAMP( CONCAT( sess_date, ' ', sess_hour, ':00:00' )) AS sess_timestamp
-	FROM (
-		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
-		FROM $bsuite->hits_sessions
-		ORDER BY sess_id DESC
-		LIMIT 12500
-	) a
-	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
-	GROUP BY sess_date, sess_hour" );
+$sessions_db = $wpdb->get_results( "SELECT hit_count, sess_timestamp
+	FROM(
+		SELECT COUNT(*) AS hit_count, UNIX_TIMESTAMP( CONCAT( sess_date, ' ', sess_hour, ':00:00' )) AS sess_timestamp, sess_id
+			FROM (
+				SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
+				FROM $bsuite->hits_sessions
+				ORDER BY sess_id DESC
+				LIMIT 12500
+			) a
+			WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
+			GROUP BY sess_date, sess_hour
+	) s
+	LEFT JOIN $bsuite->hits_shistory h ON h.sess_id = s.sess_id
+	WHERE h.object_type IN (0,1)
+	AND h.object_blog = ". absint( $blog_id ) ."
+	" );
 
 foreach( $sessions_db as $session )
 	$sessions[$session->sess_timestamp] = $session->hit_count;
@@ -100,6 +107,7 @@ $pageloads_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAM
 	) s
 	LEFT JOIN $bsuite->hits_shistory h ON h.sess_id = s.sess_id
 	WHERE h.object_type IN (0,1)
+	AND h.object_blog = ". absint( $blog_id ) ."
 	GROUP BY sess_date, sess_hour" );
 
 
@@ -132,6 +140,7 @@ $pageloads = $wpdb->get_col( "SELECT hit_count
 	FROM ( 
 		SELECT SUM(hit_count) AS hit_count, hit_date
 		FROM $bsuite->hits_targets
+		WHERE object_blog = ". absint( $blog_id ) ."
 		GROUP BY hit_date DESC
 		LIMIT 31
 	) a" );
@@ -153,6 +162,7 @@ echo '<img src="http://chart.apis.google.com/chart?chs=550x150&cht=lc&chco=0077C
 <?php
 $results = $wpdb->get_results("SELECT post_id, hits_total, ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) )) AS hits_average, hits_recent
 	FROM $bsuite->hits_pop
+	WHERE blog_id = ". absint( $blog_id ) ." 
 	ORDER BY hits_average DESC
 	LIMIT $detail_lines", ARRAY_A);
 
@@ -168,6 +178,7 @@ else
 <?php
 $results = $wpdb->get_results("SELECT post_id, ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) )) AS hits_average, hits_recent, ( hits_recent - ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) ))) AS hits_diff
 	FROM $bsuite->hits_pop
+	WHERE blog_id = ". absint( $blog_id ) ." 
 	HAVING hits_diff > 0
 	ORDER BY hits_diff DESC
 	LIMIT $detail_lines", ARRAY_A);
@@ -184,6 +195,7 @@ else
 <?php
 $results = $wpdb->get_results("SELECT post_id, ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) )) AS hits_average, hits_recent, ( hits_recent - ROUND( hits_total / ( TO_DAYS( NOW() ) - TO_DAYS( date_start ) ))) AS hits_diff
 	FROM $bsuite->hits_pop
+	WHERE blog_id = ". absint( $blog_id ) ." 
 	HAVING hits_diff < 0
 	ORDER BY hits_diff ASC
 	LIMIT $detail_lines", ARRAY_A);
@@ -217,6 +229,7 @@ $results = $wpdb->get_results("SELECT hit_count, hit_avg, name
 		SELECT object_id, SUM(hit_count) AS hit_count, AVG(hit_count) AS hit_avg
 		FROM $bsuite->hits_targets
 		WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 5 DAY ))
+		AND object_blog = ". absint( $blog_id ) ."
 		AND object_type = 1
 		GROUP BY object_id
 		ORDER BY hit_count DESC
@@ -249,6 +262,7 @@ $results = $wpdb->get_results("SELECT name, object_id, object_type, COUNT(*) AS 
 		) a
 		INNER JOIN $bsuite->hits_shistory b ON a.sess_id = b.sess_id
 		WHERE b.object_type IN (0, 1)
+		AND object_blog = ". absint( $blog_id ) ."
 		GROUP BY sess_id
 		LIMIT 2500
 	) c
@@ -302,6 +316,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 			SELECT object_id, SUM(hit_count) AS hit_count
 			FROM $bsuite->hits_targets
 			WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 1 MONTH ))
+			AND object_blog = ". absint( $blog_id ) ."
 			AND object_type = 0
 			GROUP BY object_id
 			ORDER BY hit_count DESC
@@ -336,6 +351,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 			SELECT object_id, SUM(hit_count) AS hit_count
 			FROM $bsuite->hits_targets
 			WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 1 DAY ))
+			AND object_blog = ". absint( $blog_id ) ."
 			AND object_type = 0
 			GROUP BY object_id
 			ORDER BY hit_count DESC
@@ -370,6 +386,7 @@ $results = $wpdb->get_results("SELECT tt.term_id, name, taxonomy, hit_count, (hi
 			SELECT object_id, SUM(hit_count) AS hit_count
 			FROM $bsuite->hits_targets
 			WHERE hit_date >= DATE( DATE_SUB( NOW(), INTERVAL 3 DAY ))
+			AND object_blog = ". absint( $blog_id ) ."
 			AND object_type = 0
 			GROUP BY object_id
 			ORDER BY hit_count DESC

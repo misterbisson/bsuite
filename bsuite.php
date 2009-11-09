@@ -11,18 +11,18 @@ Author URI: http://maisonbisson.com/blog/
 class bSuite {
 
 	function bSuite(){
-
 		global $wpdb;
+
 		$this->search_table = $wpdb->prefix . 'bsuite4_search';
 
-		$this->hits_incoming = $wpdb->prefix . 'bsuite4_hits_incoming';
-		$this->hits_terms = $wpdb->prefix . 'bsuite4_hits_terms';
-		$this->hits_targets = $wpdb->prefix . 'bsuite4_hits_targets';
-		$this->hits_searchphrases = $wpdb->prefix . 'bsuite4_hits_searchphrases';
-//		$this->hits_searchwords = $wpdb->prefix . 'bsuite4_hits_searchwords';
-		$this->hits_sessions = $wpdb->prefix . 'bsuite4_hits_sessions';
-		$this->hits_shistory = $wpdb->prefix . 'bsuite4_hits_shistory';
-		$this->hits_pop = $wpdb->prefix . 'bsuite4_hits_pop';
+		$this->hits_incoming = ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsuite4_hits_incoming';
+		$this->hits_terms = ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsuite4_hits_terms';
+		$this->hits_targets = ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsuite4_hits_targets';
+		$this->hits_searchphrases = ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsuite4_hits_searchphrases';
+//		$this->hits_searchwords = ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsuite4_hits_searchwords';
+		$this->hits_sessions = ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsuite4_hits_sessions';
+		$this->hits_shistory = ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsuite4_hits_shistory';
+		$this->hits_pop = ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsuite4_hits_pop';
 		
 		$this->loadavg = $this->get_loadavg();
 
@@ -1356,7 +1356,7 @@ bsuite.log();
 	}
 
 	function bstat_migrator(){
-		global $wpdb;
+		global $wpdb, $blog_id;
 
 		if( !$this->get_lock( 'migrator' ))
 			return( TRUE );
@@ -1368,10 +1368,9 @@ bsuite.log();
 		update_option( 'bsuite_doing_migration', time() + 250 );
 		$status = get_option ( 'bsuite_doing_migration_status' );
 
-		$getcount = get_option( 'bsuite_migration_count' );
+		$getcount =  1 < get_option( 'bsuite_migration_count' ) ? absint( get_option( 'bsuite_migration_count' )) : 100;
 		$since = date('Y-m-d H:i:s', strtotime('-1 minutes'));
 
-		$res = $targets = $searchwords = $shistory = array();
 		$res = $wpdb->get_results( "SELECT * 
 			FROM $this->hits_incoming
 			WHERE in_time < '$since'
@@ -1390,6 +1389,14 @@ bsuite.log();
 			if( $hit->in_session )
 				$session_id = $this->bstat_insert_session( $hit );
 
+			$hit->in_blog = absint( $hit->in_blog );
+			$switch_blog = FALSE;
+			if( absint( $blog_id ) <> $hit->in_blog )
+			{
+				$switch_blog = TRUE;
+				switch_to_blog( $hit->in_blog );
+			}
+
 			$object_id = url_to_postid( $hit->in_to );
 
 			// determine the target
@@ -1397,26 +1404,29 @@ bsuite.log();
 				$object_id = $this->bstat_insert_term( $hit->in_to );
 				$object_type = 1;
 			}
-			$targets[] = "($object_id, $object_type, 1, '$hit->in_time')";
+			$targets[] = "($hit->in_blog, $object_id, $object_type, 1, '$hit->in_time')";
 
 			// look for search words
 			if( ( $referers = implode( $this->get_search_terms( $hit->in_from ), ' ') ) && ( 0 < strlen( $referers ))) {
 				$term_id = $this->bstat_insert_term( $referers );
-				$searchwords[] = "($object_id, $object_type, $term_id, 1)";
+				$searchwords[] = "($hit->in_blog, $object_id, $object_type, $term_id, 1)";
 			}
 
 			if( $session_id ){
 				if( $referers )
-					$shistory[] = "($session_id, $term_id, 2)";
+					$shistory[] = "($session_id, $hit->in_blog, $term_id, 2)";
 
 				if( $this->session_new ){
 					$in_from = $this->bstat_insert_term( $hit->in_from );
 					if( $referers )
-						$shistory[] = "($session_id, $in_from, 3)";
+						$shistory[] = "($session_id, $hit->in_blog, $in_from, 3)";
 				}
 
-				$shistory[] = "($session_id, $object_id, $object_type)";
+				$shistory[] = "($session_id, $hit->in_blog, $object_id, $object_type)";
 			}
+
+			if( $switch_blog )
+				restore_current_blog( $hit->in_blog );
 		}
 
 		$status['count_targets'] = count( $targets );
@@ -1425,7 +1435,7 @@ bsuite.log();
 		update_option( 'bsuite_doing_migration_status', $status );
 
 		if( count( $targets ) && !$status['did_targets'] ){
-			if ( false === $wpdb->query( "INSERT INTO $this->hits_targets (object_id, object_type, hit_count, hit_date) VALUES ". implode( $targets, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
+			if ( false === $wpdb->query( "INSERT INTO $this->hits_targets (object_blog, object_id, object_type, hit_count, hit_date) VALUES ". implode( $targets, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_target into the database'), $wpdb->last_error);
 
 			$status['did_targets'] = 1 ;
@@ -1433,7 +1443,7 @@ bsuite.log();
 		}
 
 		if( count( $searchwords ) && !$status['did_searchwords'] ){
-			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchphrases (object_id, object_type, term_id, hit_count) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
+			if ( false === $wpdb->query( "INSERT INTO $this->hits_searchphrases (object_blog, object_id, object_type, term_id, hit_count) VALUES ". implode( $searchwords, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_searchword into the database'), $wpdb->last_error);
 
 			$status['did_searchwords'] = 1;
@@ -1441,7 +1451,7 @@ bsuite.log();
 		}
 
 		if( count( $shistory ) && !$status['did_shistory'] ){
-			if ( false === $wpdb->query( "INSERT INTO $this->hits_shistory (sess_id, object_id, object_type) VALUES ". implode( $shistory, ',' ) .';' ))
+			if ( false === $wpdb->query( "INSERT INTO $this->hits_shistory (sess_id, object_blog, object_id, object_type) VALUES ". implode( $shistory, ',' ) .';' ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_session_history into the database'), $wpdb->last_error);
 
 			$status['did_shistory'] = count( $shistory );
@@ -1458,8 +1468,8 @@ bsuite.log();
 		if ( get_option( 'bsuite_doing_migration_popr') < time() && $this->get_lock( 'popr' )){
 			if ( get_option( 'bsuite_doing_migration_popd') < time() && $this->get_lock( 'popd' ) ){
 				$wpdb->query( "TRUNCATE $this->hits_pop" );
-				$wpdb->query( "INSERT INTO $this->hits_pop (post_id, date_start, hits_total)
-					SELECT object_id AS post_id, MIN(hit_date) AS date_start, SUM(hit_count) AS hits_total
+				$wpdb->query( "INSERT INTO $this->hits_pop (blog_id, post_id, date_start, hits_total)
+					SELECT object_blog AS blog_id, object_id AS post_id, MIN(hit_date) AS date_start, SUM(hit_count) AS hits_total
 					FROM $this->hits_targets
 					WHERE object_type = 0
 					AND hit_date >= DATE_SUB( NOW(), INTERVAL 45 DAY )
@@ -1468,7 +1478,7 @@ bsuite.log();
 			}
 			$wpdb->query( "UPDATE $this->hits_pop p
 				LEFT JOIN (
-					SELECT object_id, COUNT(*) AS hit_count
+					SELECT object_blog, object_id, COUNT(*) AS hit_count
 					FROM (
 						SELECT sess_id, sess_date
 						FROM (
@@ -1481,8 +1491,8 @@ bsuite.log();
 					) s
 					LEFT JOIN $this->hits_shistory h ON h.sess_id = s.sess_id
 					WHERE h.object_type = 0
-					GROUP BY object_id
-				) h ON h.object_id = p.post_id
+					GROUP BY object_blog, object_id
+				) h ON ( h.object_id = p.post_id AND h.object_blog = p.blog_id )
 				SET hits_recent = h.hit_count" );
 			update_option( 'bsuite_doing_migration_popr', time() + 1500 );
 		}
@@ -1614,7 +1624,7 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	function post_hits( $args = '' ) {
-		global $wpdb;
+		global $wpdb, $blog_id;
 
 		$defaults = array(
 			'return' => 'formatted',
@@ -1635,6 +1645,7 @@ $engine = $this->get_search_engine( $ref );
 			FORMAT(AVG(hit_count), 0) AS average
 			FROM $this->hits_targets
 			WHERE 1=1
+			AND object_blog = ". absint( $blog_id ) ."
 			$post_id
 			AND object_type = 0
 			$date
@@ -1658,7 +1669,7 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	function pop_posts( $args = '' ) {
-		global $wpdb, $bsuite;
+		global $wpdb, $bsuite, $blog_id;
 
 		if( !$this->get_lock( 'pop_posts' ))
 			return( FALSE );
@@ -1681,6 +1692,7 @@ $engine = $this->get_search_engine( $ref );
 		$request = "SELECT object_id, SUM(hit_count) AS hit_count
 			FROM $this->hits_targets
 			WHERE 1=1
+			AND object_blog = ". absint( $blog_id ) ."
 			AND object_type = 0
 			$date
 			GROUP BY object_id
@@ -1704,7 +1716,7 @@ $engine = $this->get_search_engine( $ref );
 	}
 
 	function pop_refs( $args = '' ) {
-		global $wpdb, $bsuite;
+		global $wpdb, $bsuite, $blog_id;
 
 		if( !$this->get_lock( 'pop_refs' ))
 			return( FALSE );
@@ -1722,12 +1734,13 @@ $engine = $this->get_search_engine( $ref );
 			FROM (
 				SELECT object_id
 				FROM $this->hits_shistory
+				AND object_blog = ". absint( $blog_id ) ."
 				WHERE object_type = 2
 				ORDER BY sess_id DESC
 				LIMIT 1000
 			) a
 			LEFT JOIN $this->hits_terms t ON a.object_id = t.term_id
-			GROUP BY object_id
+			GROUP BY object_blog, object_id
 			ORDER BY hit_count DESC
 			$limit";
 
@@ -2069,7 +2082,7 @@ die();
 	}
 
 	function bsuggestive_bypageviews_getposts( $id ) {
-		global $wpdb;
+		global $wpdb, $blog_id;
 
 		$id = absint( $id );
 
@@ -2087,6 +2100,7 @@ die();
 					SELECT sess_id
 					FROM $this->hits_shistory
 					WHERE object_id = $id
+					AND object_blog = ". absint( $blog_id ) ."
 					AND object_type = 0
 
 					GROUP BY sess_id DESC
@@ -2096,12 +2110,13 @@ die();
 				LEFT JOIN $this->hits_shistory h ON h.sess_id = s.sess_id
 				LEFT JOIN 
 				(
-					SELECT post_id
+					SELECT blog_id, post_id
 					FROM $this->hits_pop
 					ORDER BY hits_recent DESC
 					LIMIT 7
-				) pop ON pop.post_id = h.object_id
+				) pop ON ( pop.post_id = h.object_id AND pop.blog_id = h.object_blog )
 				WHERE h.object_id NOT IN( $ignore_ids )
+				AND h.object_blog = ". absint( $blog_id ) ."
 				AND h.object_type = 0
 				AND pop.post_id IS NULL
 				GROUP BY h.object_id
@@ -3374,6 +3389,7 @@ die;
 				in_time timestamp NOT NULL default CURRENT_TIMESTAMP,
 				in_type tinyint(4) NOT NULL default '0',
 				in_session varchar(32) default '',
+				in_blog bigint(20) NOT NULL,
 				in_to text NOT NULL,
 				in_from text,
 				in_extra text
@@ -3392,6 +3408,7 @@ die;
 
 		dbDelta("
 			CREATE TABLE $this->hits_targets (
+				object_blog bigint(20) NOT NULL,
 				object_id bigint(20) unsigned NOT NULL default '0',
 				object_type smallint(6) NOT NULL,
 				hit_count smallint(6) unsigned NOT NULL default '0',
@@ -3402,6 +3419,7 @@ die;
 
 		dbDelta("
 			CREATE TABLE $this->hits_searchphrases (
+				object_blog bigint(20) NOT NULL,
 				object_id bigint(20) unsigned NOT NULL default '0',
 				object_type smallint(6) NOT NULL,
 				term_id bigint(20) unsigned NOT NULL default '0',
@@ -3430,6 +3448,7 @@ die;
 		dbDelta("
 			CREATE TABLE $this->hits_shistory (
 				sess_id bigint(20) NOT NULL auto_increment,
+				object_blog bigint(20) NOT NULL,
 				object_id bigint(20) NOT NULL,
 				object_type smallint(6) NOT NULL,
 				KEY sess_id (sess_id),
@@ -3439,6 +3458,7 @@ die;
 
 		dbDelta("
 			CREATE TABLE $this->hits_pop (
+				blog_id bigint(20) NOT NULL,
 				post_id bigint(20) NOT NULL,
 				date_start date NOT NULL,
 				hits_total bigint(20) NOT NULL,

@@ -1,7 +1,7 @@
 <?php
 // get prereqs
 require('../../../wp-config.php');
-global $wpdb, $bsuite;
+global $wpdb, $bsuite, $blog_id;
 
 // send headers
 //@header( 'Content-Type: application/json; charset='. get_option('blog_charset') );
@@ -21,7 +21,7 @@ setcookie ( 'bsuite_session', $session, time()+1800, '/' );
 $in_extra = array(  'ip' => $_SERVER["REMOTE_ADDR"], 'br' => $_REQUEST['br'],  'bb' => $_REQUEST['bb'],  'bl' => $_REQUEST['bl'],  'bc' => $_REQUEST['bc'],  'ba' => urlencode( $_SERVER['HTTP_USER_AGENT'] ) );
 
 // insert the hit
-$wpdb->insert( $bsuite->hits_incoming, array( 'in_type' => '0', 'in_session' => $session, 'in_to' => $_SERVER['HTTP_REFERER'] , 'in_from' => $_REQUEST['pr'], 'in_extra' => serialize( $in_extra )));
+$wpdb->insert( $bsuite->hits_incoming, array( 'in_type' => '0', 'in_session' => $session, 'in_blog' => absint( $blog_id ), 'in_to' => $_SERVER['HTTP_REFERER'] , 'in_from' => $_REQUEST['pr'], 'in_extra' => serialize( $in_extra )));
 
 // output useful data
 if( get_option('bsuite_swhl') && ( $searchterms = $bsuite->get_search_terms( $_REQUEST['pr'] ))){
@@ -42,4 +42,3 @@ if( get_option('bsuite_swhl') && ( $searchterms = $bsuite->get_search_terms( $_R
 print_r($wpdb->queries);
 print_r( array( 'count_queries' => $wpdb->num_queries , 'count_seconds' => timer_stop(1) ));
 */
-?>
