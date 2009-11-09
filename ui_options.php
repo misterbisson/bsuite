@@ -154,9 +154,9 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 <th scope="row"><?php _e('Cron settings', 'bsuite') ?></th>
 <td>
 <label for="bsuite_migration_interval"><?php _e('Seconds between migrations', 'bsuite'); ?></label>
-<input name="bsuite_migration_interval" type="text" id="bsuite_migration_interval" value="<?php form_option('bsuite_migration_interval'); ?>" size="6" />
+<input name="bsuite_migration_interval" type="text" id="bsuite_migration_interval" value="<?php absint( get_site_option('bsuite_migration_interval')); ?>" size="6" />
 <label for="bsuite_migration_count"><?php _e('Maximum number of items to process', 'bsuite'); ?></label>
-<input name="bsuite_migration_count" type="text" id="bsuite_migration_count" value="<?php form_option('bsuite_migration_count'); ?>" size="6" />
+<input name="bsuite_migration_count" type="text" id="bsuite_migration_count" value="<?php absint( get_site_option('bsuite_migration_count')); ?>" size="6" />
 </td>
 </tr>
 
@@ -164,7 +164,7 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 <th scope="row"><?php _e('Load awareness', 'bsuite') ?></th>
 <td>
 <label for="bsuite_load_max"><?php _e('Limit background processing when system load average is over', 'bsuite'); ?></label>
-<input name="bsuite_load_max" type="text" id="bsuite_load_max" value="<?php form_option('bsuite_load_max'); ?>" size="6" />
+<input name="bsuite_load_max" type="text" id="bsuite_load_max" value="<?php absint( get_site_option('bsuite_load_max')); ?>" size="6" />
 </td>
 </tr>
 </table>
