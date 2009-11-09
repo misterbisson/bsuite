@@ -2207,7 +2207,7 @@ die;
 	// cron utility functions
 	//
 	function cron_reccurences( $schedules ) {
-		$schedules['bsuite_interval'] = array('interval' => get_option( 'bsuite_migration_interval' ), 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
+		$schedules['bsuite_interval'] = array('interval' => ( get__site_option( 'bsuite_migration_interval' ) ? get_site_option( 'bsuite_migration_interval' ) : 90 ), 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
 		return( $schedules );
 	}
 
