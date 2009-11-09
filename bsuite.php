@@ -1391,7 +1391,7 @@ bsuite.log();
 
 			$hit->in_blog = absint( $hit->in_blog );
 			$switch_blog = FALSE;
-			if( absint( $blog_id ) <> $hit->in_blog )
+			if( function_exists( 'switch_to_blog' ) && absint( $blog_id ) <> $hit->in_blog )
 			{
 				$switch_blog = TRUE;
 				switch_to_blog( $hit->in_blog );
@@ -1425,7 +1425,7 @@ bsuite.log();
 				$shistory[] = "($session_id, $hit->in_blog, $object_id, $object_type)";
 			}
 
-			if( $switch_blog )
+			if( $switch_blog && function_exists( 'restore_current_blog' ) )
 				restore_current_blog( $hit->in_blog );
 		}
 
