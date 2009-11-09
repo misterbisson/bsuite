@@ -39,9 +39,9 @@ if($_REQUEST['Options'] == __('Rebuild bSuite search index', 'bsuite')){
 	print_r( $wp_rewrite->rewrite_rules() );
 	echo '</pre></div>';
 }else if($_REQUEST['Options'] == __('Force Stats Migration', 'bsuite')){
-	update_option( 'bsuite_doing_migration', 0 );
-	update_option( 'bsuite_doing_migration_popd', 0 );
-	update_option( 'bsuite_doing_migration_popr', 0 );
+	update_site_option( 'bsuite_doing_migration', 0 );
+	update_site_option( 'bsuite_doing_migration_popd', 0 );
+	update_site_option( 'bsuite_doing_migration_popr', 0 );
 
 	$bsuite->bstat_migrator();
 	echo '<div class="updated"><p><strong>' . __('Completed stats migration', 'bsuite') . '</strong></p></div>';

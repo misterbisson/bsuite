@@ -25,7 +25,7 @@ if( !isset( $wpdb ) || !isset( $bsuite ) )
 
 require_once (ABSPATH . WPINC . '/rss.php');
 
-update_option('bsuite_doing_migration', time() + 300 );
+update_site_option('bsuite_doing_migration', time() + 300 );
 ?>
 
 
