@@ -122,7 +122,7 @@ class bSuite {
 
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
-		if( $this->loadavg < get_option( 'bsuite_load_max' )){ // only do cron if load is low-ish
+		if( $this->loadavg < get_site_option( 'bsuite_load_max' )){ // only do cron if load is low-ish
 			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
 			if( get_option( 'bsuite_searchsmart' ))
 				add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
@@ -3312,7 +3312,7 @@ die;
 	// administrivia
 	function activate() {
 
-		update_option('bsuite_doing_migration', time() + 7200 );
+		update_site_option('bsuite_doing_migration', time() + 7200 );
 
 		$this->createtables();
 		$this->cron_register();
@@ -3333,14 +3333,14 @@ die;
 		if(!get_option('bsuite_insert_css'))
 			update_option('bsuite_insert_css', TRUE);
 
-		if(!get_option('bsuite_migration_interval'))
-			update_option('bsuite_migration_interval', 90);
+		if(!get_site_option('bsuite_migration_interval'))
+			update_site_option('bsuite_migration_interval', 90);
 
-		if(!get_option('bsuite_migration_count'))
-			update_option('bsuite_migration_count', 100);
+		if(!get_site_option('bsuite_migration_count'))
+			update_site_option('bsuite_migration_count', 100);
 
-		if(!get_option('bsuite_load_max'))
-			update_option('bsuite_load_max', 4);
+		if(!get_site_option('bsuite_load_max'))
+			update_site_option('bsuite_load_max', 4);
 
 
 		// allow authors to edit their own pages by default
