@@ -568,11 +568,22 @@ class bSuite_Widget_Pages extends WP_Widget {
 	function widget( $args, $instance ) {
 		extract( $args );
 
-		if(( $instance['startpage'] == -1 ) && is_singular() ){
-			global $wp_query;
-			setup_postdata( $wp_query->post );
-			global $post;
+		if( $instance['startpage'] == -1 )
+		{
+			if( is_singular() )
+			{
+				global $wp_query;
+				setup_postdata( $wp_query->post );
+				global $post;
+			}
+			else
+			{
+				return;
+			}
 		}
+
+		if( is_404() )
+			$instance['expandtree'] = 0;
 
 		$title = apply_filters('widget_title', empty( $instance['title'] ) ? FALSE : $instance['title']);
 		$homelink = empty( $instance['homelink'] ) ? '' : $instance['homelink'];
@@ -616,7 +627,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 
 				// insert this extended page tree into the larger list
 				if( !empty( $subtree )){
-					$out = preg_replace( '/<li[^>]*page-item-'. ( count( $post->ancestors ) ? end( $post->ancestors ) : $post->ID ) .'[^>]*.*?<\/li>.*?($|<li)/si', $subtree .'\1', $out );
+					$out = preg_replace( '/<li[^>]*page-item-'. ( count( $post->ancestors ) ? end( $post->ancestors ) : $post->ID ) .'[^0-9][^>]*.*?<\/li>.*?($|<li)/si', $subtree .'\1', $out );
 					reset( $post->ancestors );
 				}
 			}
