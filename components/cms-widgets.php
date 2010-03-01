@@ -19,7 +19,7 @@ class bSuite_PostLoops {
 	{
 		$this->get_instances();
 		$this->get_templates( 'post' );
-		$this->get_templates( 'response' );
+//		$this->get_templates( 'response' );
 	}
 
 
@@ -642,12 +642,13 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 	function bSuite_Widget_ResponseLoop() {
 		$widget_ops = array('classname' => 'widget_responseloop', 'description' => __( 'Show comments and response tools') );
 		$this->WP_Widget('responseloop', __('Comment/Response Loop'), $widget_ops);
-
+/*
 		global $postloops;
 		if( ! is_array( $postloops->templates_response ))
 			$postloops->get_templates( 'response' );
 
 		$this->response_templates = &$postloops->templates_response;
+*/
 	}
 
 	function widget( $args, $instance ) {
