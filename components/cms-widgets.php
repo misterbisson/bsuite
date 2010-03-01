@@ -17,7 +17,13 @@ class bSuite_PostLoops {
 
 	function bSuite_PostLoops()
 	{
+		add_action( 'init', array( &$this, 'init' ));
+	}
+
+	function init()
+	{
 		$this->get_instances();
+
 		$this->get_templates( 'post' );
 //		$this->get_templates( 'response' );
 	}
@@ -114,8 +120,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$this->WP_Widget('postloop', __('Post Loop'), $widget_ops);
 
 		global $postloops;
-		if( ! is_array( $postloops->templates_post ))
-			$postloops->get_templates( 'post' );
+//		if( ! is_array( $postloops->templates_post ))
+//			$postloops->get_templates( 'post' );
 
 		$this->post_templates = &$postloops->templates_post;
 	}
