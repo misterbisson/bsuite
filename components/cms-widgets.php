@@ -1,6 +1,109 @@
 <?php
 
 /**
+ * PostLoops class
+ *
+ */
+class bSuite_PostLoops {
+
+	// instances
+	var $instances;
+
+	// posts matched by various instances of the widget
+	var $posts; // $posts[ $loop_id ][ $blog_id ] = $post_id
+
+	// terms from the posts in each instance
+	var $tags; // $tags[ $loop_id ][ $blog_id ][ $term_taxonomy_id ] = $count
+
+	function bSuite_PostLoops()
+	{
+		$this->get_instances();
+		$this->get_templates( 'post' );
+		$this->get_templates( 'response' );
+	}
+
+
+	function get_instances()
+	{
+		global $current_blog;
+
+		$options = get_option( 'widget_postloop' );
+
+		// add an entry for the default conent
+		$options[-1] = array( 
+			'title' => 'The default content',
+			'blog' => absint( $current_blog ),
+		);
+
+		foreach( $options as $number => $option )
+		{
+			if( is_integer( $number ))
+			{
+				$option['title'] = empty( $option['title'] ) ? 'Instance #'. $number : wp_filter_nohtml_kses( $option['title'] );
+				$this->instances[ $number ] = $option;
+			}
+		}
+
+		return $this->instances;
+	}
+
+	function get_templates_readdir( $template_base ){
+		$page_templates = array();
+		$template_dir = @ dir( $template_base );
+		if ( $template_dir ) {
+			while ( ( $file = $template_dir->read() ) !== false ) {
+				if ( preg_match('|^\.+$|', $file) )
+					continue;
+				if ( preg_match('|\.php$|', $file) ) {
+					$template_data = implode( '', file( $template_base . $file ));
+	
+					$name = '';
+					if ( preg_match( '|Template Name:(.*)$|mi', $template_data, $name ) )
+						if( function_exists( '_cleanup_header_comment' ))
+							$name = _cleanup_header_comment($name[1]);
+						else
+							$name = $name[1];
+	
+					if ( !empty( $name ) ) {
+						$file = basename( $file );
+						$page_templates[ $file ]['name'] = trim( $name );
+						$page_templates[ $file ]['file'] = basename( $file );
+						$page_templates[ $file ]['fullpath'] = $template_base . $file;
+					}
+				}
+			}
+			@ $template_dir->close();
+		}
+
+		return $page_templates;
+	}
+	
+	function get_templates( $type = 'post' ) {
+		$type = sanitize_file_name( $type );
+		$type_var = "templates_$type";
+
+		$this->$type_var = array_merge( 
+				(array) $this->get_templates_readdir( dirname( dirname( __FILE__ )) .'/templates-'. $type .'/' ),
+				(array) $this->get_templates_readdir( TEMPLATEPATH . '/templates-'. $type .'/' ), 
+				(array) $this->get_templates_readdir( STYLESHEETPATH . '/templates-'. $type .'/' ) 
+			);
+
+		return $this->$type_var;
+	}
+
+	function restore_current_blog() {
+		if ( function_exists('restore_current_blog') )
+			return restore_current_blog();
+		return TRUE;
+	}
+
+} //end bSuite_PostLoops
+
+// initialize that class
+$postloops = new bSuite_PostLoops();
+
+
+/**
  * PostLoop widget class
  *
  */
@@ -10,11 +113,16 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$widget_ops = array('classname' => 'widget_postloop', 'description' => __( 'Build your own post loop') );
 		$this->WP_Widget('postloop', __('Post Loop'), $widget_ops);
 
-		if( ! is_array( $this->post_templates ))
-			$this->post_templates = $this->get_templates();
+		global $postloops;
+		if( ! is_array( $postloops->templates_post ))
+			$postloops->get_templates( 'post' );
+
+		$this->post_templates = &$postloops->templates_post;
 	}
 
 	function widget( $args, $instance ) {
+		global $postloops;
+
 		extract( $args );
 
 		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
@@ -22,8 +130,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		if( 'normal' == $instance['what'] ){
 			wp_reset_query();
 			global $wp_query;
-			$this->wp_query[ $this->number ] = $wp_query;
-			$ourposts = &$this->wp_query[ $this->number ];
+
+			$ourposts = &$wp_query;
 
 		}else{
 			$criteria['suppress_filters'] = TRUE;
@@ -78,10 +186,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			if( 0 < $instance['blog'] )
 				switch_to_blog( $instance['blog'] ); // switch to the other blog
 
-			$this->wp_query[ $this->number ] = new WP_Query( $criteria );
-
-			$ourposts = &$this->wp_query[ $this->number ];
-
+			$ourposts = new WP_Query( $criteria );
 
 
 	/*
@@ -92,6 +197,13 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	
 	$options[$widget_number]['relationship'] = in_array( $widget_var['relationship'], array( 'similar', 'excluding') ) ? $widget_var['relationship']: '';
 	$options[$widget_number]['relatedto'] = array_filter( array_map( 'absint', $widget_var['relatedto'] ));
+
+
+
+		global $current_blog;
+
+print_r( reset( $postloops->posts[ $instance_id ] ));
+
 	*/
 		}
 	
@@ -106,7 +218,18 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				$ourposts->the_post();
 				global $id, $post;
 
-				$this->post_ids[ $this->number ][] = $id;
+				$instance['blog'] = absint( $instance['blog'] );
+
+				// get the matching post IDs for the $postloops object
+				$postloops->posts[ $this->number ][ $instance['blog'] ][] = $id;
+
+				$terms = get_object_term_cache( $id, (array) get_object_taxonomies( $post->post_type ) );
+				if ( empty( $terms ))
+					$terms = wp_get_object_terms( $id, (array) get_object_taxonomies( $post->post_type ) );
+
+				// get the term taxonomy IDs for the $postloops object
+				foreach( $terms as $term )
+					$postloops->terms[ $this->number ][ $instance['blog'] ][ $term->term_taxonomy_id ]++;
 
 				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] ){
 ?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
@@ -126,7 +249,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			echo $after_widget;
 		}
 
-		$this->restore_current_blog();
+		$postloops->restore_current_blog();
 	}
 
 	function update( $new_instance, $old_instance ) {
@@ -172,7 +295,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 
 	function form( $instance ) {
-		global $current_blog;
+		global $current_blog, $postloops;
 		//Defaults
 
 		$instance = wp_parse_args( (array) $instance, 
@@ -281,7 +404,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 <?php 
 		// go back to the other blog
 		endif;
-		$this->restore_current_blog(); 
+		$postloops->restore_current_blog(); 
 ?>
 
 		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
@@ -478,18 +601,18 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 	
 	function control_instances( $selected = array() ){
-		if ( !$options = get_option('widget_postloop') )
-			return FALSE;
-			if( isset( $options[ $this->number ] ))
-				unset( $options[ $this->number ] );
+		global $postloops;
+
+		// reset the instances var, in case a new widget was added
+		$postloops->get_instances();
 
 		$list = array();
-		foreach( $options as $number => $option ){
-			if( empty( $option['title'] ))
+		foreach( $postloops->instances as $number => $instance ){
+			if( $number == $this->number )
 				continue;
 
 			$list[] = '<li>
-				<label for="'. $this->get_field_id( 'relatedto-'. $number) .'"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, (array) $selected ) ? 'checked="checked"' : '' ) .' id="'. $this->get_field_id( 'relatedto-'. $number) .'" name="'. $this->get_field_name( 'relatedto' ) .'['. $number .']" /> '. $option['title'] .'<small> (id:'. $number .')</small></label>
+				<label for="'. $this->get_field_id( 'relatedto-'. $number ) .'"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, (array) $selected ) ? 'checked="checked"' : '' ) .' id="'. $this->get_field_id( 'relatedto-'. $number) .'" name="'. $this->get_field_name( 'relatedto' ) .'['. $number .']" /> '. $instance['title'] .'<small> (id:'. $number .')</small></label>
 			</li>';
 		}
 	
@@ -502,56 +625,176 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				$selected = " selected='selected'";
 			else
 				$selected = '';
-		echo "\n\t<option value=\"" .$info['file'] .'" '. $selected .'>'. $info['name'] .'</option>';
+			echo "\n\t<option value=\"" .$info['file'] .'" '. $selected .'>'. $info['name'] .'</option>';
 		endforeach;
 	}
+}// end bSuite_Widget_Postloop
+
+
+
+
+/**
+ * PostLoop widget class
+ *
+ */
+class bSuite_Widget_ResponseLoop extends WP_Widget {
+
+	function bSuite_Widget_ResponseLoop() {
+		$widget_ops = array('classname' => 'widget_responseloop', 'description' => __( 'Show comments and response tools') );
+		$this->WP_Widget('responseloop', __('Comment/Response Loop'), $widget_ops);
+
+		global $postloops;
+		if( ! is_array( $postloops->templates_response ))
+			$postloops->get_templates( 'response' );
+
+		$this->response_templates = &$postloops->templates_response;
+	}
+
+	function widget( $args, $instance ) {
+		global $wp_query, $postloops;
+
+		extract( $args );
+
+		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
+
+		if( -1 == $instance['relatedto'] )
+		{
+			wp_reset_query();			
+			if( ! $wp_query->is_singular )
+				return;
+
+			$ourposts = &$wp_query;
+		}
+		else if( is_array( $postloops->posts[ $instance['relatedto'] ] ))
+		{
+			$post_ids = reset( $postloops->posts[ $instance['relatedto'] ] );
+
+			if( 1 <> count( $post_ids ))
+				return;
+
+			$criteria['post_type'] = 'any';
+			$criteria['post__in'] = $post_ids;
+
+			$wp_query = new WP_Query( $criteria );
+
+			if( 'page' == $wp_query->post->post_type )
+				$wp_query->is_page = TRUE;
+			else
+				$wp_query->is_single = TRUE;
+
+			$wp_query->is_singular = TRUE;
+
+			$ourposts = &$wp_query;
+		}
+		else
+		{
+			return;
+		}
 	
-	function get_templates_readdir( $template_base ){
-		$page_templates = array();
-		$template_dir = @ dir( $template_base );
-		if ( $template_dir ) {
-			while ( ( $file = $template_dir->read() ) !== false ) {
-				if ( preg_match('|^\.+$|', $file) )
-					continue;
-				if ( preg_match('|\.php$|', $file) ) {
-					$template_data = implode( '', file( $template_base . $file ));
-	
-					$name = '';
-					if ( preg_match( '|Template Name:(.*)$|mi', $template_data, $name ) )
-						if( function_exists( '_cleanup_header_comment' ))
-							$name = _cleanup_header_comment($name[1]);
-						else
-							$name = $name[1];
-	
-					if ( !empty( $name ) ) {
-						$file = basename( $file );
-						$page_templates[ $file ]['name'] = trim( $name );
-						$page_templates[ $file ]['file'] = basename( $file );
-						$page_templates[ $file ]['fullpath'] = $template_base . $file;
-					}
-				}
+		if( $ourposts->have_posts() ){
+			echo str_replace( 'class="widget ', 'class="widget widget-response_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
+
+			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
+			if ( $instance['title_show'] && $title )
+				echo $before_title . $title . $after_title;
+
+			while( $ourposts->have_posts() ){
+				$ourposts->the_post();
+				global $id, $post;
+
+				comments_template();
 			}
-			@ $template_dir->close();
+			echo $after_widget;
 		}
 
-		return $page_templates;
+		wp_reset_query();			
+	}
+
+	function update( $new_instance, $old_instance ) {
+		$instance = $old_instance;
+
+		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
+		$instance['relatedto'] = intval( $new_instance['relatedto'] );
+		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
+
+		return $instance;
+	}
+
+	function form( $instance ) {
+		global $current_blog, $postloops;
+		//Defaults
+
+		$instance = wp_parse_args( (array) $instance, 
+			array( 
+				'title' => __('Comments'),
+				'relatedto' => -1,
+				'template' => 'a_default_full.php',
+				) 
+			);
+
+		$title = esc_attr( $instance['title'] );
+?>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" />
+		</p>
+
+
+		<p>
+			<label for="<?php echo $this->get_field_id('relatedto'); ?>"><?php _e( 'Show comments and response tools for:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('relatedto'); ?>" id="<?php echo $this->get_field_id('relatedto'); ?>" class="widefat">
+				<?php $this->control_instances( $instance['relatedto'] ); ?>
+			</select>
+		</p>
+<!--
+		<p>
+			<label for="<?php echo $this->get_field_id('template'); ?>"><?php _e( 'Template:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('template'); ?>" id="<?php echo $this->get_field_id('template'); ?>" class="widefat">
+				<?php $this->control_template_dropdown( $instance['template'] ); ?>
+			</select>
+		</p>
+-->
+
+<?php
+	}
+
+	function control_instances( $default = -1 ){
+		global $postloops, $current_blog;
+
+		$current_blog = absint( $current_blog );
+
+		// reset the instances var, in case a new widget was added
+		$postloops->get_instances();
+
+		$list = array();
+		foreach( $postloops->instances as $number => $instance ){
+			if( $instance['blog'] <> $current_blog )
+				continue;
+
+			if ( $default == $number )
+				$selected = " selected='selected'";
+			else
+				$selected = '';
+
+			$list[] = '<option value="'. $number .'" '. $selected .'>'. $instance['title'] .' (id:'. $number .')</option>';
+		}
+	
+		echo implode( "\n\t", $list );
 	}
 	
-	function get_templates() {
-		return array_merge( 
-				(array) $this->get_templates_readdir( dirname( dirname( __FILE__ )) .'/templates-post/' ),
-				(array) $this->get_templates_readdir( TEMPLATEPATH . '/templates-post/' ), 
-				(array) $this->get_templates_readdir( STYLESHEETPATH . '/templates-post/' ) 
-			);
+	function control_template_dropdown( $default = '' ) {
+		foreach ( $this->post_templates as $template => $info ) :
+			if ( $default == $template )
+				$selected = " selected='selected'";
+			else
+				$selected = '';
+			echo "\n\t<option value=\"" .$info['file'] .'" '. $selected .'>'. $info['name'] .'</option>';
+		endforeach;
 	}
+}// end bSuite_Widget_ResponseLoop
 
-	function restore_current_blog() {
-		if ( function_exists('restore_current_blog') )
-			return restore_current_blog();
-		return TRUE;
-	}
 
-}// end bSuite_Widget_Pages
+
 
 
 /**
@@ -890,6 +1133,7 @@ class bSuite_Widget_Pagednav extends WP_Widget {
 // register these widgets
 function bsuite_widgets_init() {
 	register_widget( 'bSuite_Widget_PostLoop' );
+	register_widget( 'bSuite_Widget_ResponseLoop' );
 
 	register_widget( 'bSuite_Widget_Crumbs' );
 
