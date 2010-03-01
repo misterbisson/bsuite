@@ -653,13 +653,14 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 	function widget( $args, $instance ) {
 		global $wp_query, $postloops;
 
+		$old_wp_query = clone $wp_query;
+
 		extract( $args );
 
 		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
 
 		if( -1 == $instance['relatedto'] )
 		{
-			wp_reset_query();			
 			if( ! $wp_query->is_singular )
 				return;
 
@@ -707,7 +708,7 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 			echo $after_widget;
 		}
 
-		wp_reset_query();			
+		$wp_query = clone $old_wp_query;
 	}
 
 	function update( $new_instance, $old_instance ) {
@@ -1113,18 +1114,30 @@ class bSuite_Widget_Pagednav extends WP_Widget {
 
 		global $wp_query, $wp_rewrite;
 
-		$urlbase = preg_replace( '#/page/[0-9]+?(/+)?$#' , '/', remove_query_arg( 'paged' ) );
-		$prettylinks = ( $wp_rewrite->using_permalinks() && ( !strpos( $urlbase , '?' )));
-		
-		$page_links = paginate_links( array(
-			'base' => $urlbase . '%_%',
-			'format' => $prettylinks ? user_trailingslashit( trailingslashit( 'page/%#%' )) : ( strpos( $urlbase , '?' ) ? '&paged=%#%' : '?paged=%#%' ),
-			'total' => absint( $wp_query->max_num_pages ),
-			'current' => absint( $wp_query->query_vars['paged'] ) ? absint( $wp_query->query_vars['paged'] ) : 1,
-		));
-		
-		if ( $page_links )
-			echo $before_widget . $page_links . $after_widget;
+		if( ! $wp_query->is_singular )
+		{
+			$urlbase = preg_replace( '#/page/[0-9]+?(/+)?$#' , '/', remove_query_arg( 'paged' ) );
+			$prettylinks = ( $wp_rewrite->using_permalinks() && ( !strpos( $urlbase , '?' )));
+			
+			$page_links = paginate_links( array(
+				'base' => $urlbase . '%_%',
+				'format' => $prettylinks ? user_trailingslashit( trailingslashit( 'page/%#%' )) : ( strpos( $urlbase , '?' ) ? '&paged=%#%' : '?paged=%#%' ),
+				'total' => absint( $wp_query->max_num_pages ),
+				'current' => absint( $wp_query->query_vars['paged'] ) ? absint( $wp_query->query_vars['paged'] ) : 1,
+			));
+			
+			if ( $page_links )
+				echo $before_widget . $page_links . $after_widget;
+		}
+		else
+		{
+			echo $before_widget;
+?>
+			<div class="alignleft"><?php previous_post_link('&laquo; %link') ?></div>
+			<div class="alignright"><?php next_post_link('%link &raquo;') ?></div>
+<?php
+			echo $after_widget;
+		}
 	}
 
 }// end bSuite_Widget_Pagednav
