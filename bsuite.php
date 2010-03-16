@@ -662,8 +662,8 @@ class bSuite {
 				}
 
 				if(($h[1] < $last) && ($h[1] >= $low)){
-					$menu .= '</ol></li>';
-					$closers--;
+					$menu .= str_repeat( '</ol></li>', $last - $h[1] );
+					$closers = $closers - ( $last - $h[1] );
 				}
 
 				$last = $h[1];
@@ -1393,11 +1393,17 @@ bsuite.log();
 		foreach( $res as $hit ){
 			$object_id = $object_type = $session_id = 0;
 
+if( $debug )
+	echo "<h2>Bamn! 1</h2>";
+
 			if( !strlen( $hit->in_to ))
 				$hit->in_to = get_option( 'siteurl' ) .'/';
 
 			if( $hit->in_session )
 				$session_id = $this->bstat_insert_session( $hit );
+
+if( $debug )
+	echo "<h2>Bamn! 2</h2>";
 
 			$hit->in_blog = absint( $hit->in_blog );
 			$switch_blog = FALSE;
@@ -1407,6 +1413,9 @@ bsuite.log();
 				switch_to_blog( $hit->in_blog );
 			}
 
+if( $debug )
+	echo "<h2>Bamn! 3 $hit->in_to</h2>";
+
 			$object_id = url_to_postid( $hit->in_to );
 
 			// determine the target
@@ -1415,6 +1424,9 @@ bsuite.log();
 				$object_type = 1;
 			}
 			$targets[] = "($hit->in_blog, $object_id, $object_type, 1, '$hit->in_time')";
+
+if( $debug )
+	echo "<h2>Bamn! 4</h2>";
 
 			// look for search words
 			if( ( $referers = implode( $this->get_search_terms( $hit->in_from ), ' ') ) && ( 0 < strlen( $referers ))) {
@@ -1434,6 +1446,9 @@ bsuite.log();
 
 				$shistory[] = "($session_id, $hit->in_blog, $object_id, $object_type)";
 			}
+
+if( $debug )
+	echo "<h2>Bamn! 5</h2>";
 
 			if( $switch_blog && function_exists( 'restore_current_blog' ) )
 				restore_current_blog( $hit->in_blog );
