@@ -1751,10 +1751,10 @@ $engine = $this->get_search_engine( $ref );
 
 		$request = "SELECT COUNT(*) AS hit_count, name
 			FROM (
-				SELECT object_id
+				SELECT object_blog, object_id
 				FROM $this->hits_shistory
-				AND object_blog = ". absint( $blog_id ) ."
-				WHERE object_type = 2
+				WHERE object_blog = ". absint( $blog_id ) ."
+				AND object_type = 2
 				ORDER BY sess_id DESC
 				LIMIT 1000
 			) a
