@@ -152,7 +152,7 @@ jQuery(document).ready(bsuite_linktome_selectall);
 ** the search word highlighting callback
 */
 function bsuite_highlight( words ) {
-	jQuery('body').each( function() {
+	jQuery('.hentry').each( function() {
 		for( var i in words.terms ) {
 			jQuery.highlight(this, words.terms[i].toUpperCase() );
 		}

@@ -122,7 +122,7 @@ class bSuite {
 
 		// cron
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
-		if( $this->loadavg < get_site_option( 'bsuite_load_max' )){ // only do cron if load is low-ish
+		if( $this->loadavg < get_option( 'bsuite_load_max' )){ // only do cron if load is low-ish
 			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
 			if( get_option( 'bsuite_searchsmart' ))
 				add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
@@ -1355,20 +1355,27 @@ bsuite.log();
 		return( $session_id );
 	}
 
-	function bstat_migrator(){
+	function bstat_migrator( $debug = FALSE )
+	{
+		if( $debug )
+			echo "<h2>Start</h2>";
+
 		global $wpdb, $blog_id;
 
 		if( !$this->get_lock( 'migrator' ))
 			return( TRUE );
 
 		// also use the options table
-		if ( get_site_option( 'bsuite_doing_migration') > time() )
+		if ( get_option( 'bsuite_doing_migration') > time() )
 			return( TRUE );
 
-		update_site_option( 'bsuite_doing_migration', time() + 250 );
-		$status = get_site_option ( 'bsuite_doing_migration_status' );
+		update_option( 'bsuite_doing_migration', time() + 250 );
+		$status = get_option ( 'bsuite_doing_migration_status' );
 
-		$getcount =  1 < get_site_option( 'bsuite_migration_count' ) ? absint( get_site_option( 'bsuite_migration_count' )) : 100;
+		if( $debug )
+			echo "<h2>Get Locks</h2>";
+
+		$getcount =  1 < get_option( 'bsuite_migration_count' ) ? absint( get_option( 'bsuite_migration_count' )) : 100;
 		$since = date('Y-m-d H:i:s', strtotime('-1 minutes'));
 
 		$res = $wpdb->get_results( "SELECT * 
@@ -1378,7 +1385,10 @@ bsuite.log();
 			LIMIT $getcount" );
 
 		$status['count_incoming'] = count( $res );
-		update_site_option( 'bsuite_doing_migration_status', $status );
+		update_option( 'bsuite_doing_migration_status', $status );
+
+		if( $debug )
+			echo "<h2>Got {$status['count_incoming']} records from incoming table</h2>";
 
 		foreach( $res as $hit ){
 			$object_id = $object_type = $session_id = 0;
@@ -1432,14 +1442,17 @@ bsuite.log();
 		$status['count_targets'] = count( $targets );
 		$status['count_searchwords'] = count( $searchwords );
 		$status['count_shistory'] = count( $shistory );
-		update_site_option( 'bsuite_doing_migration_status', $status );
+		update_option( 'bsuite_doing_migration_status', $status );
+
+		if( $debug )
+			echo "<h2>Found {$status['count_targets']} URL targets, {$status['count_searchwords']} search phrases, and {$status['count_shistory']} sessions</h2>";
 
 		if( count( $targets ) && !$status['did_targets'] ){
 			if ( false === $wpdb->query( "INSERT INTO $this->hits_targets (object_blog, object_id, object_type, hit_count, hit_date) VALUES ". implode( $targets, ',' ) ." ON DUPLICATE KEY UPDATE hit_count = hit_count + 1;" ))
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_target into the database'), $wpdb->last_error);
 
 			$status['did_targets'] = 1 ;
-			update_site_option( 'bsuite_doing_migration_status', $status );
+			update_option( 'bsuite_doing_migration_status', $status );
 		}
 
 		if( count( $searchwords ) && !$status['did_searchwords'] ){
@@ -1447,7 +1460,7 @@ bsuite.log();
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_searchword into the database'), $wpdb->last_error);
 
 			$status['did_searchwords'] = 1;
-			update_site_option( 'bsuite_doing_migration_status', $status );
+			update_option( 'bsuite_doing_migration_status', $status );
 		}
 
 		if( count( $shistory ) && !$status['did_shistory'] ){
@@ -1455,7 +1468,7 @@ bsuite.log();
 				return new WP_Error('db_insert_error', __('Could not insert bsuite_hits_session_history into the database'), $wpdb->last_error);
 
 			$status['did_shistory'] = count( $shistory );
-			update_site_option( 'bsuite_doing_migration_status', $status );
+			update_option( 'bsuite_doing_migration_status', $status );
 		}
 
 		if( count( $res )){
@@ -1465,8 +1478,11 @@ bsuite.log();
 				$wpdb->query( "OPTIMIZE TABLE $this->hits_incoming;");
 		}
 
-		if ( get_site_option( 'bsuite_doing_migration_popr') < time() && $this->get_lock( 'popr' )){
-			if ( get_site_option( 'bsuite_doing_migration_popd') < time() && $this->get_lock( 'popd' ) ){
+		if( $debug )
+			echo "<h2>Deleted records from incoming table</h2>";
+
+		if ( get_option( 'bsuite_doing_migration_popr') < time() && $this->get_lock( 'popr' )){
+			if ( get_option( 'bsuite_doing_migration_popd') < time() && $this->get_lock( 'popd' ) ){
 				$wpdb->query( "TRUNCATE $this->hits_pop" );
 				$wpdb->query( "INSERT INTO $this->hits_pop (blog_id, post_id, date_start, hits_total)
 					SELECT object_blog AS blog_id, object_id AS post_id, MIN(hit_date) AS date_start, SUM(hit_count) AS hits_total
@@ -1474,7 +1490,7 @@ bsuite.log();
 					WHERE object_type = 0
 					AND hit_date >= DATE_SUB( NOW(), INTERVAL 45 DAY )
 					GROUP BY object_id" );
-				update_site_option( 'bsuite_doing_migration_popd', time() + 64800 );
+				update_option( 'bsuite_doing_migration_popd', time() + 64800 );
 			}
 			$wpdb->query( "UPDATE $this->hits_pop p
 				LEFT JOIN (
@@ -1494,7 +1510,7 @@ bsuite.log();
 					GROUP BY object_blog, object_id
 				) h ON ( h.object_id = p.post_id AND h.object_blog = p.blog_id )
 				SET hits_recent = h.hit_count" );
-			update_site_option( 'bsuite_doing_migration_popr', time() + 1500 );
+			update_option( 'bsuite_doing_migration_popr', time() + 1500 );
 		}
 
 /*
@@ -1536,8 +1552,11 @@ bsuite.log();
 
 //print_r($wpdb->queries);
 
-		update_site_option( 'bsuite_doing_migration', 0 );
-		update_site_option( 'bsuite_doing_migration_status', array() );
+		if( $debug )
+			echo "<h2>Done</h2>";
+
+		update_option( 'bsuite_doing_migration', 0 );
+		update_option( 'bsuite_doing_migration_status', array() );
 		return(TRUE);
 	}
 
@@ -2207,7 +2226,7 @@ die;
 	// cron utility functions
 	//
 	function cron_reccurences( $schedules ) {
-		$schedules['bsuite_interval'] = array('interval' => ( get_site_option( 'bsuite_migration_interval' ) ? get_site_option( 'bsuite_migration_interval' ) : 90 ), 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
+		$schedules['bsuite_interval'] = array('interval' => ( get_option( 'bsuite_migration_interval' ) ? get_option( 'bsuite_migration_interval' ) : 90 ), 'display' => __( 'bSuite interval. Set in bSuite options page.' ));
 		return( $schedules );
 	}
 
@@ -3312,7 +3331,7 @@ die;
 	// administrivia
 	function activate() {
 
-		update_site_option('bsuite_doing_migration', time() + 7200 );
+		update_option('bsuite_doing_migration', time() + 7200 );
 
 		$this->createtables();
 		$this->cron_register();
@@ -3333,14 +3352,14 @@ die;
 		if(!get_option('bsuite_insert_css'))
 			update_option('bsuite_insert_css', TRUE);
 
-		if(!get_site_option('bsuite_migration_interval'))
-			update_site_option('bsuite_migration_interval', 90);
+		if(!get_option('bsuite_migration_interval'))
+			update_option('bsuite_migration_interval', 90);
 
-		if(!get_site_option('bsuite_migration_count'))
-			update_site_option('bsuite_migration_count', 100);
+		if(!get_option('bsuite_migration_count'))
+			update_option('bsuite_migration_count', 100);
 
-		if(!get_site_option('bsuite_load_max'))
-			update_site_option('bsuite_load_max', 4);
+		if(!get_option('bsuite_load_max'))
+			update_option('bsuite_load_max', 4);
 
 
 		// allow authors to edit their own pages by default
