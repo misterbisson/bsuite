@@ -636,7 +636,8 @@ class bSuite {
 		}
 	}
 
-	function innerindex_build($content){
+	function innerindex_build($content)
+	{
 		// find <h*> tags with IDs in the content and build an index of them
 		preg_match_all(
 			'|<h[^>]+>.+?</h[^>]+>|U',
@@ -646,22 +647,32 @@ class bSuite {
 
 		$menu = '<ol>';
 		$closers = $count = 0;
-		foreach($things[0] as $thing){
+		foreach($things[0] as $thing)
+		{
 			preg_match('|<h([0-9])|U', $thing, $h);
 			preg_match('|id="([^"]*)"|U', $thing, $anchor);
 
 			if(!$last)
 				$last = $low = $h[1];
 
-			if($anchor[1]){
-				if($h[1] > $last){
+			if($anchor[1])
+			{
+				if($h[1] > $last)
+				{
 					$menu .= '<ol>';
 					$closers++;
+
+					if( 1 < ( $h[1] - $last ))
+					{
+						$menu .= str_repeat( '<li><ol>', $h[1] - $last -1 );
+						$closers = $closers + ( $h[1] - $last -1 );
+					}
 				}else if($count){
 					$menu .= '</li>';
 				}
 
-				if(($h[1] < $last) && ($h[1] >= $low)){
+				if(($h[1] < $last) && ($h[1] >= $low))
+				{
 					$menu .= str_repeat( '</ol></li>', $last - $h[1] );
 					$closers = $closers - ( $last - $h[1] );
 				}
