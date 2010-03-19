@@ -18,6 +18,11 @@ class bSuite_PostLoops {
 	function bSuite_PostLoops()
 	{
 		add_action( 'init', array( &$this, 'init' ));
+
+		add_action( 'preprocess_comment' , array( &$this, 'preprocess_comment' ), 1 );
+		add_action( 'bsuite_response_sendmessage' , array( &$this, 'sendmessage' ), 1, 2 );
+		
+		
 	}
 
 	function init()
@@ -25,7 +30,7 @@ class bSuite_PostLoops {
 		$this->get_instances();
 
 		$this->get_templates( 'post' );
-//		$this->get_templates( 'response' );
+		$this->get_templates( 'response' );
 	}
 
 
@@ -53,7 +58,32 @@ class bSuite_PostLoops {
 		return $this->instances;
 	}
 
-	function get_templates_readdir( $template_base ){
+	function get_instances_response()
+	{
+		global $current_blog;
+
+		$options = get_option( 'widget_responseloop' );
+
+		// add an entry for the default conent
+		$options[-1] = array( 
+			'title' => 'The default content',
+			'blog' => absint( $current_blog ),
+		);
+
+		foreach( $options as $number => $option )
+		{
+			if( is_integer( $number ))
+			{
+				$option['title'] = empty( $option['title'] ) ? 'Instance #'. $number : wp_filter_nohtml_kses( $option['title'] );
+				$this->instances_response[ md5( (string) $number . $option['template'] . $option['email'] ) ] = $option;
+			}
+		}
+
+		return $this->instances_response;
+	}
+
+	function get_templates_readdir( $template_base )
+	{
 		$page_templates = array();
 		$template_dir = @ dir( $template_base );
 		if ( $template_dir ) {
@@ -84,7 +114,8 @@ class bSuite_PostLoops {
 		return $page_templates;
 	}
 	
-	function get_templates( $type = 'post' ) {
+	function get_templates( $type = 'post' )
+	{
 		$type = sanitize_file_name( $type );
 		$type_var = "templates_$type";
 
@@ -97,7 +128,92 @@ class bSuite_PostLoops {
 		return $this->$type_var;
 	}
 
-	function restore_current_blog() {
+	function preprocess_comment( $comment )
+	{
+		$this->get_instances_response();
+
+		do_action(
+			'bsuite_response_'. sanitize_title_with_dashes( preg_replace( '/\.[^\.]*$/' , '', $this->instances_response[ $_REQUEST['bsuite_responsekey'] ]['template'] )),
+			$comment,
+			$this->instances_response[ $_REQUEST['bsuite_responsekey'] ]
+		);
+		
+		return( $comment );
+	}
+
+	function sendmessage( $comment , $input )
+	{
+		add_action( 'comment_post', array( &$this, '_sendmessage' ));
+		add_filter( 'pre_comment_approved', create_function( '$a', 'return \'message\';'), 1 );
+	}
+
+	function _sendmessage( $comment_id , $approved )
+	{
+		if ( 'spam' == $approved )
+			return;
+
+		$also_notify = sanitize_email( $this->instances_response[ $_REQUEST['bsuite_responsekey'] ]['email'] );
+
+		$comment = get_comment( $comment_id );
+		$post    = get_post( $comment->comment_post_ID );
+		$user    = get_userdata( $post->post_author );
+		$current_user = wp_get_current_user();
+	
+		if(( '' == $also_notify ) && ('' == $user->user_email )) return false; // If there's no email to send the comment to
+	
+		$comment_author_domain = @gethostbyaddr( $comment->comment_author_IP );
+	
+		$blogname = get_option('blogname');
+	
+		/* translators: 1: post id, 2: post title */
+		$notify_message  = sprintf( __('New message on #%1$s "%2$s"'), $comment->comment_post_ID, $post->post_title ) . "\r\n";
+		/* translators: 1: comment author, 2: author IP, 3: author domain */
+		$notify_message .= sprintf( __('Author : %1$s (IP: %2$s , %3$s)'), $comment->comment_author, $comment->comment_author_IP, $comment_author_domain ) . "\r\n";
+		$notify_message .= sprintf( __('E-mail : %s'), $comment->comment_author_email ) . "\r\n";
+		$notify_message .= sprintf( __('URL    : %s'), $comment->comment_author_url ) . "\r\n";
+   		$notify_message .= __('Message: ') . "\r\n\r\n" . $comment->comment_content . "\r\n\r\n";
+		$notify_message .=  __('Network location:') . "\r\nhttp://ws.arin.net/cgi-bin/whois.pl?queryinput=$comment->comment_author_IP\r\n\r\n";
+		$notify_message .= __('You can see all messages on this post here: ') . "\r\n";
+		$notify_message .= admin_url( '/wp-admin/edit-comments.php?p='. $post->ID ) ."\r\n\r\n";
+
+		/* translators: 1: blog name, 2: post title */
+		$subject = sprintf( __('[%1$s] Message on "%2$s"'), $blogname, $post->post_title );
+	
+	
+		$wp_email = 'wordpress@' . preg_replace('#^www\.#', '', strtolower($_SERVER['SERVER_NAME']));
+	
+		if ( '' == $comment->comment_author )
+		{
+			$from = "From: \"$blogname\" <$wp_email>";
+			if ( '' != $comment->comment_author_email )
+				$reply_to = "Reply-To: $comment->comment_author_email";
+		} else {
+			$from = "From: \"$comment->comment_author\" <$wp_email>";
+			if ( '' != $comment->comment_author_email )
+				$reply_to = "Reply-To: \"$comment->comment_author_email\" <$comment->comment_author_email>";
+		}
+	
+		$message_headers = "$from\n"
+			. "Content-Type: text/plain; charset=\"" . get_option('blog_charset') . "\"\n";
+	
+		if ( isset( $reply_to ))
+			$message_headers .= $reply_to . "\n";
+	
+		$notify_message = apply_filters('comment_notification_text', $notify_message, $comment_id);
+		$subject = apply_filters('comment_notification_subject', $subject, $comment_id);
+		$message_headers = apply_filters('comment_notification_headers', $message_headers, $comment_id);
+
+		if( $user->user_email )
+			@wp_mail( $user->user_email , $subject , $notify_message , $message_headers );
+
+		if('' == $also_notify )
+			@wp_mail( $also_notify , $subject , $notify_message , $message_headers );
+
+		return true;
+	}
+
+	function restore_current_blog()
+	{
 		if ( function_exists('restore_current_blog') )
 			return restore_current_blog();
 		return TRUE;
@@ -214,6 +330,9 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		}
 	
 		if( $ourposts->have_posts() ){
+			$postloops->current_postloop = $instance;
+
+
 			echo str_replace( 'class="widget ', 'class="widget widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
 
 			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
@@ -256,6 +375,8 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		}
 
 		$postloops->restore_current_blog();
+
+		unset( $postloops->current_postloop );
 	}
 
 	function update( $new_instance, $old_instance ) {
@@ -660,6 +781,9 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 	function widget( $args, $instance ) {
 		global $wp_query, $postloops;
 
+		$instance['id'] = absint( str_replace( 'responseloop-' , '' , $args['widget_id'] ));
+		$instance['md5id'] = md5( $instance['id'] . $instance['template'] . $instance['email'] );
+
 		$old_wp_query = clone $wp_query;
 
 		extract( $args );
@@ -702,6 +826,10 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 		if( $ourposts->have_posts() ){
 			echo str_replace( 'class="widget ', 'class="widget widget-response_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
 
+			if( ! empty( $instance['template'] ));
+				$comments_template_function = create_function( '$a', "return '{$postloops->templates_response[ $instance['template'] ]['fullpath']}';" );
+//				$comments_template_function = create_function( '$a', "return bsuite_comments_template_filter( '{$postloops->templates_response[ $instance['template'] ]['fullpath']}' );" );
+
 			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
 			if ( $instance['title_show'] && $title )
 				echo $before_title . $title . $after_title;
@@ -710,21 +838,38 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 				$ourposts->the_post();
 				global $id, $post;
 
+				$postloops->current_responseloop = $instance;
+
+				if( ! empty( $instance['template'] ));
+					add_filter( 'comments_template' , $comments_template_function );
+
 				comments_template();
+
+				if( ! empty( $instance['template'] ));
+					remove_filter( 'comments_template' , $comments_template_function );
 			}
 			echo $after_widget;
 		}
 
+		unset( $postloops->current_responseloop );
 		$wp_query = clone $old_wp_query;
 	}
 
 	function update( $new_instance, $old_instance ) {
 		$instance = $old_instance;
-
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
 		$instance['relatedto'] = intval( $new_instance['relatedto'] );
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
+		$instance['email'] = sanitize_email( $new_instance['email'] );
 
+/*
+echo "<pre>";
+//print_r($old_instance);
+//print_r($new_instance);
+print_r($instance);
+echo "</pre>";
+//die;
+*/
 		return $instance;
 	}
 
@@ -737,6 +882,7 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 				'title' => __('Comments'),
 				'relatedto' => -1,
 				'template' => 'a_default_full.php',
+				'email' => '',
 				) 
 			);
 
@@ -749,23 +895,26 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 
 
 		<p>
-			<label for="<?php echo $this->get_field_id('relatedto'); ?>"><?php _e( 'Show comments and response tools for:' ); ?></label>
+			<label for="<?php echo $this->get_field_id('relatedto'); ?>"><?php _e( 'Show comments/response tools for:' ); ?></label>
 			<select name="<?php echo $this->get_field_name('relatedto'); ?>" id="<?php echo $this->get_field_id('relatedto'); ?>" class="widefat">
 				<?php $this->control_instances( $instance['relatedto'] ); ?>
 			</select>
 		</p>
-<!--
+
 		<p>
 			<label for="<?php echo $this->get_field_id('template'); ?>"><?php _e( 'Template:' ); ?></label>
 			<select name="<?php echo $this->get_field_name('template'); ?>" id="<?php echo $this->get_field_id('template'); ?>" class="widefat">
 				<?php $this->control_template_dropdown( $instance['template'] ); ?>
 			</select>
 		</p>
--->
+
+		<p>
+			<label for="<?php echo $this->get_field_id('email'); ?>"><?php _e('Email responses:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('email'); ?>" name="<?php echo $this->get_field_name('email'); ?>" type="text" value="<?php echo $instance['email']; ?>" />
+		</p>
 
 <?php
 	}
-
+	
 	function control_instances( $default = -1 ){
 		global $postloops, $current_blog;
 
@@ -790,8 +939,19 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 		echo implode( "\n\t", $list );
 	}
 	
-	function control_template_dropdown( $default = '' ) {
-		foreach ( $this->post_templates as $template => $info ) :
+	function control_template_dropdown( $default = '' )
+	{
+		global $postloops;
+		$templates = $postloops->templates_response;
+		array_unshift( $templates , 
+			array( 
+	            'name' => 'Default Comment Form',
+	            'file' => '',
+	            'fullpath' => '',
+			)
+		);
+
+		foreach ( $templates as $template => $info ) :
 			if ( $default == $template )
 				$selected = " selected='selected'";
 			else
@@ -800,8 +960,6 @@ class bSuite_Widget_ResponseLoop extends WP_Widget {
 		endforeach;
 	}
 }// end bSuite_Widget_ResponseLoop
-
-
 
 
 
