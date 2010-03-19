@@ -702,11 +702,13 @@ class bSuite {
 		return($content);
 	}
 
-	function innerindex_nametags_callback($content){
+	function innerindex_nametags_callback( $content )
+	{
 		// receive <h*> tags and insert the ID
 		static $slugs;
-		$slugs[] = $slug = substr(sanitize_title_with_dashes($content[4]), 0, 20);
-		$content = "<h{$content[2]} id=\"{$_POST['post_ID']}_{$slug}_". count(array_keys($slugs, $slug)) .'" '. trim(preg_replace('/id[^"]*"[^"]*"/', '', $content[3])) .">{$content[4]}{$content[5]}";
+		$slugs[] = $slug = substr( sanitize_title_with_dashes( $content[4] ), 0, 30);
+		$count = count( array_keys( $slugs, $slug ));
+		$content = '<h'. $content[2] .' id="'. $slug . ( 1 < $count ? $count : '' ) .'" '. trim( preg_replace( '/id[^"]*"[^"]*"/', '', $content[3] )) .'>'. $content[4] . $content[5];
 		return($content);
 	}
 	// end innerindex-related
