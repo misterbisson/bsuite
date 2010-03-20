@@ -36,14 +36,14 @@ class bSuite_PostLoops {
 
 	function get_instances()
 	{
-		global $current_blog;
+		global $blog_id;
 
 		$options = get_option( 'widget_postloop' );
 
 		// add an entry for the default conent
 		$options[-1] = array( 
 			'title' => 'The default content',
-			'blog' => absint( $current_blog ),
+			'blog' => absint( $blog_id ),
 		);
 
 		foreach( $options as $number => $option )
@@ -60,14 +60,14 @@ class bSuite_PostLoops {
 
 	function get_instances_response()
 	{
-		global $current_blog;
+		global $blog_id;
 
 		$options = get_option( 'widget_responseloop' );
 
 		// add an entry for the default conent
 		$options[-1] = array( 
 			'title' => 'The default content',
-			'blog' => absint( $current_blog ),
+			'blog' => absint( $blog_id ),
 		);
 
 		foreach( $options as $number => $option )
@@ -322,7 +322,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 
 
-		global $current_blog;
+		global $blog_id;
 
 print_r( reset( $postloops->posts[ $instance_id ] ));
 
@@ -422,14 +422,14 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 	}
 
 	function form( $instance ) {
-		global $current_blog, $postloops;
+		global $blog_id, $postloops;
 		//Defaults
 
 		$instance = wp_parse_args( (array) $instance, 
 			array( 
 				'what' => 'normal', 
 				'template' => 'a_default_full.php',
-				'blog' => $current_blog->blog_id,
+				'blog' => $blog_id,
 				) 
 			);
 
@@ -641,7 +641,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 	function control_blogs( $instance , $do_output = TRUE , $switch = TRUE ){
 		// return of TRUE means the user either has permission to the selected blog, or this isn't MU
 
-		global $current_user, $current_blog, $bsuite;
+		global $current_user, $blog_id, $bsuite;
 
 		if( !$bsuite->is_mu )
 			return TRUE; // The user has permission by virtue of it not being MU
@@ -652,7 +652,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			return TRUE; // There was an error, but we assume the user has permission
 
 		if( ! $instance['blog'] ) // the blog isn't set, so we assume it's the current blog
-			$instance['blog'] = $current_blog->blog_id;
+			$instance['blog'] = $blog_id;
 
 		foreach( (array) $blogs as $item )
 		{
@@ -667,17 +667,18 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 					echo '<div id="'. $this->get_field_id('blog') .'-container" class="container"><p id="'. $this->get_field_id('blog') .'-contents" class="container"><label for="'. $this->get_field_id('blog') .'">'. __( 'From:' ) .'</label><select name="'. $this->get_field_name('blog') .'" id="'. $this->get_field_id('blog') .'" class="widefat">';
 					foreach( $this->get_blog_list( $current_user->ID ) as $blog )
 					{
-							?><option value="<?php echo $blog['blog_id']; ?>" <?php selected( $instance['blog'], $blog['blog_id'] ); ?>><?php echo $blog['blog_id'] == $current_blog->blog_id ? __('This blog') : $blog['blogname']; ?></option><?php
+							?><option value="<?php echo $blog['blog_id']; ?>" <?php selected( $instance['blog'], $blog['blog_id'] ); ?>><?php echo $blog['blog_id'] == $blog_id ? __('This blog') : $blog['blogname']; ?></option><?php
 					}
 					echo '</select></p></div>';
 				}
 
-				if( $switch && ( $instance['blog'] <> $current_blog->blog_id ))
+				if( $switch && ( $instance['blog'] <> $blog_id ))
 					switch_to_blog( $instance['blog'] ); // switch to the other blog
 
 				return TRUE; // the user has permission, and many choices
 			}
 		}
+
 ?>
 		<div id="<?php echo $this->get_field_id('blog'); ?>-container" class="container">
 		<p id="<?php echo $this->get_field_id('blog'); ?>-contents" class="contents">
@@ -874,7 +875,7 @@ echo "</pre>";
 	}
 
 	function form( $instance ) {
-		global $current_blog, $postloops;
+		global $postloops;
 		//Defaults
 
 		$instance = wp_parse_args( (array) $instance, 
@@ -916,16 +917,16 @@ echo "</pre>";
 	}
 	
 	function control_instances( $default = -1 ){
-		global $postloops, $current_blog;
+		global $postloops, $blog_id;
 
-		$current_blog = absint( $current_blog );
+		$blog_id = absint( $blog_id );
 
 		// reset the instances var, in case a new widget was added
 		$postloops->get_instances();
 
 		$list = array();
 		foreach( $postloops->instances as $number => $instance ){
-			if( $instance['blog'] <> $current_blog )
+			if( $instance['blog'] <> $blog_id )
 				continue;
 
 			if ( $default == $number )
