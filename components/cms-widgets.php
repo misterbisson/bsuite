@@ -310,7 +310,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			$ourposts = new WP_Query( $criteria );
 
-
 	/*
 	$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
 	
@@ -328,7 +327,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 
 	*/
 		}
-	
+
 		if( $ourposts->have_posts() ){
 			$postloops->current_postloop = $instance;
 
@@ -340,6 +339,9 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				echo $before_title . $title . $after_title;
 
 			while( $ourposts->have_posts() ){
+
+				unset( $GLOBALS['pages'] ); // to address ticket: http://core.trac.wordpress.org/ticket/12651
+
 				$ourposts->the_post();
 				global $id, $post;
 
