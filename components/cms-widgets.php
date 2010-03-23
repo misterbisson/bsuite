@@ -163,15 +163,15 @@ class bSuite_PostLoops {
 		$blogname = get_option('blogname');
 	
 		/* translators: 1: post id, 2: post title */
-		$notify_message  = sprintf( __('New message on #%1$s "%2$s"'), $comment->comment_post_ID, $post->post_title ) . "\r\n";
+		$notify_message  = sprintf( __('New message on %2$s (#%1$s)'), $comment->comment_post_ID, $post->post_title ) . "\r\n\r\n";
+   		$notify_message .= $comment->comment_content . "\r\n\r\n";
 		/* translators: 1: comment author, 2: author IP, 3: author domain */
 		$notify_message .= sprintf( __('Author : %1$s (IP: %2$s , %3$s)'), $comment->comment_author, $comment->comment_author_IP, $comment_author_domain ) . "\r\n";
 		$notify_message .= sprintf( __('E-mail : %s'), $comment->comment_author_email ) . "\r\n";
 		$notify_message .= sprintf( __('URL    : %s'), $comment->comment_author_url ) . "\r\n";
-   		$notify_message .= __('Message: ') . "\r\n\r\n" . $comment->comment_content . "\r\n\r\n";
 		$notify_message .=  __('Network location:') . "\r\nhttp://ws.arin.net/cgi-bin/whois.pl?queryinput=$comment->comment_author_IP\r\n\r\n";
-		$notify_message .= __('You can see all messages on this post here: ') . "\r\n";
-		$notify_message .= admin_url( '/wp-admin/edit-comments.php?p='. $post->ID ) ."\r\n\r\n";
+//		$notify_message .= __('You can see all messages on this post here: ') . "\r\n";
+//		$notify_message .= admin_url( '/wp-admin/edit-comments.php?p='. $post->ID ) ."\r\n\r\n";
 
 		/* translators: 1: blog name, 2: post title */
 		$subject = sprintf( __('[%1$s] Message on "%2$s"'), $blogname, $post->post_title );
@@ -206,7 +206,7 @@ class bSuite_PostLoops {
 		if('' == $also_notify )
 			@wp_mail( $also_notify , $subject , $notify_message , $message_headers );
 
-		return true;
+		die( wp_redirect( get_comment_link( $comment_id )));
 	}
 
 	function restore_current_blog()
@@ -355,7 +355,8 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				foreach( $terms as $term )
 					$postloops->terms[ $this->number ][ $instance['blog'] ][ $term->term_taxonomy_id ]++;
 
-				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] ){
+				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] )
+				{
 ?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 <div <?php post_class() ?> id="post-<?php the_ID(); ?>">
 	<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
