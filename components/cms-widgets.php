@@ -21,8 +21,6 @@ class bSuite_PostLoops {
 
 		add_action( 'preprocess_comment' , array( &$this, 'preprocess_comment' ), 1 );
 		add_action( 'bsuite_response_sendmessage' , array( &$this, 'sendmessage' ), 1, 2 );
-		
-		
 	}
 
 	function init()
@@ -32,7 +30,6 @@ class bSuite_PostLoops {
 		$this->get_templates( 'post' );
 		$this->get_templates( 'response' );
 	}
-
 
 	function get_instances()
 	{
@@ -137,7 +134,7 @@ class bSuite_PostLoops {
 			$comment,
 			$this->instances_response[ $_REQUEST['bsuite_responsekey'] ]
 		);
-		
+
 		return( $comment );
 	}
 
