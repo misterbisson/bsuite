@@ -200,11 +200,11 @@ class bSuite_PostLoops {
 		$subject = apply_filters('comment_notification_subject', $subject, $comment_id);
 		$message_headers = apply_filters('comment_notification_headers', $message_headers, $comment_id);
 
+		if( '' <> $also_notify )
+			@wp_mail( $also_notify , $subject , $notify_message , $message_headers );
+
 		if( $user->user_email )
 			@wp_mail( $user->user_email , $subject , $notify_message , $message_headers );
-
-		if('' == $also_notify )
-			@wp_mail( $also_notify , $subject , $notify_message , $message_headers );
 
 		die( wp_redirect( get_comment_link( $comment_id )));
 	}
