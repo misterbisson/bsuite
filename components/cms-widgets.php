@@ -1221,6 +1221,7 @@ class bSuite_Widget_Crumbs extends WP_Widget {
 			<ul>
 				<?php echo implode( "\n", $crumbs ); ?>
 			</ul>
+			<div class="clear" />
 		<?php
 			echo $after_widget;
 		}
@@ -1301,6 +1302,7 @@ class bSuite_Widget_Pagednav extends WP_Widget {
 ?>
 			<div class="alignleft"><?php previous_post_link('&laquo; %link') ?></div>
 			<div class="alignright"><?php next_post_link('%link &raquo;') ?></div>
+			<div class="clear" />
 <?php
 			echo $after_widget;
 		}
