@@ -1912,7 +1912,8 @@ $engine = $this->get_search_engine( $ref );
 		$wpdb->get_results( "DELETE FROM $this->search_table WHERE post_id = $post_id" );
 	}
 
-	function searchsmart_content( $content ){
+	function searchsmart_content( $content , $post_id )
+	{
 
 		// remove bsuite tokens and html formatting
 		$content = preg_replace(
@@ -1930,6 +1931,9 @@ $engine = $this->get_search_engine( $ref );
 		// shortcodes
 		$content = preg_replace( '/\[(.*?)\]/', '', $content );
 
+		// apply filters
+		$content = apply_filters( 'bsuite_searchsmart_content' , $content , $post_id );
+
 		// find words with accented characters, create transliterated versions of them
 		$unaccented = array_diff( str_word_count( $content, 1 ), str_word_count( remove_accents( $content ), 1 ));
 
@@ -1939,8 +1943,7 @@ $engine = $this->get_search_engine( $ref );
 //			'',
 //			$content));
 
-		// apply filters
-		return( apply_filters('bsuite_searchsmart_content', $content .' '. implode( ' ', $unaccented )));
+		return $content .' '. implode( ' ', $unaccented );
 
 	}
 
@@ -1961,7 +1964,7 @@ $engine = $this->get_search_engine( $ref );
 		if( count( $posts )) {
 			$insert = array();
 			foreach( $posts as $post ) {
-				$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( $this->searchsmart_content( $post->post_title ."\n\n". $post->post_content )) .'", "'. $wpdb->escape( $post->post_title ) .'")';
+				$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( $this->searchsmart_content( $post->post_title ."\n\n". $post->post_content , $post->ID )) .'", "'. $wpdb->escape( $post->post_title ) .'")';
 			}
 		}else{
 			return( FALSE );
