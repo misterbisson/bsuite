@@ -29,6 +29,7 @@ class bSuite_PostLoops {
 
 		$this->get_templates( 'post' );
 		$this->get_templates( 'response' );
+		$this->get_templates( 'widget' );
 	}
 
 	function get_instances()
@@ -237,6 +238,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 //			$postloops->get_templates( 'post' );
 
 		$this->post_templates = &$postloops->templates_post;
+		$this->widget_templates = &$postloops->templates_widget;
 	}
 
 	function widget( $args, $instance ) {
@@ -278,7 +280,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	
 			if( !empty( $instance['post__not_in'] ))
 				$criteria['post__not_in'] = $instance['post__not_in'];
-	
+
+			foreach ( get_object_taxonomies('post') as $taxonomy ) {
+				$criteria[$taxonomy] = apply_filters('ploop_taxonomy_'. $taxonomy, $criteria[$taxonomy]);
+			}
+
 			$criteria['showposts'] = $instance['count'];
 	
 			switch( $instance['order'] ){
@@ -328,8 +334,15 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		if( $ourposts->have_posts() ){
 			$postloops->current_postloop = $instance;
 
-
-			echo str_replace( 'class="widget ', 'class="widget widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
+			$before_identifier = str_replace('.php', '_before.php', $instance['template']);
+			if( ! empty( $instance['template'] ) && $this->widget_templates[ $before_identifier ])
+			{
+				@include $this->widget_templates[ $before_identifier ]['fullpath'];
+			}//end if
+			else
+			{
+				echo str_replace( 'class="widget ', 'class="widget widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
+			}//end else
 
 			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
 			if ( $instance['title_show'] && $title )
@@ -371,7 +384,16 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 <?php
 				}
 			}
-			echo $after_widget;
+
+			$after_identifier = str_replace('.php', '_after.php', $instance['template']);
+			if( ! empty( $instance['template'] ) && $this->widget_templates[ $after_identifier ])
+			{
+				@include $this->widget_templates[ $after_identifier ]['fullpath'];
+			}//end if
+			else
+			{
+				echo $after_widget;
+			}//end else
 		}
 
 		$postloops->restore_current_blog();
