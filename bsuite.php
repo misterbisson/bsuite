@@ -2048,18 +2048,20 @@ die();
 	function bsuggestive_query( $id ) {
 		global $wpdb;
 
-		$id = (int) $id;
+		$id = array_filter( array_map( 'absint' , $id ));
 
-		if( $id ){
+
+		if( count( $id ))
+		{
 			$taxonomies = ( array_filter( apply_filters( 'bsuite_suggestive_taxonomies', array( 'post_tag', 'category' ))));
 
 			$taxonomies = array_filter( array_map( array( &$wpdb, 'escape' ), $taxonomies ));
 
-			$ignore_ids = ( array_filter( apply_filters( 'bsuite_suggestive_ignoreposts', array( $id ))));
+			$ignore_ids = ( array_filter( apply_filters( 'bsuite_suggestive_ignoreposts', $id )));
 			if( is_array( $ignore_ids ))
 				$ignore_ids = implode( ',', array_filter( array_map( 'absint' , $ignore_ids )));
 			else
-				$ignore_ids = $id;
+				$ignore_ids = implode( ',', $id );
 
 			if( count( $taxonomies ))
 				return( apply_filters('bsuite_suggestive_query',
@@ -2067,7 +2069,7 @@ die();
 					FROM ( SELECT t_ra.term_taxonomy_id
 						FROM $wpdb->term_relationships t_ra
 						LEFT JOIN $wpdb->term_taxonomy t_ta ON t_ta.term_taxonomy_id = t_ra.term_taxonomy_id
-						WHERE t_ra.object_id  = $id
+						WHERE t_ra.object_id  IN (". implode( ',', $id ) .")
 						AND t_ta.taxonomy IN ('". implode( $taxonomies, "','") ."')
 					) ttid
 					LEFT JOIN $wpdb->term_relationships t_r ON t_r.term_taxonomy_id = ttid.term_taxonomy_id
@@ -2082,18 +2084,19 @@ die();
 		return FALSE;
 	}
 
-	function bsuggestive_getposts( $id ) {
+	function bsuggestive_getposts( $id )
+	{
 		global $wpdb;
 
-		if ( !$related_posts = wp_cache_get( $id, 'bsuite_related_posts' ) ) {
+		if ( !$related_posts = wp_cache_get( implode( ',', (array) $id ), 'bsuite_related_posts' ) ) {
 			if( $the_query = $this->bsuggestive_query( $id ) ){
 				$related_posts = $wpdb->get_col($the_query);
-				wp_cache_set( $id, $related_posts, 'bsuite_related_posts', time() + 900000 ); // cache for 25 days
+				wp_cache_set( implode( ',', (array) $id ), $related_posts, 'bsuite_related_posts', time() + 900000 ); // cache for 25 days
 				return($related_posts); // if we have to go to the DB to get the posts, then this will get returned
 			}
 			return( FALSE ); // if there's nothing in the cache and we've got no query
 		}
-		return($related_posts); // if the cache is still warm, then we return this
+		return $related_posts; // if the cache is still warm, then we return this
 	}
 
 	function bsuggestive_delete_cache( $id ) {

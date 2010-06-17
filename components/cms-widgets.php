@@ -13,7 +13,7 @@ class bSuite_PostLoops {
 	var $posts; // $posts[ $loop_id ][ $blog_id ] = $post_id
 
 	// terms from the posts in each instance
-	var $tags; // $tags[ $loop_id ][ $blog_id ][ $term_taxonomy_id ] = $count
+	var $terms; // $tags[ $loop_id ][ $blog_id ][ $term_taxonomy_id ] = $count
 
 	function bSuite_PostLoops()
 	{
@@ -21,6 +21,8 @@ class bSuite_PostLoops {
 
 		add_action( 'preprocess_comment' , array( &$this, 'preprocess_comment' ), 1 );
 		add_action( 'bsuite_response_sendmessage' , array( &$this, 'sendmessage' ), 1, 2 );
+
+		add_action( 'template_redirect' , array( &$this, 'get_default_posts' ), 0 );
 	}
 
 	function init()
@@ -30,6 +32,25 @@ class bSuite_PostLoops {
 		$this->get_templates( 'post' );
 		$this->get_templates( 'response' );
 		$this->get_templates( 'widget' );
+	}
+
+	function get_default_posts()
+	{
+		global $wp_query;
+
+		foreach( $wp_query->posts as $post )
+		{
+			// get the matching post IDs for the $postloops object
+			$this->posts[-1][0][] = $post->ID;
+			
+			$terms = get_object_term_cache( $post->ID, (array) get_object_taxonomies( $post->post_type ) );
+			if ( empty( $terms ))
+				$terms = wp_get_object_terms( $post->ID, (array) get_object_taxonomies( $post->post_type ) );
+			
+			// get the term taxonomy IDs for the $postloops object
+			foreach( $terms as $term )
+				$this->terms[-1][0][ $term->term_taxonomy_id ]++;
+		}
 	}
 
 	function get_instances()
@@ -242,7 +263,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 
 	function widget( $args, $instance ) {
-		global $postloops;
+		global $bsuite, $postloops;
 
 		extract( $args );
 
@@ -285,16 +306,24 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				$criteria[$taxonomy] = apply_filters('ploop_taxonomy_'. $taxonomy, $criteria[$taxonomy]);
 			}
 
-			$criteria['showposts'] = $instance['count'];
+			$criteria['showposts'] = absint( $instance['count'] );
 	
 			switch( $instance['order'] ){
 				case 'age_new':
-					$criteria['orderby'] = 'post_date';
+					$criteria['orderby'] = 'date';
 					$criteria['order'] = 'DESC';
 					break;
 				case 'age_old':
-					$criteria['orderby'] = 'post_date';
+					$criteria['orderby'] = 'date';
 					$criteria['order'] = 'ASC';
+					break;
+				case 'title_az':
+					$criteria['orderby'] = 'title';
+					$criteria['order'] = 'ASC';
+					break;
+				case 'title_za':
+					$criteria['orderby'] = 'title';
+					$criteria['order'] = 'DESC';
 					break;
 				case 'pop_most':
 				case 'pop_least':
@@ -308,10 +337,43 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					break;
 			}
 
+			if( 'excluding' == $instance['relationship'] && count( (array) $instance['relatedto'] ))
+			{
+				foreach( $instance['relatedto'] as $related_loop => $temp )
+				{
+					if( isset( $postloops->posts[ $related_loop ] ) && $instance['blog'] == key( $postloops->posts[ $related_loop ] ))
+						$criteria['post__not_in'] = array_merge( (array) $criteria['post__not_in'] , $postloops->posts[ $related_loop ][ $instance['blog'] ] );
+					else
+						echo '<!-- error: related post loop is not available or not from this blog -->';
+				}
+			}
+			else if( 'similar' == $instance['relationship'] && count( (array) $instance['relatedto'] ))
+			{
+				foreach( $instance['relatedto'] as $related_loop => $temp )
+				{
+					if( isset( $postloops->posts[ $related_loop ] ) && $instance['blog'] == key( $postloops->posts[ $related_loop ] ))
+						$posts_for_related = array_merge( (array) $posts_for_related , $postloops->posts[ $related_loop ][ $instance['blog'] ] );
+					else
+						echo '<!-- error: related post loop is not available or not from this blog -->';
+				}
+
+				$count = 2 * $instance['count'];
+				if( 10 > $count )
+					$count = 10;
+
+				$criteria['post__in'] = array_merge( 
+					(array) $instance['post__in'] , 
+					array_slice( (array) $bsuite->bsuggestive_getposts( $posts_for_related ) , 0 , $count )
+				);
+			}
+
+
+//print_r( $criteria );
 			if( 0 < $instance['blog'] )
 				switch_to_blog( $instance['blog'] ); // switch to the other blog
 
 			$ourposts = new WP_Query( $criteria );
+//print_r( $ourposts );
 
 	/*
 	$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
@@ -360,6 +422,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				// get the matching post IDs for the $postloops object
 				$postloops->posts[ $this->number ][ $instance['blog'] ][] = $id;
 
+/*
 				$terms = get_object_term_cache( $id, (array) get_object_taxonomies( $post->post_type ) );
 				if ( empty( $terms ))
 					$terms = wp_get_object_terms( $id, (array) get_object_taxonomies( $post->post_type ) );
@@ -367,6 +430,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				// get the term taxonomy IDs for the $postloops object
 				foreach( $terms as $term )
 					$postloops->terms[ $this->number ][ $instance['blog'] ][ $term->term_taxonomy_id ]++;
+*/
 
 				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] )
 				{
@@ -399,6 +463,8 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		$postloops->restore_current_blog();
 
 		unset( $postloops->current_postloop );
+
+//print_r( $postloops );
 	}
 
 	function update( $new_instance, $old_instance ) {
@@ -434,9 +500,9 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		$instance['age'] = in_array( $new_instance['age'], array( 'after', 'before', 'around') ) ? $new_instance['age']: '';
 		$instance['agestrtotime'] = strtotime( $new_instance['agestrtotime'] ) ? $new_instance['agestrtotime'] : '';
 		$instance['relationship'] = in_array( $new_instance['relationship'], array( 'similar', 'excluding') ) ? $new_instance['relationship']: '';
-		$instance['relatedto'] = array_filter( (array) array_map( 'absint', (array) $new_instance['relatedto'] ));
+		$instance['relatedto'] = array_filter( (array) array_map( 'intval', (array) $new_instance['relatedto'] ));
 		$instance['count'] = absint( $new_instance['count'] );
-		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'pop_most', 'pop_least', 'relevance_most', 'comment_recent', 'rand' ) ) ? $new_instance['order']: '';
+		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'pop_most', 'pop_least', 'relevance_most', 'comment_recent', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
 		$instance['columns'] = absint( $new_instance['columns'] );
 
@@ -587,6 +653,8 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 					<option value="age_new" <?php selected( $instance['order'], 'age_new' ); ?>><?php _e('Newest first'); ?></option>
 					<option value="age_old" <?php selected( $instance['order'], 'age_old' ); ?>><?php _e('Oldest first'); ?></option>
 					<option value="rand" <?php selected( $instance['order'], 'rand' ); ?>><?php _e('Random'); ?></option>
+					<option value="title_az" <?php selected( $instance['order'], 'title_az' ); ?>><?php _e('Title A-Z'); ?></option>
+					<option value="title_za" <?php selected( $instance['order'], 'title_za' ); ?>><?php _e('Title Z-A'); ?></option>
 			</select>
 		</p>
 
