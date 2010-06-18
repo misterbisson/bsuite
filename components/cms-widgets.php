@@ -36,12 +36,12 @@ class bSuite_PostLoops {
 
 	function get_default_posts()
 	{
-		global $wp_query;
+		global $wp_query, $wpdb;
 
 		foreach( $wp_query->posts as $post )
 		{
 			// get the matching post IDs for the $postloops object
-			$this->posts[-1][0][] = $post->ID;
+			$this->posts[-1][ $wpdb->blogid ][] = $post->ID;
 			
 			$terms = get_object_term_cache( $post->ID, (array) get_object_taxonomies( $post->post_type ) );
 			if ( empty( $terms ))
@@ -49,7 +49,7 @@ class bSuite_PostLoops {
 			
 			// get the term taxonomy IDs for the $postloops object
 			foreach( $terms as $term )
-				$this->terms[-1][0][ $term->term_taxonomy_id ]++;
+				$this->terms[-1][ $wpdb->blogid ][ $term->term_taxonomy_id ]++;
 		}
 	}
 
@@ -263,7 +263,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 
 	function widget( $args, $instance ) {
-		global $bsuite, $postloops;
+		global $bsuite, $postloops, $wpdb;
 
 		extract( $args );
 
@@ -369,7 +369,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 
 //print_r( $criteria );
-			if( 0 < $instance['blog'] )
+			if( 0 < $instance['blog'] && $instance['blog'] !== $wpdb->blogid )
 				switch_to_blog( $instance['blog'] ); // switch to the other blog
 
 			$ourposts = new WP_Query( $criteria );
