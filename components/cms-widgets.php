@@ -61,7 +61,7 @@ class bSuite_PostLoops {
 				'before_widget' => '<div id="widget-%1$s" class="widget %2$s"><div class="widget-inner">'."\n",
 				'after_widget'  => '</div></div>'."\n",
 				'before_title'  => '<h2 class="widgettitle">',
-				'after_title'   => '</h2>'."\n",
+				'after_title'   => "</h2>\n",
 				'widget_id' => 'a',
 				'widget_name' => 'a',
 			);
@@ -297,10 +297,36 @@ class bSuite_PostLoops {
 		return TRUE;
 	}
 
-	function posts_where_date_since_once( $where )
+	function posts_where_date_since_once( $sql )
 	{
 		remove_filter( 'posts_where', array( &$this , 'posts_where_date_since_once' ), 10 );
-		return $where . ' AND post_date > "'. $this->date_since .'"';
+		return $sql . ' AND post_date > "'. $this->date_since .'"';
+	}
+
+	function posts_fields_recently_commented_once( $sql )
+	{
+		remove_filter( 'posts_fields', array( &$this , 'posts_fields_recently_commented_once' ), 10 );
+		return $sql. ', MAX( commentsort.comment_date_gmt ) AS commentsort_order ';
+	}
+
+	function posts_join_recently_commented_once( $sql )
+	{
+		global $wpdb;
+
+		remove_filter( 'posts_join', array( &$this , 'posts_join_recently_commented_once' ), 10 );
+		return " INNER JOIN $wpdb->comments AS commentsort ON ( commentsort.comment_approved = 1 AND $wpdb->posts.ID = commentsort.comment_post_ID ) ". $sql;
+	}
+
+	function posts_groupby_recently_commented_once( $sql )
+	{
+		remove_filter( 'posts_groupby', array( &$this , 'posts_groupby_recently_commented_once' ), 10 );
+		return ' commentsort.comment_post_ID'. empty( $sql ) ? '' : ', ';
+	}
+
+	function posts_orderby_recently_commented_once( $sql )
+	{
+		remove_filter( 'posts_orderby', array( &$this , 'posts_orderby_recently_commented_once' ), 10 );
+		return ' commentsort_order DESC, '. $sql;
 	}
 
 	function posts_request( $request )
@@ -386,7 +412,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			if( $_GET['wijax'] && absint( $_GET['paged'] ))
 				$criteria['paged'] = absint( $_GET['paged'] );
 			$criteria['showposts'] = absint( $instance['count'] );
-	
+
 			switch( $instance['order'] ){
 				case 'age_new':
 					$criteria['orderby'] = 'date';
@@ -404,9 +430,15 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					$criteria['orderby'] = 'title';
 					$criteria['order'] = 'DESC';
 					break;
+				case 'comment_new':
+					add_filter( 'posts_fields',		array( &$postloops , 'posts_fields_recently_commented_once' ), 10 );
+					add_filter( 'posts_join',		array( &$postloops , 'posts_join_recently_commented_once' ), 10 );
+					add_filter( 'posts_groupby',	array( &$postloops , 'posts_groupby_recently_commented_once' ), 10 );
+					add_filter( 'posts_orderby',	array( &$postloops , 'posts_orderby_recently_commented_once' ), 10 );
+					break;
+
 				case 'pop_most':
 				case 'pop_least':
-				case 'comment_recent':
 				case 'rand':
 					$criteria['orderby'] = 'rand';
 					break;
@@ -447,6 +479,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			}
 
 
+//print_r( $instance );
 //print_r( $criteria );
 			if( 0 < $instance['blog'] && $instance['blog'] !== $wpdb->blogid )
 				switch_to_blog( $instance['blog'] ); // switch to the other blog
@@ -582,7 +615,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		$instance['relationship'] = in_array( $new_instance['relationship'], array( 'similar', 'excluding') ) ? $new_instance['relationship']: '';
 		$instance['relatedto'] = array_filter( (array) array_map( 'intval', (array) $new_instance['relatedto'] ));
 		$instance['count'] = absint( $new_instance['count'] );
-		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'pop_most', 'pop_least', 'relevance_most', 'comment_recent', 'rand' ) ) ? $new_instance['order']: '';
+		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'pop_most', 'pop_least', 'relevance_most', 'comment_new', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
 		$instance['columns'] = absint( $new_instance['columns'] );
 
@@ -744,9 +777,10 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			<select name="<?php echo $this->get_field_name('order'); ?>" id="<?php echo $this->get_field_id('order'); ?>" class="widefat">
 					<option value="age_new" <?php selected( $instance['order'], 'age_new' ); ?>><?php _e('Newest first'); ?></option>
 					<option value="age_old" <?php selected( $instance['order'], 'age_old' ); ?>><?php _e('Oldest first'); ?></option>
-					<option value="rand" <?php selected( $instance['order'], 'rand' ); ?>><?php _e('Random'); ?></option>
+					<option value="comment_new" <?php selected( $instance['order'], 'comment_new' ); ?>><?php _e('Recently commented'); ?></option>
 					<option value="title_az" <?php selected( $instance['order'], 'title_az' ); ?>><?php _e('Title A-Z'); ?></option>
 					<option value="title_za" <?php selected( $instance['order'], 'title_za' ); ?>><?php _e('Title Z-A'); ?></option>
+					<option value="rand" <?php selected( $instance['order'], 'rand' ); ?>><?php _e('Random'); ?></option>
 			</select>
 		</p>
 
