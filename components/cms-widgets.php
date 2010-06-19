@@ -297,6 +297,17 @@ class bSuite_PostLoops {
 		return TRUE;
 	}
 
+	function posts_where_comments_yes_once( $sql )
+	{
+		remove_filter( 'posts_where', array( &$this , 'posts_where_comments_yes_once' ), 10 );
+		return $sql . ' AND comment_count > 0 ';
+	}
+	function posts_where_comments_no_once( $sql )
+	{
+		remove_filter( 'posts_where', array( &$this , 'posts_where_comments_no_once' ), 10 );
+		return $sql . ' AND comment_count < 1 ';
+	}
+
 	function posts_where_date_since_once( $sql )
 	{
 		remove_filter( 'posts_where', array( &$this , 'posts_where_date_since_once' ), 10 );
@@ -398,6 +409,18 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	
 			if( !empty( $instance['post__not_in'] ))
 				$criteria['post__not_in'] = $instance['post__not_in'];
+
+			switch( $instance['comments'] )
+			{
+				case 'yes':
+					add_filter( 'posts_where', array( &$postloops , 'posts_where_comments_yes_once' ), 10 );
+					break;
+				case 'no':
+					add_filter( 'posts_where', array( &$postloops , 'posts_where_comments_no_once' ), 10 );
+					break;
+				default:
+					break;
+			}
 
 			foreach ( get_object_taxonomies('post') as $taxonomy ) {
 				$criteria[$taxonomy] = apply_filters('ploop_taxonomy_'. $taxonomy, $criteria[$taxonomy]);
@@ -607,6 +630,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			}
 			$instance['post__in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__in'] )));
 			$instance['post__not_in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__not_in'] )));
+			$instance['comments'] = in_array( $new_instance['comments'], array( 'unset', 'yes', 'no' ) ) ? $new_instance['comments']: '';
 		}
 		$instance['activity'] = in_array( $new_instance['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $new_instance['activity']: '';
 		$instance['age_num'] = absint( $new_instance['age_num'] );
@@ -726,6 +750,17 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			<label for="<?php echo $this->get_field_id('post__not_in'); ?>"><?php _e( 'Excluding all these post IDs:' ); ?></label> <input type="text" value="<?php echo implode( ', ', (array) $instance['post__not_in'] ); ?>" name="<?php echo $this->get_field_name('post__not_in'); ?>" id="<?php echo $this->get_field_id('post__not_in'); ?>" class="widefat" />
 			<br />
 			<small><?php _e( 'Page IDs, separated by commas.' ); ?></small>
+		</p>
+		</div>
+
+		<div id="<?php echo $this->get_field_id('comments'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('comments'); ?>-contents" class="contents">
+			<label for="<?php echo $this->get_field_id('comments'); ?>"><?php _e( 'Comments:' ); ?></label>
+			<select name="<?php echo $this->get_field_name('comments'); ?>" id="<?php echo $this->get_field_id('comments'); ?>" class="widefat">
+				<option value="unset" <?php selected( $instance['comments'], 'unset' ); ?>><?php _e(''); ?></option>
+				<option value="yes" <?php selected( $instance['comments'], 'yes' ); ?>><?php _e('Has comments'); ?></option>
+				<option value="no" <?php selected( $instance['comments'], 'no' ); ?>><?php _e('Does not have comments'); ?></option>
+			</select>
 		</p>
 		</div>
 
