@@ -23,6 +23,8 @@ class bSuite_PostLoops {
 		add_action( 'bsuite_response_sendmessage' , array( &$this, 'sendmessage' ), 1, 2 );
 
 		add_action( 'template_redirect' , array( &$this, 'get_default_posts' ), 0 );
+
+//		add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
 	}
 
 	function init()
@@ -238,6 +240,18 @@ class bSuite_PostLoops {
 		return TRUE;
 	}
 
+	function posts_where_date_since_once( $where )
+	{
+		remove_filter( 'posts_where', array( &$this , 'posts_where_date_since_once' ), 10 );
+		return $where . ' AND post_date > "'. $this->date_since .'"';
+	}
+
+	function posts_request( $request )
+	{
+		echo $request;
+		return $request;
+	}
+
 } //end bSuite_PostLoops
 
 // initialize that class
@@ -276,7 +290,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			$ourposts = &$wp_query;
 
 		}else{
-			$criteria['suppress_filters'] = TRUE;
+//			$criteria['suppress_filters'] = TRUE;
 	
 			if( in_array( $instance['what'], array( 'post', 'page', 'attachment' )))
 				$criteria['post_type'] = $instance['what'];
@@ -304,6 +318,12 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			foreach ( get_object_taxonomies('post') as $taxonomy ) {
 				$criteria[$taxonomy] = apply_filters('ploop_taxonomy_'. $taxonomy, $criteria[$taxonomy]);
+			}
+
+			if( 0 < $instance['age_num'] )
+			{
+				$postloops->date_since = date( 'Y-m-d' , strtotime( $instance['age_num'] .' '. $instance['age_unit'] .' ago' ));
+				add_filter( 'posts_where', array( &$postloops , 'posts_where_date_since_once' ), 10 );
 			}
 
 			$criteria['showposts'] = absint( $instance['count'] );
@@ -497,7 +517,8 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			$instance['post__not_in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__not_in'] )));
 		}
 		$instance['activity'] = in_array( $new_instance['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $new_instance['activity']: '';
-		$instance['age'] = in_array( $new_instance['age'], array( 'after', 'before', 'around') ) ? $new_instance['age']: '';
+		$instance['age_num'] = absint( $new_instance['age_num'] );
+		$instance['age_unit'] = in_array( $new_instance['age_unit'], array( 'day', 'month', 'year') ) ? $new_instance['age_unit']: '';
 		$instance['agestrtotime'] = strtotime( $new_instance['agestrtotime'] ) ? $new_instance['agestrtotime'] : '';
 		$instance['relationship'] = in_array( $new_instance['relationship'], array( 'similar', 'excluding') ) ? $new_instance['relationship']: '';
 		$instance['relatedto'] = array_filter( (array) array_map( 'intval', (array) $new_instance['relatedto'] ));
@@ -621,6 +642,18 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		endif;
 		$postloops->restore_current_blog(); 
 ?>
+
+		<div id="<?php echo $this->get_field_id('age'); ?>-container" class="container">
+		<p id="<?php echo $this->get_field_id('age'); ?>-contents" class="contents">
+			<label for="<?php echo $this->get_field_id('age_num'); ?>"><?php _e('Published within the last:'); ?></label><input type="text" value="<?php echo $instance['age_num']; ?>" name="<?php echo $this->get_field_name('age_num'); ?>" id="<?php echo $this->get_field_id('age_num'); ?>" class="" />
+
+			<select id="<?php echo $this->get_field_id('age_unit'); ?>" name="<?php echo $this->get_field_name('age_unit'); ?>">
+				<option value="day" <?php selected( $instance['age_unit'], 'day' ) ?>>Day(s)</option>
+				<option value="month" <?php selected( $instance['age_unit'], 'month' ) ?>>Month(s)</option>
+				<option value="year" <?php selected( $instance['age_unit'], 'year' ) ?>>Year(s)</option>
+			</select>
+		</p>
+		</div>
 
 		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
 			<div id="<?php echo $this->get_field_id('what'); ?>-container" class="container">
