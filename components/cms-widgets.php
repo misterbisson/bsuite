@@ -107,21 +107,25 @@ class bSuite_PostLoops {
 	{
 		$page_templates = array();
 		$template_dir = @ dir( $template_base );
-		if ( $template_dir ) {
-			while ( ( $file = $template_dir->read() ) !== false ) {
-				if ( preg_match('|^\.+$|', $file) )
+		if ( $template_dir ) 
+		{
+			while ( ( $file = $template_dir->read() ) !== false ) 
+			{
+				if ( preg_match('|^\.+$|', $file ))
 					continue;
-				if ( preg_match('|\.php$|', $file) ) {
+				if ( preg_match('|\.php$|', $file )) 
+				{
 					$template_data = implode( '', file( $template_base . $file ));
 	
 					$name = '';
-					if ( preg_match( '|Template Name:(.*)$|mi', $template_data, $name ) )
+					if ( preg_match( '|Template Name:(.*)$|mi', $template_data, $name ))
 						if( function_exists( '_cleanup_header_comment' ))
 							$name = _cleanup_header_comment($name[1]);
 						else
 							$name = $name[1];
 	
-					if ( !empty( $name ) ) {
+					if ( !empty( $name ) ) 
+					{
 						$file = basename( $file );
 						$page_templates[ $file ]['name'] = trim( $name );
 						$page_templates[ $file ]['file'] = basename( $file );
@@ -129,7 +133,7 @@ class bSuite_PostLoops {
 					}
 				}
 			}
-			@ $template_dir->close();
+			@$template_dir->close();
 		}
 
 		return $page_templates;
