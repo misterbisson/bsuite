@@ -442,10 +442,10 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					continue;
 
 				if( !empty( $instance['tax_'. $taxonomy .'_in'] ))
-					$criteria[$taxonomy] = $instance['tax_'. $taxonomy .'_in'];
+					$criteria['tax_'. $taxonomy .'_in'] = $instance['tax_'. $taxonomy .'_in'];
 
 				if( !empty( $instance['tax_'. $taxonomy .'_not_in'] ))
-					$criteria[$taxonomy] = $instance['tax_'. $taxonomy .'_not_in'];
+					$criteria['tax_'. $taxonomy .'_not_in'] = $instance['tax_'. $taxonomy .'_not_in'];
 			}
 
 			if( !empty( $instance['post__in'] ))
@@ -1556,6 +1556,74 @@ class bSuite_Widget_Pages extends WP_Widget {
  * Crumbs widget class
  *
  */
+class bSuite_Widget_CategoryDescription extends WP_Widget {
+
+	function bSuite_Widget_CategoryDescription() {
+		$widget_ops = array('classname' => 'widget_categorydescription', 'description' => __( 'Displays the description for the currently displayed category, tag, or taxonomy archive page') );
+		$this->WP_Widget('categorydescription', __('Category Description'), $widget_ops);
+	}
+
+	function widget( $args, $instance ) {
+		extract( $args );
+
+		if( is_tax() || is_tag() || is_category() ) 
+			$category_description = term_description();
+		else
+			return;
+
+		global $wp_query;
+		$term = $wp_query->get_queried_object();
+		$my_tag = &get_term( $term->term_id , $term->taxonomy , OBJECT , 'display' );
+		
+		if ( is_wp_error( $my_tag ) )
+			return false;
+		
+		$my_tag_name =  $my_tag->name;
+//		$my_tag_name = apply_filters( 'single_tag_title' , $my_tag->name );
+
+		$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
+		$title = str_ireplace( '%term_name%', '<span class="term-name">'. $my_tag_name .'</span>', $title );
+
+		echo $before_widget;
+		if ( $title )
+			echo $before_title . $title . $after_title;
+		if ( ! empty( $category_description ) )
+			echo '<div class="archive-meta">' . $category_description . '</div>';
+		echo '<div class="clear"></div>';
+		echo $after_widget;
+	}
+
+	function update( $new_instance, $old_instance ) {
+		$instance = $old_instance;
+		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
+
+		return $instance;
+	}
+
+	function form( $instance ) {
+		//Defaults
+		$instance = wp_parse_args( (array) $instance, 
+			array( 
+				'title' => '%term_name% Archives', 
+			)
+		);
+
+		$title = esc_attr( $instance['title'] );
+?>
+
+		<p>
+			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" /><br /><small><?php _e( '<code>%term_name%</code> will be replaced.' ); ?></small>
+		</p>
+<?php
+	}
+}// end bSuite_Widget_CategoryDescription
+
+
+
+/**
+ * Crumbs widget class
+ *
+ */
 class bSuite_Widget_Crumbs extends WP_Widget {
 
 	function bSuite_Widget_Crumbs() {
@@ -1721,6 +1789,9 @@ class bSuite_Widget_Pagednav extends WP_Widget {
 function bsuite_widgets_init() {
 	register_widget( 'bSuite_Widget_PostLoop' );
 	register_widget( 'bSuite_Widget_ResponseLoop' );
+
+
+	register_widget( 'bSuite_Widget_CategoryDescription' );
 
 	register_widget( 'bSuite_Widget_Crumbs' );
 
