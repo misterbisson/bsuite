@@ -1,5 +1,4 @@
 <?php
-
 /**
  * PostLoops class
  *
@@ -37,6 +36,25 @@ class bSuite_PostLoops {
 		$this->get_templates( 'post' );
 		$this->get_templates( 'response' );
 		$this->get_templates( 'widget' );
+
+		add_action( 'admin_init', array(&$this, 'admin_init' ));
+	}
+
+	function admin_init()
+	{
+		global $bsuite;
+		wp_register_script( 'postloop-editwidgets', $bsuite->path_web . '/js/edit_widgets.js', array('jquery'), '1' );
+		wp_enqueue_script( 'postloop-editwidgets' );
+
+		add_action( 'admin_footer', array( &$this, 'footer_activatejs' ));
+	}
+
+	public function footer_activatejs(){
+?>
+		<script type="text/javascript">
+			postloops_widgeteditor();
+		</script>
+<?php
 	}
 
 	function wijax_redirect()
@@ -314,6 +332,20 @@ class bSuite_PostLoops {
 		return $sql . ' AND post_date > "'. $this->date_since .'"';
 	}
 
+	function posts_join_recently_popular_once( $sql )
+	{
+		global $wpdb, $blog_id, $bsuite;
+
+		remove_filter( 'posts_join', array( &$this , 'posts_join_recently_popular_once' ), 10 );
+		return " INNER JOIN $bsuite->hits_pop AS popsort ON ( popsort.blog_id = $blog_id AND popsort.hits_recent > 0 AND $wpdb->posts.ID = popsort.post_ID ) ". $sql;
+	}
+
+	function posts_orderby_recently_popular_once( $sql )
+	{
+		remove_filter( 'posts_orderby', array( &$this , 'posts_orderby_recently_popular_once' ), 10 );
+		return ' popsort.hits_recent DESC, '. $sql;
+	}
+
 	function posts_fields_recently_commented_once( $sql )
 	{
 		remove_filter( 'posts_fields', array( &$this , 'posts_fields_recently_commented_once' ), 10 );
@@ -403,7 +435,19 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			if( !empty( $instance['tags_not_in'] ))
 				$criteria['tag__not_in'] = $instance['tags_not_in'];
-	
+
+			foreach( get_object_taxonomies( $instance['what'] ) as $taxonomy )
+			{
+				if( $taxonomy == 'category' || $taxonomy == 'post_tag' )
+					continue;
+
+				if( !empty( $instance['tax_'. $taxonomy .'_in'] ))
+					$criteria[$taxonomy] = $instance['tax_'. $taxonomy .'_in'];
+
+				if( !empty( $instance['tax_'. $taxonomy .'_not_in'] ))
+					$criteria[$taxonomy] = $instance['tax_'. $taxonomy .'_not_in'];
+			}
+
 			if( !empty( $instance['post__in'] ))
 				$criteria['post__in'] = $instance['post__in'];
 	
@@ -441,18 +485,22 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					$criteria['orderby'] = 'date';
 					$criteria['order'] = 'DESC';
 					break;
+
 				case 'age_old':
 					$criteria['orderby'] = 'date';
 					$criteria['order'] = 'ASC';
 					break;
+
 				case 'title_az':
 					$criteria['orderby'] = 'title';
 					$criteria['order'] = 'ASC';
 					break;
+
 				case 'title_za':
 					$criteria['orderby'] = 'title';
 					$criteria['order'] = 'DESC';
 					break;
+
 				case 'comment_new':
 					add_filter( 'posts_fields',		array( &$postloops , 'posts_fields_recently_commented_once' ), 10 );
 					add_filter( 'posts_join',		array( &$postloops , 'posts_join_recently_commented_once' ), 10 );
@@ -460,11 +508,18 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					add_filter( 'posts_orderby',	array( &$postloops , 'posts_orderby_recently_commented_once' ), 10 );
 					break;
 
-				case 'pop_most':
-				case 'pop_least':
+				case 'pop_recent':
+					if( is_object( $bsuite ))
+					{
+						add_filter( 'posts_join',		array( &$postloops , 'posts_join_recently_popular_once' ), 10 );
+						add_filter( 'posts_orderby',	array( &$postloops , 'posts_orderby_recently_popular_once' ), 10 );
+						break;
+					}
+
 				case 'rand':
 					$criteria['orderby'] = 'rand';
 					break;
+
 				default:
 					$criteria['orderby'] = 'post_date';
 					$criteria['order'] = 'DESC';
@@ -618,36 +673,67 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			$instance['tagsbool'] = in_array( $new_instance['tagsbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['tagsbool']: '';
 			$tag_name = '';
 			$instance['tags_in'] = array();
-			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_in'] )))) as $tag_name ){
+			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_in'] )))) as $tag_name )
+			{
 				if( $temp = is_term( $tag_name, 'post_tag' ))
 					$instance['tags_in'][] = $temp['term_id'];
 			}
 			$tag_name = '';
 			$instance['tags_not_in'] = array();
-			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_not_in'] )))) as $tag_name ){
+			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_not_in'] )))) as $tag_name )
+			{
 				if( $temp = is_term( $tag_name, 'post_tag' ))
 					$instance['tags_not_in'][] = $temp['term_id'];
 			}
+
+			if( $instance['what'] <> 'normal' )
+			{
+				foreach( get_object_taxonomies( $instance['what'] ) as $taxonomy )
+				{
+					if( $taxonomy == 'category' || $taxonomy == 'post_tag' )
+						continue;
+
+					$instance['tax_'. $taxonomy .'_bool'] = in_array( $new_instance['tax_'. $taxonomy .'_bool'], array( 'in', 'and', 'not_in') ) ? $new_instance['tax_'. $taxonomy .'_bool']: '';
+					$tag_name = '';
+					$instance['tax_'. $taxonomy .'_in'] = array();
+					foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tax_'. $taxonomy .'_in'] )))) as $tag_name )
+					{
+						if( $temp = is_term( $tag_name, $taxonomy ))
+							$instance['tax_'. $taxonomy .'_in'][] = $temp['term_id'];
+					}
+					$tag_name = '';
+					$instance['tax_'. $taxonomy .'_not_in'] = array();
+					foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tax_'. $taxonomy .'_not_in'] )))) as $tag_name )
+					{
+						if( $temp = is_term( $tag_name, $taxonomy ))
+							$instance['tax_'. $taxonomy .'_not_in'][] = $temp['term_id'];
+					}
+				}
+			}
+
 			$instance['post__in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__in'] )));
 			$instance['post__not_in'] = array_filter( array_map( 'absint', explode( ',', $new_instance['post__not_in'] )));
 			$instance['comments'] = in_array( $new_instance['comments'], array( 'unset', 'yes', 'no' ) ) ? $new_instance['comments']: '';
 		}
 		$instance['activity'] = in_array( $new_instance['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $new_instance['activity']: '';
+		$instance['age_bool'] = in_array( $new_instance['age_bool'], array( 'newer', 'older') ) ? $new_instance['age_bool']: '';
 		$instance['age_num'] = absint( $new_instance['age_num'] );
 		$instance['age_unit'] = in_array( $new_instance['age_unit'], array( 'day', 'month', 'year') ) ? $new_instance['age_unit']: '';
 		$instance['agestrtotime'] = strtotime( $new_instance['agestrtotime'] ) ? $new_instance['agestrtotime'] : '';
 		$instance['relationship'] = in_array( $new_instance['relationship'], array( 'similar', 'excluding') ) ? $new_instance['relationship']: '';
 		$instance['relatedto'] = array_filter( (array) array_map( 'intval', (array) $new_instance['relatedto'] ));
 		$instance['count'] = absint( $new_instance['count'] );
-		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'pop_most', 'pop_least', 'relevance_most', 'comment_new', 'rand' ) ) ? $new_instance['order']: '';
+		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'comment_new', 'pop_recent', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
 		$instance['columns'] = absint( $new_instance['columns'] );
+
+		$this->justupdated = TRUE;
 
 		return $instance;
 	}
 
 	function form( $instance ) {
-		global $blog_id, $postloops;
+		global $blog_id, $postloops, $bsuite;
 		//Defaults
 
 		$instance = wp_parse_args( (array) $instance, 
@@ -659,109 +745,122 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			);
 
 		$title = esc_attr( $instance['title'] );
-	?>
 
+?>
 		<p>
-			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title:'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" />
+			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" />
 			<label for="<?php echo $this->get_field_id( 'title_show' ) ?>"><input id="<?php echo $this->get_field_id( 'title_show' ) ?>" name="<?php echo $this->get_field_name( 'title_show' ) ?>" type="checkbox" value="1" <?php echo ( $instance[ 'title_show' ] ? 'checked="checked"' : '' ) ?>/> Show Title?</label>
 		</p>
 
-		<p>
-			<label for="<?php echo $this->get_field_id('what'); ?>"><?php _e( 'What to show:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('what'); ?>" id="<?php echo $this->get_field_id('what'); ?>" class="widefat">
-				<option value="normal" <?php selected( $instance['what'], 'normal' ); ?>><?php _e('The default content'); ?></option>
-				<option value="post" <?php selected( $instance['what'], 'post' ); ?>><?php _e('Posts'); ?></option>
-				<option value="page" <?php selected( $instance['what'], 'page' ); ?>><?php _e('Pages'); ?></option>
-				<option value="attachment" <?php selected( $instance['what'], 'attachment' ); ?>><?php _e('Attachments'); ?></option>
-				<option value="any" <?php selected( $instance['what'], 'any' ); ?>><?php _e('Any content'); ?></option>
-			</select>
-		</p>
-
+		<div id="<?php echo $this->get_field_id('what'); ?>-container" class="postloop container posttype_normal">
+			<label for="<?php echo $this->get_field_id('what'); ?>"><?php _e( 'What to show' ); ?></label>
+			<div id="<?php echo $this->get_field_id('what'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('what'); ?>" id="<?php echo $this->get_field_id('what'); ?>" class="widefat postloop posttype_selector">
+						<option value="normal" <?php selected( $instance['what'], 'normal' ); ?>><?php _e('The default content'); ?></option>
+						<option value="post" <?php selected( $instance['what'], 'post' ); ?>><?php _e('Posts'); ?></option>
+						<option value="page" <?php selected( $instance['what'], 'page' ); ?>><?php _e('Pages'); ?></option>
+		<!--
+						<option value="attachment" <?php selected( $instance['what'], 'attachment' ); ?>><?php _e('Attachments'); ?></option>
+						<option value="any" <?php selected( $instance['what'], 'any' ); ?>><?php _e('Any content'); ?></option>
+		-->
+					</select>
+				</p>
+			</div>
+		</div>
 <?php
 		// from what blog?
 		if( $this->control_blogs( $instance )):
 ?>
 
-		<div id="<?php echo $this->get_field_id('categories_in'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('categories_in'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('categoriesbool'); ?>"><?php _e( 'Categories:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('categoriesbool'); ?>" id="<?php echo $this->get_field_id('categoriesbool'); ?>" class="widefat">
-				<option value="in" <?php selected( $instance['categoriesbool'], 'in' ); ?>><?php _e('Any of these categories'); ?></option>
-				<option value="and" <?php selected( $instance['categoriesbool'], 'and' ); ?>><?php _e('All of these categories'); ?></option>
-			</select>
-			<ul><?php echo $this->control_categories( $instance , 'categories_in' ); ?></ul>
-		</p>
+		<div id="<?php echo $this->get_field_id('categories'); ?>-container" class="postloop container hide-if-js posttype_post">
+			<label for="<?php echo $this->get_field_id('categoriesbool'); ?>"><?php _e( 'Categories' ); ?></label>
+			<div id="<?php echo $this->get_field_id('categories'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('categoriesbool'); ?>" id="<?php echo $this->get_field_id('categoriesbool'); ?>" class="widefat">
+						<option value="in" <?php selected( $instance['categoriesbool'], 'in' ); ?>><?php _e('Any of these categories'); ?></option>
+						<option value="and" <?php selected( $instance['categoriesbool'], 'and' ); ?>><?php _e('All of these categories'); ?></option>
+					</select>
+					<ul><?php echo $this->control_categories( $instance , 'categories_in' ); ?></ul>
+				</p>
+		
+				<p>
+					<label for="<?php echo $this->get_field_id('categories_not_in'); ?>"><?php _e( 'Not in any of these categories' ); ?></label>
+					<ul><?php echo $this->control_categories( $instance , 'categories_not_in' ); ?></ul>
+				</p>
+			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('categories_not_in'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('categories_not_in'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('categories_not_in'); ?>"><?php _e( 'Not in any of these categories:' ); ?></label>
-			<ul><?php echo $this->control_categories( $instance , 'categories_not_in' ); ?></ul>
-		</p>
+		<div id="<?php echo $this->get_field_id('tags'); ?>-container" class="postloop container hide-if-js posttype_post">
+			<label for="<?php echo $this->get_field_id('tagsbool'); ?>"><?php _e( 'Tags' ); ?></label>
+			<div id="<?php echo $this->get_field_id('tags'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('tagsbool'); ?>" id="<?php echo $this->get_field_id('tagsbool'); ?>" class="widefat">
+						<option value="in" <?php selected( $instance['tagsbool'], 'in' ); ?>><?php _e('Any of these tags'); ?></option>
+						<option value="and" <?php selected( $instance['tagsbool'], 'and' ); ?>><?php _e('All of these tags'); ?></option>
+					</select>
+		
+					<?php
+					$tags_in = array();
+					foreach( (array) $instance['tags_in'] as $tag_id ){
+						$temp = get_term( $tag_id, 'post_tag' );
+						$tags_in[] = $temp->name;
+					}
+					?>
+					<input type="text" value="<?php echo implode( ', ', (array) $tags_in ); ?>" name="<?php echo $this->get_field_name('tags_in'); ?>" id="<?php echo $this->get_field_id('tags_in'); ?>" class="widefat <?php if( count( (array) $tags_in )) echo 'open-on-value'; ?>" />
+					<br />
+					<small><?php _e( 'Tags, separated by commas.' ); ?></small>
+				</p>
+		
+				<p>
+					<label for="<?php echo $this->get_field_id('tags_not_in'); ?>"><?php _e( 'With none of these tags' ); ?></label>
+					<?php
+					$tags_not_in = array();
+					foreach( (array) $instance['tags_not_in'] as $tag_id ){
+						$temp = get_term( $tag_id, 'post_tag' );
+						$tags_not_in[] = $temp->name;
+					}
+					?>
+					<input type="text" value="<?php echo implode( ', ', (array) $tags_not_in ); ?>" name="<?php echo $this->get_field_name('tags_not_in'); ?>" id="<?php echo $this->get_field_id('tags_not_in'); ?>" class="widefat <?php if( count( (array) $tags_not_in )) echo 'open-on-value'; ?>" />
+					<br />
+					<small><?php _e( 'Tags, separated by commas.' ); ?></small>
+				</p>
+			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('post_tag'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('post_tag'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('tagsbool'); ?>"><?php _e( 'Tags:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('tagsbool'); ?>" id="<?php echo $this->get_field_id('tagsbool'); ?>" class="widefat">
-				<option value="in" <?php selected( $instance['tagsbool'], 'in' ); ?>><?php _e('Any of these tags'); ?></option>
-				<option value="and" <?php selected( $instance['tagsbool'], 'and' ); ?>><?php _e('All of these tags'); ?></option>
-			</select>
+<?php 
+//		$this->control_taxonomies( $instance , $instance['what'] );
+?>
 
-			<?php
-			$tags_in = array();
-			foreach( (array) $instance['tags_in'] as $tag_id ){
-				$temp = get_term( $tag_id, 'post_tag' );
-				$tags_in[] = $temp->name;
-			}
-			?>
-			<input type="text" value="<?php echo implode( ', ', (array) $tags_in ); ?>" name="<?php echo $this->get_field_name('tags_in'); ?>" id="<?php echo $this->get_field_id('tags_in'); ?>" class="widefat" />
-			<br />
-			<small><?php _e( 'Tags, separated by commas.' ); ?></small>
-		</p>
+
+		<div id="<?php echo $this->get_field_id('post__in'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
+			<label for="<?php echo $this->get_field_id('post__in'); ?>"><?php _e( 'Matching any post ID' ); ?></label>
+			<div id="<?php echo $this->get_field_id('post__in'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<input type="text" value="<?php echo implode( ', ', (array) $instance['post__in'] ); ?>" name="<?php echo $this->get_field_name('post__in'); ?>" id="<?php echo $this->get_field_id('post__in'); ?>" class="widefat <?php if( count( (array) $instance['post__in'] )) echo 'open-on-value'; ?>" />
+					<br />
+					<small><?php _e( 'Page IDs, separated by commas.' ); ?></small>
+				</p>
+		
+				<p>
+					<label for="<?php echo $this->get_field_id('post__not_in'); ?>"><?php _e( 'Excluding all these post IDs' ); ?></label> <input type="text" value="<?php echo implode( ', ', (array) $instance['post__not_in'] ); ?>" name="<?php echo $this->get_field_name('post__not_in'); ?>" id="<?php echo $this->get_field_id('post__not_in'); ?>" class="widefat <?php if( count( (array) $instance['post__not_in'] )) echo 'open-on-value'; ?>" />
+					<br />
+					<small><?php _e( 'Page IDs, separated by commas.' ); ?></small>
+				</p>
+			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('tags_not_in'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('tags_not_in'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('tags_not_in'); ?>"><?php _e( 'With none of these tags:' ); ?></label>
-			<?php
-			$tags_not_in = array();
-			foreach( (array) $instance['tags_not_in'] as $tag_id ){
-				$temp = get_term( $tag_id, 'post_tag' );
-				$tags_not_in[] = $temp->name;
-			}
-			?>
-			<input type="text" value="<?php echo implode( ', ', (array) $tags_not_in ); ?>" name="<?php echo $this->get_field_name('tags_not_in'); ?>" id="<?php echo $this->get_field_id('tags_not_in'); ?>" class="widefat" />
-			<br />
-			<small><?php _e( 'Tags, separated by commas.' ); ?></small>
-		</p>
-		</div>
-
-		<div id="<?php echo $this->get_field_id('post__in'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('post__in'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('post__in'); ?>"><?php _e( 'Matching any post ID:' ); ?></label> <input type="text" value="<?php echo implode( ', ', (array) $instance['post__in'] ); ?>" name="<?php echo $this->get_field_name('post__in'); ?>" id="<?php echo $this->get_field_id('post__in'); ?>" class="widefat" />
-			<br />
-			<small><?php _e( 'Page IDs, separated by commas.' ); ?></small>
-		</p>
-		</div>
-
-		<div id="<?php echo $this->get_field_id('post__not_in'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('post__not_in'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('post__not_in'); ?>"><?php _e( 'Excluding all these post IDs:' ); ?></label> <input type="text" value="<?php echo implode( ', ', (array) $instance['post__not_in'] ); ?>" name="<?php echo $this->get_field_name('post__not_in'); ?>" id="<?php echo $this->get_field_id('post__not_in'); ?>" class="widefat" />
-			<br />
-			<small><?php _e( 'Page IDs, separated by commas.' ); ?></small>
-		</p>
-		</div>
-
-		<div id="<?php echo $this->get_field_id('comments'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('comments'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('comments'); ?>"><?php _e( 'Comments:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('comments'); ?>" id="<?php echo $this->get_field_id('comments'); ?>" class="widefat">
-				<option value="unset" <?php selected( $instance['comments'], 'unset' ); ?>><?php _e(''); ?></option>
-				<option value="yes" <?php selected( $instance['comments'], 'yes' ); ?>><?php _e('Has comments'); ?></option>
-				<option value="no" <?php selected( $instance['comments'], 'no' ); ?>><?php _e('Does not have comments'); ?></option>
-			</select>
-		</p>
+		<div id="<?php echo $this->get_field_id('comments'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
+			<label for="<?php echo $this->get_field_id('comments'); ?>"><?php _e( 'Comments' ); ?></label>
+			<div id="<?php echo $this->get_field_id('comments'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('comments'); ?>" id="<?php echo $this->get_field_id('comments'); ?>" class="widefat <?php if( 'unset' <> $instance['comments'] ) echo 'open-on-value'; ?>">
+						<option value="unset" <?php selected( $instance['comments'], 'unset' ); ?>><?php _e(''); ?></option>
+						<option value="yes" <?php selected( $instance['comments'], 'yes' ); ?>><?php _e('Has comments'); ?></option>
+						<option value="no" <?php selected( $instance['comments'], 'no' ); ?>><?php _e('Does not have comments'); ?></option>
+					</select>
+				</p>
+			</div>
 		</div>
 
 <?php 
@@ -770,70 +869,95 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		$postloops->restore_current_blog(); 
 ?>
 
-		<div id="<?php echo $this->get_field_id('age'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('age'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('age_num'); ?>"><?php _e('Published within the last:'); ?></label><input type="text" value="<?php echo $instance['age_num']; ?>" name="<?php echo $this->get_field_name('age_num'); ?>" id="<?php echo $this->get_field_id('age_num'); ?>" class="" />
-
-			<select id="<?php echo $this->get_field_id('age_unit'); ?>" name="<?php echo $this->get_field_name('age_unit'); ?>">
-				<option value="day" <?php selected( $instance['age_unit'], 'day' ) ?>>Day(s)</option>
-				<option value="month" <?php selected( $instance['age_unit'], 'month' ) ?>>Month(s)</option>
-				<option value="year" <?php selected( $instance['age_unit'], 'year' ) ?>>Year(s)</option>
-			</select>
-		</p>
+		<div id="<?php echo $this->get_field_id('age'); ?>-container" class="postloop container hide-if-js posttype_post">
+			<label for="<?php echo $this->get_field_id('age_num'); ?>"><?php _e('Date published'); ?></label>
+			<div id="<?php echo $this->get_field_id('age'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select id="<?php echo $this->get_field_id('age_bool'); ?>" name="<?php echo $this->get_field_name('age_bool'); ?>">
+						<option value="newer" <?php selected( $instance['age_bool'], 'newer' ) ?>>Newer than</option>
+						<option value="older" <?php selected( $instance['age_bool'], 'older' ) ?>>Older than</option>
+					</select>
+					<input type="text" value="<?php echo $instance['age_num']; ?>" name="<?php echo $this->get_field_name('age_num'); ?>" id="<?php echo $this->get_field_id('age_num'); ?>" size="1" class="<?php if( 0 < $instance['age_num'] ) echo 'open-on-value'; ?>" />
+					<select id="<?php echo $this->get_field_id('age_unit'); ?>" name="<?php echo $this->get_field_name('age_unit'); ?>">
+						<option value="day" <?php selected( $instance['age_unit'], 'day' ) ?>>Day(s)</option>
+						<option value="month" <?php selected( $instance['age_unit'], 'month' ) ?>>Month(s)</option>
+						<option value="year" <?php selected( $instance['age_unit'], 'year' ) ?>>Year(s)</option>
+					</select>
+				</p>
+			</div>
 		</div>
 
 		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
-			<div id="<?php echo $this->get_field_id('what'); ?>-container" class="container">
-			<p id="<?php echo $this->get_field_id('what'); ?>-contents" class="contents">
-				<label for="<?php echo $this->get_field_id('relationship'); ?>"><?php _e('Related to other posts:'); ?></label>
-				<select id="<?php echo $this->get_field_id('relationship'); ?>" name="<?php echo $this->get_field_name('relationship'); ?>">
-					<option value="excluding" <?php selected( $instance['relationship'], 'excluding' ) ?>>Excluding those</option>
-					<option value="similar" <?php selected( $instance['relationship'], 'similar' ) ?>>Similar to</option>
-				</select>
-				<?php _e('items shown in:'); ?>
-				<ul>
-				<?php echo $other_instances; ?>
-				</ul>
-			</p>
+			<div id="<?php echo $this->get_field_id('relationship'); ?>-container" class="postloop container hide-if-js posttype_post">
+				<label for="<?php echo $this->get_field_id('relationship'); ?>"><?php _e('Related to other posts'); ?></label>
+				<div id="<?php echo $this->get_field_id('relationship'); ?>-contents" class="contents hide-if-js">
+					<p>
+						<select id="<?php echo $this->get_field_id('relationship'); ?>" name="<?php echo $this->get_field_name('relationship'); ?>">
+							<option value="excluding" <?php selected( $instance['relationship'], 'excluding' ) ?>>Excluding those</option>
+							<option value="similar" <?php selected( $instance['relationship'], 'similar' ) ?>>Similar to</option>
+						</select>
+						<?php _e('items shown in'); ?>
+						<ul>
+						<?php echo $other_instances; ?>
+						</ul>
+					</p>
+				</div>
 			</div>
 		<?php endif; ?>
 
-		<p>
-			<label for="<?php echo $this->get_field_id('count'); ?>"><?php _e( 'Number of items to show:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('count'); ?>" id="<?php echo $this->get_field_id('count'); ?>" class="widefat">
-			<?php for( $i = 1; $i < 51; $i++ ){ ?>
-				<option value="<?php echo $i; ?>" <?php selected( $instance['count'], $i ); ?>><?php echo $i; ?></option>
-			<?php } ?>
-			</select>
-		</p>
+		<div id="<?php echo $this->get_field_id('count'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
+			<label for="<?php echo $this->get_field_id('count'); ?>"><?php _e( 'Number of items to show' ); ?></label>
+			<div id="<?php echo $this->get_field_id('count'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('count'); ?>" id="<?php echo $this->get_field_id('count'); ?>" class="widefat">
+					<?php for( $i = 1; $i < 51; $i++ ){ ?>
+						<option value="<?php echo $i; ?>" <?php selected( $instance['count'], $i ); ?>><?php echo $i; ?></option>
+					<?php } ?>
+					</select>
+				</p>
+			</div>
+		</div>
 
-		<p>
-			<label for="<?php echo $this->get_field_id('order'); ?>"><?php _e( 'Ordered by:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('order'); ?>" id="<?php echo $this->get_field_id('order'); ?>" class="widefat">
-					<option value="age_new" <?php selected( $instance['order'], 'age_new' ); ?>><?php _e('Newest first'); ?></option>
-					<option value="age_old" <?php selected( $instance['order'], 'age_old' ); ?>><?php _e('Oldest first'); ?></option>
-					<option value="comment_new" <?php selected( $instance['order'], 'comment_new' ); ?>><?php _e('Recently commented'); ?></option>
-					<option value="title_az" <?php selected( $instance['order'], 'title_az' ); ?>><?php _e('Title A-Z'); ?></option>
-					<option value="title_za" <?php selected( $instance['order'], 'title_za' ); ?>><?php _e('Title Z-A'); ?></option>
-					<option value="rand" <?php selected( $instance['order'], 'rand' ); ?>><?php _e('Random'); ?></option>
-			</select>
-		</p>
+		<div id="<?php echo $this->get_field_id('order'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
+			<label for="<?php echo $this->get_field_id('order'); ?>"><?php _e( 'Ordered by' ); ?></label>
+			<div id="<?php echo $this->get_field_id('order'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('order'); ?>" id="<?php echo $this->get_field_id('order'); ?>" class="widefat">
+							<option value="age_new" <?php selected( $instance['order'], 'age_new' ); ?>><?php _e('Newest first'); ?></option>
+							<option value="age_old" <?php selected( $instance['order'], 'age_old' ); ?>><?php _e('Oldest first'); ?></option>
+							<option value="comment_new" <?php selected( $instance['order'], 'comment_new' ); ?>><?php _e('Recently commented'); ?></option>
+							<option value="title_az" <?php selected( $instance['order'], 'title_az' ); ?>><?php _e('Title A-Z'); ?></option>
+							<option value="title_za" <?php selected( $instance['order'], 'title_za' ); ?>><?php _e('Title Z-A'); ?></option>
+							<?php if( is_object( $bsuite )): ?>
+								<option value="pop_recent" <?php selected( $instance['order'], 'pop_recent' ); ?>><?php _e('Recently Popular'); ?></option>
+							<?php endif; ?>
+							<option value="rand" <?php selected( $instance['order'], 'rand' ); ?>><?php _e('Random'); ?></option>
+					</select>
+				</p>
+			</div>
+		</div>
 
-		<p>
-			<label for="<?php echo $this->get_field_id('template'); ?>"><?php _e( 'Template:' ); ?></label>
-			<select name="<?php echo $this->get_field_name('template'); ?>" id="<?php echo $this->get_field_id('template'); ?>" class="widefat">
-				<?php $this->control_template_dropdown( $instance['template'] ); ?>
-			</select>
-		</p>
-
-
-
-
-
-
-
+		<div id="<?php echo $this->get_field_id('template'); ?>-container" class="postloop container posttype_normal">
+			<label for="<?php echo $this->get_field_id('template'); ?>"><?php _e( 'Template' ); ?></label>
+			<div id="<?php echo $this->get_field_id('template'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('template'); ?>" id="<?php echo $this->get_field_id('template'); ?>" class="widefat">
+						<?php $this->control_template_dropdown( $instance['template'] ); ?>
+					</select>
+				</p>
+			</div>
+		</div>
 
 <?php
+		if( $this->justupdated )
+		{
+?>
+<script type="text/javascript">
+	postloops_widgeteditor_update( '<?php echo $this->get_field_id('title'); ?>' );
+</script>
+
+<?php
+		}
 	}
 
 
@@ -845,7 +969,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 //TODO: clean up these old fields
 ?>
 		<fieldset class="bsuite-any-posts-activity">
-		<p><label for="bsuite-any-posts-activity-<?php echo $number; ?>"><?php _e('Activity:'); ?>
+		<p><label for="bsuite-any-posts-activity-<?php echo $number; ?>"><?php _e('Activity'); ?>
 		<select id="bsuite-any-posts-activity-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][activity]">
 			<option value="pop_most" <?php selected( $options[$number]['activity'], 'pop_most' ) ?>>Most popular items</option>
 			<option value="pop_least" <?php selected( $options[$number]['activity'], 'pop_least' ) ?>>Least popular</option>
@@ -858,30 +982,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		</label></p>
 		<fieldset>
 
-		<fieldset class="bsuite-any-posts-age">
-		<p><label for="bsuite-any-posts-age-<?php echo $number; ?>"><?php _e('Post date:'); ?>
-		<select id="bsuite-any-posts-age-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][age]">
-			<option value="age_new" <?php selected( $options[$number]['age'], 'after' ) ?>>After</option>
-			<option value="age_old" <?php selected( $options[$number]['age'], 'before' ) ?>>Before</option>
-			<option value="age_from" <?php selected( $options[$number]['age'], 'around' ) ?>>Around</option>
-		</select>
-		</label> 
-		<label for="bsuite-any-posts-agestrtotime-<?php echo $number; ?>"><input style="width: 150px" id="bsuite-any-posts-agestrtotime-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][agestrtotime]" type="text" value="<?php echo attribute_escape( $options[$number]['agestrtotime'] ); ?>" /></label></p>
-		<fieldset>
-
-		<?php if( $other_instances = $this->control_instances( $instance['relatedto']) ): ?>
-			<fieldset class="bsuite-any-posts-relationship">
-				<p><label for="bsuite-any-posts-relationship-<?php echo $number; ?>">
-				<select id="bsuite-any-posts-relationship-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][relationship]">
-					<option value="similar" <?php selected( $options[$number]['relationship'], 'similar' ) ?>>Similar to</option>
-					<option value="excluding" <?php selected( $options[$number]['relationship'], 'excluding' ) ?>>Excluding those</option>
-				</select>
-				</label>
-				<?php _e('items shown in:'); ?> <?php echo $other_instances; ?></p>
-			<fieldset>
-		<?php endif; ?>
-
-		<p><label for="bsuite-any-posts-columns-<?php echo $number; ?>"><?php _e('Number of columns:'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-columns-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][columns]" type="text" value="<?php echo attribute_escape( $options[$number]['columns'] ); ?>" /></label> <?php _e('(1 to 8)'); ?></p>
+		<p><label for="bsuite-any-posts-columns-<?php echo $number; ?>"><?php _e('Number of columns'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-columns-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][columns]" type="text" value="<?php echo attribute_escape( $options[$number]['columns'] ); ?>" /></label> <?php _e('(1 to 8)'); ?></p>
 -->	
 	
 
@@ -915,12 +1016,12 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 
 				if( $do_output )
 				{
-					echo '<div id="'. $this->get_field_id('blog') .'-container" class="container"><p id="'. $this->get_field_id('blog') .'-contents" class="container"><label for="'. $this->get_field_id('blog') .'">'. __( 'From:' ) .'</label><select name="'. $this->get_field_name('blog') .'" id="'. $this->get_field_id('blog') .'" class="widefat">';
+					echo '<div id="'. $this->get_field_id('blog') .'-container" class="postloop container hide-if-js posttype_normal"><label for="'. $this->get_field_id('blog') .'">'. __( 'From' ) .'</label><div id="'. $this->get_field_id('blog') .'-contents" class="contents hide-if-js"><p><select name="'. $this->get_field_name('blog') .'" id="'. $this->get_field_id('blog') .'" class="widefat">';
 					foreach( $this->get_blog_list( $current_user->ID ) as $blog )
 					{
 							?><option value="<?php echo $blog['blog_id']; ?>" <?php selected( $instance['blog'], $blog['blog_id'] ); ?>><?php echo $blog['blog_id'] == $blog_id ? __('This blog') : $blog['blogname']; ?></option><?php
 					}
-					echo '</select></p></div>';
+					echo '</select></p></div></div>';
 				}
 
 				if( $switch && ( $instance['blog'] <> $blog_id ))
@@ -931,9 +1032,9 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		}
 
 ?>
-		<div id="<?php echo $this->get_field_id('blog'); ?>-container" class="container">
-		<p id="<?php echo $this->get_field_id('blog'); ?>-contents" class="contents">
-			<label for="<?php echo $this->get_field_id('blog'); ?>"><?php _e( 'From:' ); ?></label>
+		<div id="<?php echo $this->get_field_id('blog'); ?>-container" class="postloop container">
+		<p>
+			<label for="<?php echo $this->get_field_id('blog'); ?>"><?php _e( 'From' ); ?></label>
 			<input type="text" value="<?php echo attribute_escape( get_blog_details( $instance['blog'] )->blogname ); ?>" name="<?php echo $this->get_field_name('blog'); ?>" id="<?php echo $this->get_field_id('blog'); ?>" class="widefat" disabled="disabled" />
 		</p>
 		</div>
@@ -972,11 +1073,65 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		$items = get_categories( array( 'style' => FALSE, 'echo' => FALSE, 'hierarchical' => FALSE ));
 		foreach( $items as $item ){
 			$list[] = '<li>
-				<label for="'. $this->get_field_id( $whichfield .'-'. $item->term_id) .'"><input id="'. $this->get_field_id( $whichfield .'-'. $item->term_id) .'" name="'. $this->get_field_name( $whichfield ) .'['. $item->term_id .']" type="checkbox" value="1" '. ( isset( $instance[ $whichfield ][ $item->term_id ] ) ? 'checked="checked"' : '' ) .'/> '. $item->name .'</label>
+				<label for="'. $this->get_field_id( $whichfield .'-'. $item->term_id) .'"><input id="'. $this->get_field_id( $whichfield .'-'. $item->term_id) .'" name="'. $this->get_field_name( $whichfield ) .'['. $item->term_id .']" type="checkbox" value="1" '. ( isset( $instance[ $whichfield ][ $item->term_id ] ) ? 'checked="checked" class="open-on-value" ' : 'class="checkbox"' ) .'/> '. $item->name .'</label>
 			</li>';
 		}
 	
 		return implode( "\n", $list );
+	}
+	
+	function control_taxonomies( $instance , $post_type )
+	{
+		if( $post_type == 'normal' )
+			return;
+
+		foreach( get_object_taxonomies( $post_type ) as $taxonomy )
+		{
+
+			if( $taxonomy == 'category' || $taxonomy == 'post_tag' )
+				continue;
+
+			$tax = get_taxonomy( $taxonomy );
+			$tax_name = $tax->label;
+?>
+			<div id="<?php echo $this->get_field_id( 'tax_'. $taxonomy ); ?>-container" class="postloop container hide-if-js posttype_<?php echo $post_type; ?>">
+				<label for="<?php echo $this->get_field_id( 'tax_'. $taxonomy .'_bool' ); ?>"><?php echo $tax_name; ?></label>
+				<div id="<?php echo $this->get_field_id( 'tax_'. $taxonomy ); ?>-contents" class="contents hide-if-js">
+					<p>
+						<select name="<?php echo $this->get_field_name('tax_'. $taxonomy .'_bool'); ?>" id="<?php echo $this->get_field_id('tax_'. $taxonomy .'_bool'); ?>" class="widefat">
+							<option value="in" <?php selected( $instance['tax_'. $taxonomy .'_bool'], 'in' ); ?>><?php _e('Any of these terms'); ?></option>
+							<option value="and" <?php selected( $instance['tax_'. $taxonomy .'_bool'], 'and' ); ?>><?php _e('All of these terms'); ?></option>
+						</select>
+			
+						<?php
+						$tags_in = array();
+						foreach( (array) $instance['tax_'. $taxonomy .'_in'] as $tag_id ){
+							$temp = get_term( $tag_id, $taxonomy );
+							$tags_in[] = $temp->name;
+						}
+						?>
+						<input type="text" value="<?php echo implode( ', ', (array) $tags_in ); ?>" name="<?php echo $this->get_field_name('tax_'. $taxonomy .'_in'); ?>" id="<?php echo $this->get_field_id('tax_'. $taxonomy .'_in'); ?>" class="widefat <?php if( count( (array) $tags_in )) echo 'open-on-value'; ?>" />
+						<br />
+						<small><?php _e( 'Terms, separated by commas.' ); ?></small>
+					</p>
+		
+					<p>
+						<label for="<?php echo $this->get_field_id('tax_'. $taxonomy .'_not_in'); ?>"><?php _e( 'With none of these terms' ); ?></label>
+						<?php
+						$tags_not_in = array();
+						foreach( (array) $instance['tax_'. $taxonomy .'_not_in'] as $tag_id ){
+							$temp = get_term( $tag_id, $taxonomy );
+							$tags_not_in[] = $temp->name;
+						}
+						?>
+						<input type="text" value="<?php echo implode( ', ', (array) $tags_not_in ); ?>" name="<?php echo $this->get_field_name('tax_'. $taxonomy .'_not_in'); ?>" id="<?php echo $this->get_field_id('tax_'. $taxonomy .'_not_in'); ?>" class="widefat <?php if( count( (array) $tags_not_in )) echo 'open-on-value'; ?>" />
+						<br />
+						<small><?php _e( 'Terms, separated by commas.' ); ?></small>
+					</p>
+				</div>
+			</div>
+<?php
+		}
 	}
 	
 	function control_instances( $selected = array() ){
@@ -991,7 +1146,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				continue;
 
 			$list[] = '<li>
-				<label for="'. $this->get_field_id( 'relatedto-'. $number ) .'"><input class="checkbox" type="checkbox" value="'. $number .'" '.( in_array( $number, (array) $selected ) ? 'checked="checked"' : '' ) .' id="'. $this->get_field_id( 'relatedto-'. $number) .'" name="'. $this->get_field_name( 'relatedto' ) .'['. $number .']" /> '. $instance['title'] .'<small> (id:'. $number .')</small></label>
+				<label for="'. $this->get_field_id( 'relatedto-'. $number ) .'"><input type="checkbox" value="'. $number .'" '.( in_array( $number, (array) $selected ) ? 'checked="checked" class="checkbox open-on-value"' : 'class="checkbox"' ) .' id="'. $this->get_field_id( 'relatedto-'. $number) .'" name="'. $this->get_field_name( 'relatedto' ) .'['. $number .']" /> '. $instance['title'] .'<small> (id:'. $number .')</small></label>
 			</li>';
 		}
 	
