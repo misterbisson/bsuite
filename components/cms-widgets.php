@@ -109,12 +109,12 @@ class bSuite_PostLoops {
 
 	function get_default_posts()
 	{
-		global $wp_query, $wpdb;
+		global $wp_query, $blog_id;
 
 		foreach( $wp_query->posts as $post )
 		{
 			// get the matching post IDs for the $postloops object
-			$this->posts[-1][ $wpdb->blogid ][] = $post->ID;
+			$this->posts[-1][ $blog_id ][] = $post->ID;
 			
 			$terms = get_object_term_cache( $post->ID, (array) get_object_taxonomies( $post->post_type ) );
 			if ( empty( $terms ))
@@ -122,7 +122,7 @@ class bSuite_PostLoops {
 			
 			// get the term taxonomy IDs for the $postloops object
 			foreach( $terms as $term )
-				$this->terms[-1][ $wpdb->blogid ][ $term->term_taxonomy_id ]++;
+				$this->terms[-1][ $blog_id ][ $term->term_taxonomy_id ]++;
 		}
 	}
 
@@ -403,7 +403,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 
 	function widget( $args, $instance ) {
-		global $bsuite, $postloops, $wpdb;
+		global $bsuite, $postloops, $wpdb, $blog_id;
 
 		extract( $args );
 
@@ -559,7 +559,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 //print_r( $instance );
 //print_r( $criteria );
-			if( 0 < $instance['blog'] && $instance['blog'] !== $wpdb->blogid )
+			if( 0 < $instance['blog'] && $instance['blog'] !== $blog_id )
 				switch_to_blog( $instance['blog'] ); // switch to the other blog
 
 			$ourposts = new WP_Query( $criteria );
@@ -666,7 +666,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 
 		if( $this->control_blogs( $instance , FALSE , FALSE ))
 		{
-			$instance['blog'] = absint( $new_instance['blog'] );
+			$instance['blog'] = absint( $new_instance['blog'] ) ? absint( $new_instance['blog'] ) : 1;
 			$instance['categoriesbool'] = in_array( $new_instance['categoriesbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['categoriesbool']: '';
 			$instance['categories_in'] = array_filter( array_map( 'absint', $new_instance['categories_in'] ));
 			$instance['categories_not_in'] = array_filter( array_map( 'absint', $new_instance['categories_not_in'] ));
