@@ -1,7 +1,8 @@
+<?php
 class bSuite_bSuggestive {
 
 	function bSuite_bSuggestive( $ids ) {
-		self::getposts( $ids )
+		self::getposts( $ids );
 	}
 
 	function query( $ids ) {

@@ -552,7 +552,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 				$criteria['post__in'] = array_merge( 
 					(array) $instance['post__in'] , 
-					array_slice( (array) $bsuite->bsuggestive_getposts( $posts_for_related ) , 0 , $count )
+					array_slice( (array) bSuite_bSuggestive::getposts( $posts_for_related ) , 0 , $count )
 				);
 			}
 
