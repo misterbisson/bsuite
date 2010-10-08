@@ -598,7 +598,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 
 			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
 			if ( $instance['title_show'] && $title )
-				echo $before_title . $title . $after_title;
+				echo $before_title . $title . $after_title .'<div class="widget_subtitle">'. $instance['subtitle'] .'</div>';
 
 			while( $ourposts->have_posts() ){
 
@@ -612,15 +612,14 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				// get the matching post IDs for the $postloops object
 				$postloops->posts[ $this->number ][ $instance['blog'] ][] = $id;
 
-/*
+				// get the matching terms by taxonomy
 				$terms = get_object_term_cache( $id, (array) get_object_taxonomies( $post->post_type ) );
 				if ( empty( $terms ))
 					$terms = wp_get_object_terms( $id, (array) get_object_taxonomies( $post->post_type ) );
 
 				// get the term taxonomy IDs for the $postloops object
 				foreach( $terms as $term )
-					$postloops->terms[ $this->number ][ $instance['blog'] ][ $term->term_taxonomy_id ]++;
-*/
+					$postloops->terms[ $this->number ][ $instance['blog'] ][ $term->taxonomy ][ $term->term_id ]++;
 
 				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] )
 				{
@@ -661,6 +660,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		$instance = $old_instance;
 
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
+		$instance['subtitle'] = wp_filter_nohtml_kses( $new_instance['subtitle'] );
 		$instance['title_show'] = absint( $new_instance['title_show'] );
 		$instance['what'] = in_array( $new_instance['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $new_instance['what']: '';
 
@@ -745,11 +745,13 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			);
 
 		$title = esc_attr( $instance['title'] );
+		$subtitle = esc_attr( $instance['subtitle'] );
 
 ?>
 		<p>
 			<label for="<?php echo $this->get_field_id('title'); ?>"><?php _e('Title'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('title'); ?>" name="<?php echo $this->get_field_name('title'); ?>" type="text" value="<?php echo $title; ?>" />
 			<label for="<?php echo $this->get_field_id( 'title_show' ) ?>"><input id="<?php echo $this->get_field_id( 'title_show' ) ?>" name="<?php echo $this->get_field_name( 'title_show' ) ?>" type="checkbox" value="1" <?php echo ( $instance[ 'title_show' ] ? 'checked="checked"' : '' ) ?>/> Show Title?</label>
+			<label for="<?php echo $this->get_field_id('subtitle'); ?>"><?php _e('Sub-title'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('subtitle'); ?>" name="<?php echo $this->get_field_name('subtitle'); ?>" type="text" value="<?php echo $subtitle; ?>" />
 		</p>
 
 		<div id="<?php echo $this->get_field_id('what'); ?>-container" class="postloop container posttype_normal">
