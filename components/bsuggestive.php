@@ -36,7 +36,7 @@ class bSuite_bSuggestive {
 					AND p.post_status = 'publish'
 					GROUP BY p.ID
 					ORDER BY hits DESC, p.post_date_gmt DESC
-					LIMIT 150", $ids)
+					LIMIT 300", $ids)
 				);
 		}
 		return FALSE;

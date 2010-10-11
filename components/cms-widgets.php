@@ -116,13 +116,20 @@ class bSuite_PostLoops {
 			// get the matching post IDs for the $postloops object
 			$this->posts[-1][ $blog_id ][] = $post->ID;
 			
+			// get the matching terms by taxonomy
 			$terms = get_object_term_cache( $post->ID, (array) get_object_taxonomies( $post->post_type ) );
 			if ( empty( $terms ))
 				$terms = wp_get_object_terms( $post->ID, (array) get_object_taxonomies( $post->post_type ) );
-			
+
+			// get the term taxonomy IDs for the $postloops object
+			foreach( $terms as $term )
+				$this->terms[-1][ $term->taxonomy ][ $term->term_id ]++;
+
+/*
 			// get the term taxonomy IDs for the $postloops object
 			foreach( $terms as $term )
 				$this->terms[-1][ $blog_id ][ $term->term_taxonomy_id ]++;
+*/
 		}
 	}
 
@@ -423,18 +430,30 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			if( $instance['what'] == 'attachment' )
 				$criteria['post_status'] = 'inherit';
-	
+
 			if( !empty( $instance['categories_in'] ))
-				$criteria['category__'. ( in_array( $instance['categoriesbool'], array( 'in', 'and', 'not_in' )) ? $instance['categoriesbool'] : 'in' ) ] = array_keys( $instance['categories_in'] );
+				$criteria['category__'. ( in_array( $instance['categoriesbool'], array( 'in', 'and', 'not_in' )) ? $instance['categoriesbool'] : 'in' ) ] = array_keys( (array) $instance['categories_in'] );
+
+			if( $instance['categories_in_related'] )
+				$criteria['category__'. ( in_array( $instance['categoriesbool'], array( 'in', 'and', 'not_in' )) ? $instance['categoriesbool'] : 'in' ) ] = array_merge( (array) $criteria['category__'. ( in_array( $instance['categoriesbool'], array( 'in', 'and', 'not_in' )) ? $instance['categoriesbool'] : 'in' ) ], (array) array_keys( (array) $postloops->terms[ $instance['categories_in_related'] ]['category'] ) );
 
 			if( !empty( $instance['categories_not_in'] ))
-				$criteria['category__not_in'] = array_keys( $instance['categories_not_in'] );
+				$criteria['category__not_in'] = array_keys( (array) $instance['categories_not_in'] );
+
+			if( $instance['categories_not_in_related'] )
+				$criteria['category__not_in'] = array_merge( (array) $criteria['category__not_in'] , (array) array_keys( (array) $postloops->terms[ $instance['categories_not_in_related'] ]['category'] ));
 	
 			if( !empty( $instance['tags_in'] ))
 				$criteria['tag__'. ( in_array( $instance['tagsbool'], array( 'in', 'and', 'not_in' )) ? $instance['tagsbool'] : 'in' ) ] = $instance['tags_in'];
 
+			if( $instance['tags_in_related'] )
+				$criteria['tag__'. ( in_array( $instance['tagsbool'], array( 'in', 'and', 'not_in' )) ? $instance['tagsbool'] : 'in' ) ] = array_merge( (array) $criteria['tag__'. ( in_array( $instance['tagsbool'], array( 'in', 'and', 'not_in' )) ? $instance['tagsbool'] : 'in' ) ], (array) array_keys( (array) $postloops->terms[ $instance['tags_in_related'] ]['post_tag'] ) );
+
 			if( !empty( $instance['tags_not_in'] ))
 				$criteria['tag__not_in'] = $instance['tags_not_in'];
+
+			if( $instance['tags_not_in_related'] )
+				$criteria['tag__not_in'] = array_merge( (array) $criteria['tag__not_in'] , (array) array_keys( (array) $postloops->terms[ $instance['tags_not_in_related'] ]['post_tag'] ));
 
 			foreach( get_object_taxonomies( $instance['what'] ) as $taxonomy )
 			{
@@ -619,7 +638,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 
 				// get the term taxonomy IDs for the $postloops object
 				foreach( $terms as $term )
-					$postloops->terms[ $this->number ][ $instance['blog'] ][ $term->taxonomy ][ $term->term_id ]++;
+					$postloops->terms[ $this->number ][ $term->taxonomy ][ $term->term_id ]++;
 
 				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] )
 				{
@@ -669,7 +688,9 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 			$instance['blog'] = absint( $new_instance['blog'] ) ? absint( $new_instance['blog'] ) : 1;
 			$instance['categoriesbool'] = in_array( $new_instance['categoriesbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['categoriesbool']: '';
 			$instance['categories_in'] = array_filter( array_map( 'absint', $new_instance['categories_in'] ));
+			$instance['categories_in_related'] = (int) $new_instance['categories_in_related'];
 			$instance['categories_not_in'] = array_filter( array_map( 'absint', $new_instance['categories_not_in'] ));
+			$instance['categories_not_in_related'] = (int) $new_instance['categories_not_in_related'];
 			$instance['tagsbool'] = in_array( $new_instance['tagsbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['tagsbool']: '';
 			$tag_name = '';
 			$instance['tags_in'] = array();
@@ -678,6 +699,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				if( $temp = is_term( $tag_name, 'post_tag' ))
 					$instance['tags_in'][] = $temp['term_id'];
 			}
+			$instance['tags_in_related'] = (int) $new_instance['tags_in_related'];
 			$tag_name = '';
 			$instance['tags_not_in'] = array();
 			foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tags_not_in'] )))) as $tag_name )
@@ -685,6 +707,7 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				if( $temp = is_term( $tag_name, 'post_tag' ))
 					$instance['tags_not_in'][] = $temp['term_id'];
 			}
+			$instance['tags_not_in_related'] = (int) $new_instance['tags_not_in_related'];
 
 			if( $instance['what'] <> 'normal' )
 			{
@@ -729,11 +752,20 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 
 		$this->justupdated = TRUE;
 
+/*
+var_dump( $new_instance['categories_in_related'] );
+var_dump( $instance['categories_in_related'] );
+die;
+*/
 		return $instance;
 	}
 
 	function form( $instance ) {
 		global $blog_id, $postloops, $bsuite;
+
+		// reset the instances var, in case a new widget was added
+		$postloops->get_instances();
+
 		//Defaults
 
 		$instance = wp_parse_args( (array) $instance, 
@@ -815,6 +847,19 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 					<input type="text" value="<?php echo implode( ', ', (array) $tags_in ); ?>" name="<?php echo $this->get_field_name('tags_in'); ?>" id="<?php echo $this->get_field_id('tags_in'); ?>" class="widefat <?php if( count( (array) $tags_in )) echo 'open-on-value'; ?>" />
 					<br />
 					<small><?php _e( 'Tags, separated by commas.' ); ?></small>
+
+					<br />And terms from<br /><select name="<?php echo $this->get_field_name( 'tags_in_related' ); ?>" id="<?php echo $this->get_field_id( 'tags_in_related' ); ?>" class="widefat <?php if( $instance[ 'tags_in_related' ] ) echo 'open-on-value'; ?>">
+						<option value="0" '. <?php selected( (int) $instance[ 'tags_in_related' ] , 0 ) ?> .'></option>
+<?php
+						foreach( $postloops->instances as $number => $loop ){
+							if( $number == $this->number )
+								continue;
+				
+							echo '<option value="'. $number .'" '. selected( (int) $instance[ 'tags_in_related' ] , (int) $number , FALSE ) .'>'. $loop['title'] .'<small> (id:'. $number .')</small></option>';
+						}
+?>
+
+					</select></li>
 				</p>
 		
 				<p>
@@ -829,6 +874,19 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 					<input type="text" value="<?php echo implode( ', ', (array) $tags_not_in ); ?>" name="<?php echo $this->get_field_name('tags_not_in'); ?>" id="<?php echo $this->get_field_id('tags_not_in'); ?>" class="widefat <?php if( count( (array) $tags_not_in )) echo 'open-on-value'; ?>" />
 					<br />
 					<small><?php _e( 'Tags, separated by commas.' ); ?></small>
+
+					<br />And terms from<br /><select name="<?php echo $this->get_field_name( 'tags_not_in_related' ); ?>" id="<?php echo $this->get_field_id( 'tags_not_in_related' ); ?>" class="widefat <?php if( $instance[ 'tags_not_in_related' ] ) echo 'open-on-value'; ?>">
+						<option value="0" '. <?php selected( (int) $instance[ 'tags_not_in_related' ] , 0 ) ?> .'></option>
+<?php
+						foreach( $postloops->instances as $number => $loop ){
+							if( $number == $this->number )
+								continue;
+				
+							echo '<option value="'. $number .'" '. selected( (int) $instance[ 'tags_not_in_related' ] , (int) $number , FALSE ) .'>'. $loop['title'] .'<small> (id:'. $number .')</small></option>';
+						}
+?>
+
+					</select></li>
 				</p>
 			</div>
 		</div>
@@ -1074,19 +1132,39 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		return $this->bloglist;
 	}
 
-	function control_categories( $instance , $whichfield = 'categories_in' ){
+	function control_categories( $instance , $whichfield = 'categories_in' )
+	{
+
+		// get the regular category list
+		$list = array();
 		$items = get_categories( array( 'style' => FALSE, 'echo' => FALSE, 'hierarchical' => FALSE ));
-		foreach( $items as $item ){
+		foreach( $items as $item )
+		{
 			$list[] = '<li>
 				<label for="'. $this->get_field_id( $whichfield .'-'. $item->term_id) .'"><input id="'. $this->get_field_id( $whichfield .'-'. $item->term_id) .'" name="'. $this->get_field_name( $whichfield ) .'['. $item->term_id .']" type="checkbox" value="1" '. ( isset( $instance[ $whichfield ][ $item->term_id ] ) ? 'checked="checked" class="open-on-value" ' : 'class="checkbox"' ) .'/> '. $item->name .'</label>
 			</li>';
 		}
+
+		// get the select list to choose categories from items shown in another instance
+		global $postloops;
+
+		$related_instance_select = '<option value="0" '. selected( (int) $instance[ $whichfield .'_related' ] , 0 , FALSE ) .'></option>';
+		foreach( $postloops->instances as $number => $loop ){
+			if( $number == $this->number )
+				continue;
+
+			$related_instance_select .= '<option value="'. $number .'" '. selected( (int) $instance[ $whichfield .'_related' ] , (int) $number , FALSE ) .'>'. $loop['title'] .'<small> (id:'. $number .')</small></option>';
+		}
+
+		$list[] = '<li>Categories from items shown in<br /><select name="'. $this->get_field_name( $whichfield .'_related' ) .'" id="'. $this->get_field_id( $whichfield .'_related' ) .'" class="widefat '. ( $instance[ $whichfield .'_related' ] ?  'open-on-value' : '' ) .'">'. $related_instance_select . '</select></li>';
 	
 		return implode( "\n", $list );
 	}
 	
 	function control_taxonomies( $instance , $post_type )
 	{
+		global $postloops;
+
 		if( $post_type == 'normal' )
 			return;
 
@@ -1141,9 +1219,6 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 	
 	function control_instances( $selected = array() ){
 		global $postloops;
-
-		// reset the instances var, in case a new widget was added
-		$postloops->get_instances();
 
 		$list = array();
 		foreach( $postloops->instances as $number => $instance ){
