@@ -9,10 +9,10 @@ global $wpdb, $bsuite, $blog_id;
 nocache_headers();
 
 // get or start a session
-if( $_COOKIE["bsuite_session"] )
-	$session = $_COOKIE["bsuite_session"];
+if( $_COOKIE['bsuite_session'] )
+	$session = $_COOKIE['bsuite_session'];
 else
-	$session = md5( uniqid( rand(),Êtrue ));
+	$session = md5( uniqid( rand(), true ));
 
 // set or update the cookie to expire 30 minutes from now
 setcookie ( 'bsuite_session', $session, time()+1800, '/' );
