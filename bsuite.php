@@ -167,8 +167,6 @@ class bSuite {
 		}
 */
 
-//		add_filter( 'whitelist_options', array(&$this, 'mu_options' ));
-
 		register_setting( 'bsuite-options', 'bsuite_insert_related', 'absint' );
 		register_setting( 'bsuite-options', 'bsuite_insert_sharelinks', 'absint' );
 		register_setting( 'bsuite-options', 'bsuite_searchsmart', 'absint' );
@@ -1787,6 +1785,7 @@ $engine = $this->get_search_engine( $ref );
 				LIMIT 1000
 			) a
 			LEFT JOIN $this->hits_terms t ON a.object_id = t.term_id
+			WHERE t.status = ''
 			GROUP BY object_blog, object_id
 			ORDER BY hit_count DESC
 			$limit";
@@ -3453,9 +3452,11 @@ die;
 			CREATE TABLE $this->hits_terms (
 				term_id bigint(20) NOT NULL auto_increment,
 				name varchar(255) NOT NULL default '',
+				status varchar(40) NOT NULL,
 				PRIMARY KEY  (term_id),
 				UNIQUE KEY name_uniq (name),
-				KEY name (name(8))
+				KEY name (name(8)),
+				KEY status (status(1))
 			) ENGINE=MyISAM $charset_collate
 			");
 
@@ -3518,14 +3519,6 @@ die;
 				hits_recent int(10) NOT NULL
 			) ENGINE=MyISAM $charset_collate
 			");
-	}
-
-	function mu_options( $options ) {
-		$added = array( 'bsuite' => array( 'bsuite_insert_related', 'bsuite_insert_sharelinks', 'bsuite_searchsmart', 'bsuite_swhl', 'bsuite_who_can_edit' ));
-
-		$options = add_option_whitelist( $added, $options );
-
-		return( $options );
 	}
 
 	function kses_allowedposttags() {
