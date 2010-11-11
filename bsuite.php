@@ -266,6 +266,7 @@ class bSuite {
 			'excerpt'   => FALSE,
 			'icon'   => FALSE,
 			'echo' => 0,
+			'show_parent' => FALSE,
 			'child_of' => $id,
 			'depth' => 1,
 			'sort_column' => 'menu_order, post_title',
@@ -304,9 +305,9 @@ class bSuite {
 		if(( $arg['excerpt'] ) || ( $arg['icon'] )){
 			$this->list_pages->show_excerpt = $arg['excerpt'];
 			$this->list_pages->show_icon = $arg['icon'];
-			return( $prefix . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_callback'), wp_list_pages( $arg )) . $suffix );
+			return( $prefix . ( $arg['show_parent'] ? '<li class="page_item page_item-parent"><a href="'. get_permalink( $arg['child_of'] ) .'">'. get_the_title( $arg['child_of'] ) .'</a></li>' : '' ) . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_callback'), wp_list_pages( $arg )) . $suffix );
 		}
-		return( $prefix . wp_list_pages( $arg ) . $suffix );
+		return( $prefix . ( $arg['show_parent'] ? '<li class="page_item page_item-parent"><a href="'. get_permalink( $arg['child_of'] ) .'">'. get_the_title( $arg['child_of'] ) .'</a></li>' : '' ) . wp_list_pages( $arg ) . $suffix );
 	}
 
 	function shortcode_list_pages_callback( $arg ){
