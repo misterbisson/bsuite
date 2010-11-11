@@ -279,10 +279,10 @@ class bSuite {
 
 		$prefix = $suffix = '';
 		if( $arg['div_class'] ){
-			$prefix .= '<div class="'. $arg['div_class'] .'">';
+			$prefix .= '<div class="'. esc_attr( $arg['div_class'] ) .'">';
 			$suffix .= '</div>';
 			if( $arg['title'] )
-				$prefix .= '<h3>'. $arg['title'] .'</h3>';
+				$prefix .= '<h3>'. esc_html( $arg['title'] ) .'</h3>';
 			if( $arg['ul_class'] ){
 				$prefix .= '<ul>';
 				$suffix = '</ul>'. $suffix;
@@ -292,12 +292,12 @@ class bSuite {
 			}
 		}else{
 			if( $arg['title'] )
-				$prefix .= '<h3 class="'. $arg['ul_class'] . $arg['ol_class'] .'">'. $arg['title'] .'</h3>';
+				$prefix .= '<h3 class="'. esc_attr( $arg['ul_class'] .' '. $arg['ol_class'] ) .'">'. $arg['title'] .'</h3>';
 			if( $arg['ul_class'] ){
-				$prefix .= '<ul class="'. $arg['ul_class'] .'">';
+				$prefix .= '<ul class="'. esc_attr( $arg['ul_class'] ).'">';
 				$suffix = '</ul>'. $suffix;
 			}else if( $arg['ol_class'] ){
-				$prefix .= '<ol class="'. $arg['ol_class'] .'">';
+				$prefix .= '<ol class="'. esc_attr( $arg['ol_class'] ) .'">';
 				$suffix = '</ol>'. $suffix;
 			}
 		}
