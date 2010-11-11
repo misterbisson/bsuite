@@ -25,6 +25,8 @@ if( !isset( $wpdb ) || !isset( $bsuite ) )
 
 require_once (ABSPATH . WPINC . '/rss.php');
 
+$bsuite->createtables();
+
 update_site_option('bsuite_doing_migration', time() + 300 );
 ?>
 
@@ -69,7 +71,7 @@ $dates = $wpdb->get_col( "SELECT sess_date
 		SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
 		FROM $bsuite->hits_sessions
 		ORDER BY sess_id DESC
-		LIMIT 12500
+		LIMIT 25000
 	) a
 	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	GROUP BY sess_date, sess_hour" );
@@ -91,6 +93,7 @@ $sessions_db = $wpdb->get_results( "SELECT hit_count, sess_timestamp
 	AND h.object_blog = ". absint( $blog_id ) ."
 	" );
 
+
 foreach( $sessions_db as $session )
 	$sessions[$session->sess_timestamp] = $session->hit_count;
 
@@ -101,7 +104,7 @@ $pageloads_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAM
 			SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
 			FROM $bsuite->hits_sessions
 			ORDER BY sess_id DESC
-			LIMIT 12500
+			LIMIT 25000
 		) a
 		WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	) s
