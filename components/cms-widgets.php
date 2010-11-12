@@ -16,6 +16,11 @@ class bSuite_PostLoops {
 
 	function bSuite_PostLoops()
 	{
+
+		global $bsuite;
+
+		$this->path_web = is_object( $bsuite ) ? $bsuite->path_web : get_template_directory_uri();
+
 		add_action( 'init', array( &$this, 'init' ));
 
 		add_action( 'preprocess_comment' , array( &$this, 'preprocess_comment' ), 1 );
@@ -43,7 +48,7 @@ class bSuite_PostLoops {
 	function admin_init()
 	{
 		global $bsuite;
-		wp_register_script( 'postloop-editwidgets', $bsuite->path_web . '/js/edit_widgets.js', array('jquery'), '1' );
+		wp_register_script( 'postloop-editwidgets', $this->path_web . '/components/js/edit_widgets.js', array('jquery'), '1' );
 		wp_enqueue_script( 'postloop-editwidgets' );
 
 		add_action( 'admin_footer', array( &$this, 'footer_activatejs' ));
