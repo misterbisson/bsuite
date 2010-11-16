@@ -76,42 +76,41 @@ $dates = $wpdb->get_col( "SELECT sess_date
 	WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
 	GROUP BY sess_date, sess_hour" );
 
-$sessions_db = $wpdb->get_results( "SELECT hit_count, sess_timestamp
+$sessions_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, sess_timestamp
 	FROM(
-		SELECT COUNT(*) AS hit_count, UNIX_TIMESTAMP( CONCAT( sess_date, ' ', sess_hour, ':00:00' )) AS sess_timestamp, sess_id
-			FROM (
-				SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
-				FROM $bsuite->hits_sessions
-				ORDER BY sess_id DESC
-				LIMIT 12500
-			) a
-			WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
-			GROUP BY sess_date, sess_hour
+		SELECT UNIX_TIMESTAMP( CONCAT( DATE(sess_date), ' ', HOUR(sess_date), ':00:00' )) AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour, sess_id
+		FROM $bsuite->hits_sessions
+		WHERE sess_date >= DATE_SUB( NOW(), INTERVAL 25 HOUR )
 	) s
-	LEFT JOIN $bsuite->hits_shistory h ON h.sess_id = s.sess_id
-	WHERE h.object_type IN (0,1)
-	AND h.object_blog = ". absint( $blog_id ) ."
+	JOIN ( SELECT s.sess_id
+		FROM(
+			SELECT sess_id
+			FROM $bsuite->hits_sessions
+			WHERE sess_date >= DATE_SUB( NOW(), INTERVAL 25 HOUR )
+		) s
+		JOIN $bsuite->hits_shistory h ON h.sess_id = s.sess_id
+		WHERE h.object_type IN (0,1)
+		AND h.object_blog = ". absint( $blog_id ) ."
+		GROUP BY s.sess_id
+	) a ON a.sess_id = s.sess_id
+	GROUP BY sess_date, sess_hour
 	" );
 
 
 foreach( $sessions_db as $session )
 	$sessions[$session->sess_timestamp] = $session->hit_count;
 
-$pageloads_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, UNIX_TIMESTAMP( CONCAT( sess_date, ' ', sess_hour, ':00:00' )) AS sess_timestamp
-	FROM (
-		SELECT sess_id, sess_date, sess_hour
-		FROM (
-			SELECT sess_id, sess_date AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour
+$pageloads_db = $wpdb->get_results( "SELECT COUNT(*) AS hit_count, sess_timestamp, s.sess_id
+	FROM(
+		SELECT UNIX_TIMESTAMP( CONCAT( DATE(sess_date), ' ', HOUR(sess_date), ':00:00' )) AS sess_timestamp, DATE(sess_date) AS sess_date, HOUR(sess_date) AS sess_hour, sess_id
 			FROM $bsuite->hits_sessions
-			ORDER BY sess_id DESC
-			LIMIT 25000
-		) a
-		WHERE sess_timestamp >= DATE_SUB( NOW(), INTERVAL 1 DAY )
+			WHERE sess_date >= DATE_SUB( NOW(), INTERVAL 25 HOUR )
 	) s
-	LEFT JOIN $bsuite->hits_shistory h ON h.sess_id = s.sess_id
+	JOIN $bsuite->hits_shistory h ON h.sess_id = s.sess_id
 	WHERE h.object_type IN (0,1)
 	AND h.object_blog = ". absint( $blog_id ) ."
-	GROUP BY sess_date, sess_hour" );
+	GROUP BY sess_date, sess_hour
+	" );
 
 
 foreach( $pageloads_db as $pageload )
