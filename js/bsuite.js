@@ -134,6 +134,9 @@ var bsuite={
 	'log':function(){var args=arguments;if(args[0]){this.img(args[0]);}else{this.img();}}
 };
 
+bsuite.api_location = bsuite_api_location;
+bsuite.log();
+
 
 
 /*
@@ -145,7 +148,6 @@ function bsuite_linktome_selectall() {
 	} );
 }
 jQuery(document).ready(bsuite_linktome_selectall);
-
 
 
 /*

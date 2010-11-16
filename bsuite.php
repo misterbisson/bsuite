@@ -32,11 +32,11 @@ class bSuite {
 		$this->is_quickview = FALSE;
 
 		// register and queue javascripts
-		wp_register_script( 'bsuite', $this->path_web . '/js/bsuite.js', array('jquery'), '20080503' );
+		wp_register_script( 'bsuite', $this->path_web . '/js/bsuite.js', array('jquery'), '20080503' , TRUE );
 		wp_enqueue_script( 'bsuite' );
 
 		// jQuery text highlighting plugin http://johannburkard.de/blog/programming/javascript/highlight-javascript-text-higlighting-jquery-plugin.html
-		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' );
+		wp_register_script( 'highlight', $this->path_web . '/js/jquery.highlight-1.js', array('jquery'), '1' , TRUE );
 		wp_enqueue_script( 'highlight' );
 
 		// is this wpmu?
@@ -1285,8 +1285,7 @@ class bSuite {
 		if( !$this->didstats ){
 ?>
 <script type="text/javascript">
-bsuite.api_location='<?php echo $this->path_web . '/worker.php' ?>';
-bsuite.log();
+var bsuite_api_location='<?php echo $this->path_web . '/worker.php' ?>';
 </script>
 <noscript><img src="<?php echo $this->path_web . '/worker.php' ?>" width="1" height="1" alt="stat counter" /></noscript>
 <?php
@@ -2048,7 +2047,7 @@ die();
 	function bsuggestive_query( $id ) {
 		global $wpdb;
 
-		$id = array_filter( array_map( 'absint' , $id ));
+		$id = array_filter( array_map( 'absint' , (array) $id ));
 
 
 		if( count( $id ))
@@ -2901,7 +2900,7 @@ die;
 		else if ( $number > 15 )
 			$number = 15;
 
-		if ( $related_posts = array_slice( $this->bsuggestive_getposts( $id ), 0, $number )) {
+		if ( $related_posts = array_slice( (array) $this->bsuggestive_getposts( $id ), 0, $number )) {
 ?>
 
 			<?php echo $before_widget; ?>
