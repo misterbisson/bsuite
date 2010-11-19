@@ -40,7 +40,6 @@ class bSuite_PostLoops {
 
 		$this->get_templates( 'post' );
 		$this->get_templates( 'response' );
-		$this->get_templates( 'widget' );
 
 		add_action( 'admin_init', array(&$this, 'admin_init' ));
 	}
@@ -418,7 +417,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 //			$postloops->get_templates( 'post' );
 
 		$this->post_templates = &$postloops->templates_post;
-		$this->widget_templates = &$postloops->templates_widget;
 	}
 
 	function widget( $args, $instance ) {
@@ -617,10 +615,11 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 		if( $ourposts->have_posts() ){
 			$postloops->current_postloop = $instance;
 
-			$before_identifier = str_replace('.php', '_before.php', $instance['template']);
-			if( ! empty( $instance['template'] ) && $this->widget_templates[ $before_identifier ])
+			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) && $this->post_templates[ $instance['template'] ]['wrapper'] )
 			{
-				@include $this->widget_templates[ $before_identifier ]['fullpath'];
+				$before_template = str_replace( '.php', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] );
+				if( ! @include $before_template )
+					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 			else
 			{
@@ -669,10 +668,11 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				}
 			}
 
-			$after_identifier = str_replace('.php', '_after.php', $instance['template']);
-			if( ! empty( $instance['template'] ) && $this->widget_templates[ $after_identifier ])
+			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) && $this->post_templates[ $instance['template'] ]['wrapper'] )
 			{
-				@include $this->widget_templates[ $after_identifier ]['fullpath'];
+				$before_template = str_replace( '.php', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] );
+				if( ! @include $before_template )
+					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 			else
 			{
