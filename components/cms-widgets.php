@@ -617,8 +617,8 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 
 			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) && $this->post_templates[ $instance['template'] ]['wrapper'] )
 			{
-				$before_template = str_replace( '.php', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] );
-				if( ! @include $before_template )
+				$has_wrapper = TRUE;
+				if( ! @include str_replace( '.php', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 			else
@@ -668,10 +668,9 @@ print_r( reset( $postloops->posts[ $instance_id ] ));
 				}
 			}
 
-			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) && $this->post_templates[ $instance['template'] ]['wrapper'] )
+			if( isset( $has_wrapper ))
 			{
-				$before_template = str_replace( '.php', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] );
-				if( ! @include $before_template )
+				if( ! @include str_replace( '.php', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 			else
