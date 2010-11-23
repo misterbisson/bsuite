@@ -201,15 +201,10 @@ class bSuite_PostLoops {
 	
 					$name = '';
 					if ( preg_match( '|Template Name:(.*)$|mi', $template_data, $name ))
-					{
-						if( function_exists( '_cleanup_header_comment' ))
-							$name = _cleanup_header_comment($name[1]);
-						else
-							$name = $name[1];
-					}
+						$name = _cleanup_header_comment( $name[1] );
 
 					$wrapper = FALSE;
-					if ( preg_match( '|Wrapper:(.*)$|mi', $template_data, $name )) // any value here will set it true
+					if ( preg_match( '|Wrapper:(.*)$|mi', $template_data )) // any value here will set it true
 						$wrapper = TRUE;
 
 					if ( !empty( $name ) ) 
