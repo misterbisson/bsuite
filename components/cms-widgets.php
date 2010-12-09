@@ -12,7 +12,7 @@ class bSuite_PostLoops {
 	var $posts; // $posts[ $loop_id ][ $blog_id ] = $post_id
 
 	// terms from the posts in each instance
-	var $terms; // $tags[ $loop_id ][ $blog_id ][ $term_taxonomy_id ] = $count
+	var $terms; // $tags[ $loop_id ][ $blog_id ][ $taxonomy ][ $term_id ] = $count
 
 	function bSuite_PostLoops()
 	{
@@ -46,7 +46,6 @@ class bSuite_PostLoops {
 
 	function admin_init()
 	{
-		global $bsuite;
 		wp_register_script( 'postloop-editwidgets', $this->path_web . '/components/js/edit_widgets.js', array('jquery'), '1' );
 		wp_enqueue_script( 'postloop-editwidgets' );
 
@@ -129,11 +128,6 @@ class bSuite_PostLoops {
 			foreach( $terms as $term )
 				$this->terms[-1][ $term->taxonomy ][ $term->term_id ]++;
 
-/*
-			// get the term taxonomy IDs for the $postloops object
-			foreach( $terms as $term )
-				$this->terms[-1][ $blog_id ][ $term->term_taxonomy_id ]++;
-*/
 		}
 	}
 
@@ -408,8 +402,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$this->WP_Widget('postloop', __('Post Loop'), $widget_ops);
 
 		global $postloops;
-//		if( ! is_array( $postloops->templates_post ))
-//			$postloops->get_templates( 'post' );
 
 		$this->post_templates = &$postloops->templates_post;
 	}
@@ -588,23 +580,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			$ourposts = new WP_Query( $criteria );
 //print_r( $ourposts );
-
-	/*
-	$options[$widget_number]['activity'] = in_array( $widget_var['activity'], array( 'pop_most', 'pop_least', 'pop_recent', 'comment_recent', 'comment_few') ) ? $widget_var['activity']: '';
-	
-	$options[$widget_number]['age'] = in_array( $widget_var['age'], array( 'after', 'before', 'around') ) ? $widget_var['age']: '';
-	$options[$widget_number]['agestrtotime'] = strtotime( $widget_var['agestrtotime'] ) ? $widget_var['agestrtotime'] : '';
-	
-	$options[$widget_number]['relationship'] = in_array( $widget_var['relationship'], array( 'similar', 'excluding') ) ? $widget_var['relationship']: '';
-	$options[$widget_number]['relatedto'] = array_filter( array_map( 'absint', $widget_var['relatedto'] ));
-
-
-
-		global $blog_id;
-
-print_r( reset( $postloops->posts[ $instance_id ] ));
-
-	*/
 		}
 
 		if( $ourposts->have_posts() ){
@@ -1030,41 +1005,18 @@ die;
 	}
 
 
-	function holding_area(){
-?>
-	
-<!--	
-<?php
-//TODO: clean up these old fields
-?>
-		<fieldset class="bsuite-any-posts-activity">
-		<p><label for="bsuite-any-posts-activity-<?php echo $number; ?>"><?php _e('Activity'); ?>
-		<select id="bsuite-any-posts-activity-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][activity]">
-			<option value="pop_most" <?php selected( $options[$number]['activity'], 'pop_most' ) ?>>Most popular items</option>
-			<option value="pop_least" <?php selected( $options[$number]['activity'], 'pop_least' ) ?>>Least popular</option>
-	
-			<option value="pop_recent" <?php selected( $options[$number]['activity'], 'pop_recent' ) ?>>Recently viewed</option>
-	
-			<option value="comment_recent" <?php selected( $options[$number]['activity'], 'comment_recent' ) ?>>Recently commented</option>
-			<option value="comment_few" <?php selected( $options[$number]['activity'], 'comment_few' ) ?>>Fewest comments</option>
-		</select>
-		</label></p>
-		<fieldset>
-
-		<p><label for="bsuite-any-posts-columns-<?php echo $number; ?>"><?php _e('Number of columns'); ?> <input style="width: 25px; text-align: center;" id="bsuite-any-posts-columns-<?php echo $number; ?>" name="bsuite-any-posts[<?php echo $number; ?>][columns]" type="text" value="<?php echo attribute_escape( $options[$number]['columns'] ); ?>" /></label> <?php _e('(1 to 8)'); ?></p>
--->	
-	
-
-
-<?php
-	}
 
 	function control_blogs( $instance , $do_output = TRUE , $switch = TRUE ){
 		// return of TRUE means the user either has permission to the selected blog, or this isn't MU
+		// we return TRUE because FALSE disables other post selection criteria in the widget form and update funcs
+
+		// define( 'BSUITE_ALLOW_BLOG_SWITCH' , FALSE ); to prevent any blog switching
+		if( defined( 'BSUITE_ALLOW_BLOG_SWITCH' ) && ! BSUITE_ALLOW_BLOG_SWITCH )
+			return TRUE; // We might be in MU, but switch_to_blog() isn't allowed
 
 		global $current_user, $blog_id, $bsuite;
 
-		if( !$bsuite->is_mu )
+		if( is_object( $bsuite ) && ! $bsuite->is_mu )
 			return TRUE; // The user has permission by virtue of it not being MU
 
 		$blogs = $this->get_blog_list( $current_user->ID );
@@ -1120,7 +1072,8 @@ die;
 
 		if( is_site_admin() )
 		{
-			// i have to do this because get_blog_list() doesn't allow me to select private blogs
+			// I have to do this because get_blog_list() doesn't allow me to select private blogs
+			// This query only executes for superadmins , and then only if BSUITE_ALLOW_BLOG_SWITCH isn't false
 			foreach( (array) $wpdb->get_results( $wpdb->prepare("SELECT blog_id, public FROM $wpdb->blogs WHERE site_id = %d AND archived = '0' AND mature = '0' AND spam = '0' AND deleted = '0' ORDER BY registered DESC", $wpdb->siteid), ARRAY_A ) as $k => $v )
 			{
 				$this->bloglist[ get_blog_details( $v['blog_id'] )->blogname . $k ] = array( 'blog_id' => $v['blog_id'] , 'blogname' => get_blog_details( $v['blog_id'] )->blogname . ( 1 == $v['public'] ? '' : ' ('. __('private') .')' ) );
