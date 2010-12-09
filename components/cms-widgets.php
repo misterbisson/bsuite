@@ -657,6 +657,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 
 	function update( $new_instance, $old_instance ) {
+		global $blog_id;
+
 		$instance = $old_instance;
 
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
@@ -664,9 +666,13 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['title_show'] = absint( $new_instance['title_show'] );
 		$instance['what'] = in_array( $new_instance['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $new_instance['what']: '';
 
-		if( $this->control_blogs( $instance , FALSE , FALSE ))
+		if( $this->control_blogs( $instance , FALSE , FALSE )) // check if the user has permissions to the previously set blog
 		{
-			$instance['blog'] = absint( $new_instance['blog'] ) ? absint( $new_instance['blog'] ) : 1;
+
+			$new_instance['blog'] = absint( $new_instance['blog'] );
+			if( $this->control_blogs( $new_instance , FALSE , FALSE )) // check if the user has permissions to the wished-for blog
+				$instance['blog'] = $new_instance['blog'];
+
 			$instance['categoriesbool'] = in_array( $new_instance['categoriesbool'], array( 'in', 'and', 'not_in') ) ? $new_instance['categoriesbool']: '';
 			$instance['categories_in'] = array_filter( array_map( 'absint', $new_instance['categories_in'] ));
 			$instance['categories_in_related'] = (int) $new_instance['categories_in_related'];
@@ -1007,8 +1013,17 @@ die;
 
 
 	function control_blogs( $instance , $do_output = TRUE , $switch = TRUE ){
-		// return of TRUE means the user either has permission to the selected blog, or this isn't MU
-		// we return TRUE because FALSE disables other post selection criteria in the widget form and update funcs
+		/*
+		Return values:
+		TRUE: The user has permission to the currently selected blog
+		FALSE: The user does not have permission to the currently selected blog. This disables post selection criteria so that the unprivileged user can't reveal more posts than the privileged user had previously elected to show.
+		
+		Output:
+		If $do_output is TRUE the function will echo out a select list of blogs available to the user.
+		
+		Blog switching:
+		If $switch is TRUE and the user has permission to the selected blog (and the selected blog is not the current blog), the function will switch to that blog before returning TRUE.
+		*/
 
 		// define( 'BSUITE_ALLOW_BLOG_SWITCH' , FALSE ); to prevent any blog switching
 		if( defined( 'BSUITE_ALLOW_BLOG_SWITCH' ) && ! BSUITE_ALLOW_BLOG_SWITCH )
