@@ -16,7 +16,6 @@ class bSuite_PostLoops {
 
 	function bSuite_PostLoops()
 	{
-
 		global $bsuite;
 
 		$this->path_web = is_object( $bsuite ) ? $bsuite->path_web : get_template_directory_uri();
@@ -28,10 +27,12 @@ class bSuite_PostLoops {
 
 		add_action( 'template_redirect' , array( &$this, 'get_default_posts' ), 0 );
 
+        add_filter( 'query_vars', array( &$this, 'query_vars' ));
+		add_filter( 'rewrite_rules_array', array( &$this, 'rewrite_rules_array' ));
+		add_filter( 'request' , array( &$this, 'request' ));
+
 //		add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
 
-		if( $_GET['wijax'] )
-			add_filter( 'template_redirect' , array( &$this, 'wijax_redirect' ), 0 );
 	}
 
 	function init()
@@ -52,6 +53,29 @@ class bSuite_PostLoops {
 		add_action( 'admin_footer', array( &$this, 'footer_activatejs' ));
 	}
 
+	function query_vars( $vars )
+	{
+		$vars[] = 'wijax';
+		return $vars;
+	}
+
+	function rewrite_rules_array( $rules )
+	{
+		$newrules = array();
+		$newrules['wijax/(.+)/page/?([0-9]{1,})/?$'] = 'index.php?wijax=$matches[1]&paged=$matches[2]';
+		$newrules['wijax/(.+)/?$'] = 'index.php?wijax=$matches[1]';
+
+		return $newrules + $rules;
+	}
+
+	public function request( $request )
+	{
+		if( isset( $request['wijax'] ))
+			add_filter( 'template_redirect' , array( &$this, 'wijax_redirect' ), 0 );
+
+		return $request;
+	}
+
 	public function footer_activatejs(){
 ?>
 		<script type="text/javascript">
@@ -63,10 +87,10 @@ class bSuite_PostLoops {
 	function wijax_redirect()
 	{
 		global $wp_registered_widgets;
-	
-		$requested_widgets = array_filter( array_map( 'trim' , (array) explode( ',' , $_GET['wijax'] )));
 
-		if( 1 > count(  $requested_widgets ))
+		$requested_widgets = array_filter( array_map( 'trim' , (array) explode( ',' , get_query_var('wijax') )));
+
+		if( 1 > count( $requested_widgets ))
 			return;
 
 		foreach( $requested_widgets as $key )
@@ -93,7 +117,7 @@ class bSuite_PostLoops {
 	
 			$widget_data['params'][0]['before_widget'] = sprintf($widget_data['params'][0]['before_widget'], $widget_data['widget'], 'grid_' . $widget_data['size'] . ' ' .$widget_data['class'] . ' ' . $widget_data['id'] . ' ' . $extra_classes);
 			call_user_func_array( $widget_data['callback'], $widget_data['params'] );
-	
+
 		}//end foreach
 
 /*	
