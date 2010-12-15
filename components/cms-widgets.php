@@ -27,10 +27,6 @@ class bSuite_PostLoops {
 
 		add_action( 'template_redirect' , array( &$this, 'get_default_posts' ), 0 );
 
-        add_filter( 'query_vars', array( &$this, 'query_vars' ));
-		add_filter( 'rewrite_rules_array', array( &$this, 'rewrite_rules_array' ));
-		add_filter( 'request' , array( &$this, 'request' ));
-
 //		add_filter( 'posts_request',	array( &$this, 'posts_request' ), 11 );
 
 	}
@@ -42,6 +38,9 @@ class bSuite_PostLoops {
 		$this->get_templates( 'post' );
 		$this->get_templates( 'response' );
 
+		add_rewrite_endpoint( 'wijax' , EP_ALL );
+		add_filter( 'request' , array( &$this, 'request' ));
+
 		add_action( 'admin_init', array(&$this, 'admin_init' ));
 	}
 
@@ -51,21 +50,6 @@ class bSuite_PostLoops {
 		wp_enqueue_script( 'postloop-editwidgets' );
 
 		add_action( 'admin_footer', array( &$this, 'footer_activatejs' ));
-	}
-
-	function query_vars( $vars )
-	{
-		$vars[] = 'wijax';
-		return $vars;
-	}
-
-	function rewrite_rules_array( $rules )
-	{
-		$newrules = array();
-		$newrules['wijax/(.+)/page/?([0-9]{1,})/?$'] = 'index.php?wijax=$matches[1]&paged=$matches[2]';
-		$newrules['wijax/(.+)/?$'] = 'index.php?wijax=$matches[1]';
-
-		return $newrules + $rules;
 	}
 
 	public function request( $request )
