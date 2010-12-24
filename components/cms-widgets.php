@@ -498,6 +498,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			}
 			else if( 'similar' == $instance['relationship'] && count( (array) $instance['relatedto'] ))
 			{
+				if( ! class_exists( 'bSuite_bSuggestive' ) )
+					require_once( dirname( __FILE__) .'/bsuggestive.php' );
+
 				foreach( $instance['relatedto'] as $related_loop => $temp )
 				{
 					if( isset( $postloops->posts[ $related_loop ] ) && $instance['blog'] == key( $postloops->posts[ $related_loop ] ))
