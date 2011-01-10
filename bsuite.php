@@ -3713,14 +3713,17 @@ $bsuite = & new bSuite;
 // get the social bookmarking and sharing stuff
 require_once( dirname( __FILE__) .'/inc_social.php' );
 
-// get the externall components
+// get the external components
 //require_once( dirname( __FILE__) .'/components/bstat.php' );
 //require_once( dirname( __FILE__) .'/components/bstat-widgets.php' );
 //require_once( dirname( __FILE__) .'/components/cms-shortcodes.php' );
 if( ! class_exists( 'bSuite_Widget_PostLoop' ) )
+{
 	require_once( dirname( __FILE__) .'/components/cms-widgets.php' );
+//	require_once( dirname( __FILE__) .'/components/wijax.php' );
+}
 require_once( dirname( __FILE__) .'/components/privacy.php' );
-require_once( dirname( __FILE__) .'/components/head-meta.php' );
+//require_once( dirname( __FILE__) .'/components/head-meta.php' );
 
 
 
