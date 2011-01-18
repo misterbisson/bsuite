@@ -18,6 +18,9 @@ class bSuite_Wijax {
 	{
 		add_rewrite_endpoint( 'wijax' , EP_ALL );
 		add_filter( 'request' , array( &$this, 'request' ));
+
+		if( ! is_admin())
+			add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
 	}
 
 	function widgets_init() {
@@ -33,7 +36,11 @@ class bSuite_Wijax {
 	public function request( $request )
 	{
 		if( isset( $request['wijax'] ))
+		{
 			add_filter( 'template_redirect' , array( &$this, 'redirect' ), 0 );
+			define( IS_WIJAX , TRUE );
+			do_action( 'do_wijax' );
+		}
 
 		return $request;
 	}
@@ -78,7 +85,13 @@ class bSuite_Wijax {
 	
 			$widget_data['params'][0]['before_widget'] = sprintf($widget_data['params'][0]['before_widget'], $widget_data['widget'], 'grid_' . $widget_data['size'] . ' ' .$widget_data['class'] . ' ' . $widget_data['id'] . ' ' . $extra_classes);
 
+			ob_start();			
 			call_user_func_array( $widget_data['callback'], $widget_data['params'] );
+			$params['text'] = ob_get_clean();
+			$params['callback'] = 'jQuery.wijax.channelLoad';
+			if($_GET['js_callback']) $params['js_callback'] = $_GET['js_callback'];
+			$params['channel_id'] = $_GET['channel_id'];
+			Wijax_Encode::out( 'callback' , $params );
 
 		}//end foreach
 
@@ -96,6 +109,28 @@ class bSuite_Wijax {
 		die;
 	}
 
+	function print_js(){
+		?>
+		<script type="text/javascript">	
+		;(function($){
+			$(document).ready(function(){
+				$(window).bind('scroll', function(event){
+					setTimeout(function() {
+						var gobe = document.createElement('script'); gobe.type = 'text/javascript'; gobe.async = true;
+						gobe.src = '<?php echo $this->path_web . '/components/js/wijax-library.js'; ?>';
+						var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(gobe, s);      
+					}, 1);
+					if(typeof $.go != 'undefined'){
+						$.go.channelInit( $('#secondary-content'), '<?php home_url(); ?>/wijax/go-brand-explorer-2');
+						$(this).unbind(event);
+					}
+				});
+			});
+		})(jQuery);
+		</script>
+<?php
+	}
+
 } //end bSuite_Wijax
 
 // initialize that class
@@ -104,7 +139,7 @@ new bSuite_Wijax();
 
 
 /**
- * Pagednav widget class
+ * Wijax widget class
  *
  */
 class Wijax_Widget extends WP_Widget {
@@ -206,3 +241,174 @@ class Wijax_Widget extends WP_Widget {
 	}
 
 }// end Wijax_Widget
+
+/**
+ *
+ * Code for simplifying channel creation
+ *
+ * @module		channel.class.php
+ * @author		Vasken Hauri
+ * 
+ * This code relies heavily upon the channel class created by 
+ * Zachary Tirrell <zbtirrell@plymouth.edu> and  Matthew Batchelder <mtbatchelder@plymouth.edu>
+ */ 
+
+class Wijax_Encode
+{
+	/**
+	 * callback
+	 *
+	 * Generate a callback function for the given text
+	 *
+	 * @since		version 2.0.0
+	 * @access	public
+	 * @param  	string $text Text to output
+	 * @param  	string $callback Callback function
+	 * @param   mixed $params Parameters to be appended to the JS callback
+	 */
+	public function callback($text, $callback, $params)
+	{
+		//callback is being passed in separately...ensure that its corresponding params entry is unset
+		unset($params['callback']);
+		
+		//since the text to output is now part of params, unset it before the callback
+		unset($params['text']);
+
+		$find = array(
+			"'",
+			"\n",
+			"\r",
+			"\t",
+			"document.write('');\n"
+		);
+		
+		$replace = array(
+			"\'",
+			"'+\n'",
+			'',
+			'',
+			''
+		);
+		
+		//create a variable to put the page content into
+		$text="var the_text_to_output='".str_replace($find,$replace,$text)."';\n";
+		
+		//begin the callback
+		$output = $text.strip_tags($callback).'(the_text_to_output';
+	
+		//im not really a fan of this...i'll bet there's a better way
+		rsort($params);
+	
+		//are there parameters set?
+		if(is_array($params) && !empty($params))
+		{
+			//yup!  implode those puppies and append to the output
+			$output .= ',"'.implode('","',$params).'"';
+		}//end if
+		
+		//finish off the output
+		$output .= ');';
+		
+		return $output;
+	}//end callback
+
+	/**
+	 * out
+	 *
+	 * A utility function that outputs the channel content returned by Channel::text
+	 *
+	 * @since		version 2.0.0
+	 * @access	public
+	 * @param  	string $type Type of output (callback or write)
+	 * @param   mixed $params Parameters to be appended to the JS callback
+	 */
+	public static function out($type = 'write', $params = false)
+	{
+		//echo the return value of text
+		echo self::text($type, $params);		
+	}//end out
+
+	/**
+	 * start
+	 *
+	 * Prepares the page for channel output
+	 *
+	 * @since		version 2.0.0
+	 * @access	public
+	 */
+	public function start()
+	{
+		ob_start();
+	}//end start
+
+	/**
+	 * text
+	 *
+	 * Return the channel in a specified format
+	 *
+	 * @since		version 2.0.0
+	 * @access	public
+	 * @param  	string $type Type of output (callback or write)
+	 * @param   mixed $params Parameters to be appended to the JS callback
+	 */
+	public function text($type = 'write', $params = false)
+	{
+		if($type!='html') header('Content-type: text/javascript');
+		
+		extract($params);
+		
+		if($type == 'callback')
+		{
+			$text = self::callback($text, $params['callback'],$params);
+		}//end if
+		elseif($type == 'html')
+		{
+			$text = self::html($text, $params);
+		}//end elseif
+		else
+		{
+			$text = self::write($text);
+		}//end else
+		return $text;
+	}//end text
+
+	/**
+	 * write
+	 *
+	 * Formats the given text as a series of document.writes
+	 *
+	 * @since		version 2.0.0
+	 * @access	public
+	 * @param  	string $text Text to output
+	 */
+	public function write($text)
+	{
+		$find = array("'","\n","\r","\t","document.write('');\n");
+		$replace = array("\'","');\ndocument.write('",'','','');
+		$text="document.write('".str_replace($find,$replace,$text)."');";
+		return $text;
+	}//end write
+
+	/**
+	 * makeJSFriendly
+	 *
+	 * @since		version 1.0.0
+	 */
+	public function makeJSFriendy($text,$callback='',$vars='')
+	{
+		if($callback)
+		{
+			$find = array('\\',"'","\n","\r","\t","document.write('');\n");
+			$replace = array("&#92;","\'","'+\n'",'','','');
+			$text="var the_text_to_output='".str_replace($find,$replace,$text)."';";
+			return ''.$text."\n".$callback.'(the_text_to_output'.$vars.');';
+		}
+		else
+		{
+			$find = array("'","\n","\r","\t","document.write('');\n");
+			$replace = array("\'","');\ndocument.write('",'','','');
+			$text="document.write('".str_replace($find,$replace,$text)."');";
+			return $text;
+		}//end else
+	}//end makeJSFriendly
+}//end class Channel
