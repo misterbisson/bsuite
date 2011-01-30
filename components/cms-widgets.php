@@ -36,6 +36,7 @@ class bSuite_PostLoops {
 		$this->get_templates( 'response' );
 
 		add_action( 'admin_init', array(&$this, 'admin_init' ));
+//		add_filter( 'posts_request' , array( &$this , 'posts_request' ));
 	}
 
 	function admin_init()
@@ -283,6 +284,12 @@ class bSuite_PostLoops {
 		return $sql . ' AND post_date > "'. $this->date_since .'"';
 	}
 
+	function posts_where_date_before_once( $sql )
+	{
+		remove_filter( 'posts_where', array( &$this , 'posts_where_date_since_once' ), 10 );
+		return $sql . ' AND post_date < "'. $this->date_before .'"';
+	}
+
 	function posts_join_recently_popular_once( $sql )
 	{
 		global $wpdb, $blog_id, $bsuite;
@@ -314,7 +321,7 @@ class bSuite_PostLoops {
 	function posts_groupby_recently_commented_once( $sql )
 	{
 		remove_filter( 'posts_groupby', array( &$this , 'posts_groupby_recently_commented_once' ), 10 );
-		return ' commentsort.comment_post_ID'. empty( $sql ) ? '' : ', ';
+		return ' wp_1_posts.ID'. ( empty( $sql ) ? '' : ', ' );
 	}
 
 	function posts_orderby_recently_commented_once( $sql )
@@ -432,8 +439,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			if( 0 < $instance['age_num'] )
 			{
-				$postloops->date_since = date( 'Y-m-d' , strtotime( $instance['age_num'] .' '. $instance['age_unit'] .' ago' ));
-				add_filter( 'posts_where', array( &$postloops , 'posts_where_date_since_once' ), 10 );
+				$postloops->date_before = $postloops->date_since = date( 'Y-m-d' , strtotime( $instance['age_num'] .' '. $instance['age_unit'] .' ago' ));
+				if( $instance['age_bool'] == 'older' )
+					add_filter( 'posts_where', array( &$postloops , 'posts_where_date_before_once' ), 10 );
+				else
+					add_filter( 'posts_where', array( &$postloops , 'posts_where_date_since_once' ), 10 );
 			}
 
 			if( $_GET['wijax'] && absint( $_GET['paged'] ))
@@ -520,8 +530,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			}
 
 
-//print_r( $instance );
-//print_r( $criteria );
+//echo '<pre>'. print_r( $instance , TRUE ) .'</pre>';
+//echo '<pre>'. print_r( $criteria , TRUE ) .'</pre>';
 			if( 0 < $instance['blog'] && $instance['blog'] !== $blog_id )
 				switch_to_blog( $instance['blog'] ); // switch to the other blog
 
