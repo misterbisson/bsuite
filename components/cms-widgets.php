@@ -542,20 +542,17 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		if( $ourposts->have_posts() ){
 			$postloops->current_postloop = $instance;
 
+			echo str_replace( 'class="widget ', 'class="widget widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
+			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
+			if ( $instance['title_show'] && $title )
+				echo $before_title . $title . $after_title .'<div class="widget_subtitle">'. $instance['subtitle'] .'</div>';
+
 			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) && $this->post_templates[ $instance['template'] ]['wrapper'] )
 			{
 				$has_wrapper = TRUE;
 				if( ! @include str_replace( '.php', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
-			else
-			{
-				echo str_replace( 'class="widget ', 'class="widget widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
-			}//end else
-
-			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
-			if ( $instance['title_show'] && $title )
-				echo $before_title . $title . $after_title .'<div class="widget_subtitle">'. $instance['subtitle'] .'</div>';
 
 			while( $ourposts->have_posts() ){
 
@@ -600,10 +597,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				if( ! @include str_replace( '.php', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
-			else
-			{
-				echo $after_widget;
-			}//end else
+
+			echo $after_widget;
 		}
 
 		$postloops->restore_current_blog();
