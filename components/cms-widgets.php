@@ -321,7 +321,7 @@ class bSuite_PostLoops {
 	function posts_groupby_recently_commented_once( $sql )
 	{
 		remove_filter( 'posts_groupby', array( &$this , 'posts_groupby_recently_commented_once' ), 10 );
-		return ' wp_1_posts.ID'. ( empty( $sql ) ? '' : ', ' );
+		return $wpdb->posts . ( empty( $sql ) ? '' : ', ' );
 	}
 
 	function posts_orderby_recently_commented_once( $sql )
@@ -519,7 +519,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 						echo '<!-- error: related post loop is not available or not from this blog -->';
 				}
 
-				$count = 2 * $instance['count'];
+				$count = ceil( 1.5 * $instance['count'] );
 				if( 10 > $count )
 					$count = 10;
 
@@ -542,7 +542,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		if( $ourposts->have_posts() ){
 			$postloops->current_postloop = $instance;
 
-			echo str_replace( 'class="widget ', 'class="widget widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] ) .' ' , $before_widget );
+			$extra_classes = array();
+			$extra_classes[] = str_replace( '9spot', 'nines' , sanitize_title_with_dashes( $this->post_templates[ $instance['template'] ]['name'] ));
+			$extra_classes[] = 'widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] );
+
+			echo str_replace( 'class="', 'class="'. implode( ' ' , $extra_classes ) .' ' , $before_widget );
 			$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
 			if ( $instance['title_show'] && $title )
 				echo $before_title . $title . $after_title .'<div class="widget_subtitle">'. $instance['subtitle'] .'</div>';
