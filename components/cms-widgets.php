@@ -320,8 +320,10 @@ class bSuite_PostLoops {
 
 	function posts_groupby_recently_commented_once( $sql )
 	{
+		global $wpdb;
+
 		remove_filter( 'posts_groupby', array( &$this , 'posts_groupby_recently_commented_once' ), 10 );
-		return $wpdb->posts . ( empty( $sql ) ? '' : ', ' );
+		return $wpdb->posts .'.ID' . ( empty( $sql ) ? '' : ', ' );
 	}
 
 	function posts_orderby_recently_commented_once( $sql )
