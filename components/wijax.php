@@ -4,6 +4,8 @@
  *
  */
 class bSuite_Wijax {
+	var $ep_name = 'wijax';
+
 	function bSuite_Wijax()
 	{
 		global $bsuite;
@@ -16,19 +18,39 @@ class bSuite_Wijax {
 
 	function init()
 	{
-		add_rewrite_endpoint( 'wijax' , EP_ALL );
+		add_rewrite_endpoint( $this->ep_name , EP_ALL );
 		add_filter( 'request' , array( &$this, 'request' ));
 
-		if( !is_admin())
+		if( ! is_admin())
 		{
-			wp_register_script( 'jquery-md5', $this->path_web . '/components/js/jquery.md5.js', array('jquery'), '1' );
-			wp_register_script( 'wijax', $this->path_web . '/components/js/wijax-library.js', array('jquery' , 'jquery-md5'), TRUE );
+			// http://plugins.jquery.com/project/md5
+			// wp_register_script( 'jquery-md5', $this->path_web . '/components/js/jquery.md5.js', array('jquery'), TRUE );
+			// http://urldecoderonline.com/javascript-url-decode-jquery-plugin.htm
+			// wp_register_script( 'jquery-urldecoder', $this->path_web . '/components/js/jquery.urldecoder.min.js', array('jquery'), TRUE );
+			wp_register_script( 'wijax', $this->path_web . '/components/js/wijax-library.js', array('jquery'), TRUE );
 			wp_enqueue_script( 'wijax' );
-//			add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
+			add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
 		}
 	}
 
-	function widgets_init() {
+	function varname( $url = '' )
+	{
+		if( $url )
+		{
+			// trim the host component from the given url
+			$home_path = parse_url( home_url() , PHP_URL_PATH );
+			$home_host = str_replace( $home_path , '' , home_url() ); // easier to get the host by subtraction than reconstructing it from parse_url()
+			$base = '/'. ltrim( str_replace( $home_host , '' , $url ) , '/' );
+		}
+		else
+		{
+			$base = $_SERVER['REQUEST_URI'];
+		}
+		return 'wijax_'. md5( $base );
+	}
+
+	function widgets_init()
+	{
 		register_widget( 'Wijax_Widget' );
 
 		register_sidebar( array(
@@ -74,10 +96,10 @@ class bSuite_Wijax {
 			$widget_data['params'][0] = array(
 				'name' => $wp_registered_widgets[ $key ]['name'],
 				'id' => $key,
-				'before_widget' => '<div id="widget-%1$s" class="widget %2$s"><div class="widget-inner">'."\n",
-				'after_widget'  => '</div></div>'."\n",
-				'before_title'  => '<h2 class="widgettitle">',
-				'after_title'   => "</h2>\n",
+				'before_widget' => '<span id="widget-%1$s" class="wijax-widgetclasses %2$s"></span>'."\n",
+				'after_widget'  => '',
+				'before_title'  => '<span class="wijax-widgettitle">',
+				'after_title'   => "</span>\n",
 				'widget_id' => $key,
 				'widget_name' => $wp_registered_widgets[ $key ]['name'],
 			);
@@ -88,65 +110,58 @@ class bSuite_Wijax {
 				'number' => absint( $instance_number ),
 			);
 	
-			$widget_data['params'][0]['before_widget'] = sprintf($widget_data['params'][0]['before_widget'], $widget_data['widget'], 'grid_' . $widget_data['size'] . ' ' .$widget_data['class'] . ' ' . $widget_data['id'] . ' ' . $extra_classes);
+			$widget_data['params'][0]['before_widget'] = sprintf($widget_data['params'][0]['before_widget'], $widget_data['widget'], ( isset( $widget_data['size'] ) ? 'grid_' . $widget_data['size'] .' ' : '' ) .$widget_data['class'] . ' ' . $widget_data['id'] . ' ' . $extra_classes);
 
-
-			call_user_func_array( $widget_data['callback'], $widget_data['params'] );
-/*
 			ob_start();			
 			call_user_func_array( $widget_data['callback'], $widget_data['params'] );
-			$params['text'] = ob_get_clean();
-			$params['callback'] = 'jQuery.wijax.channelLoad';
-			if($_GET['js_callback']) $params['js_callback'] = $_GET['js_callback'];
-			$params['channel_id'] = $_GET['channel_id'];
-			Wijax_Encode::out( 'callback' , $params );
-*/
-		}//end foreach
+			Wijax_Encode::out( ob_get_clean() , $this->varname() );
 
-/*	
-		if($_GET['output'] == 'js')
-		{
-			$params = array(
-				'callback' => '$.my.channelLoad',
-				'channel_id' => $_GET['channel_id']
-			);
-			if($_GET['js_callback']) $params['js_callback'] = $_GET['js_callback'];
-			Channel::out('callback', $params);
-		}//end if
-*/
+		}//end foreach
 		die;
 	}
 
 	function print_js(){
 ?>
-		<script type="text/javascript" src="<?php echo $this->path_web . '/components/js/wijax-library.js'; ?>"></script>
-<?php 
-		return;
-?>
-		<script type="text/javascript">	
-		;(function($){
-			$(document).ready(function(){
-				$(window).bind('scroll', function(event){
-					setTimeout(function() {
-						var gobe = document.createElement('script'); gobe.type = 'text/javascript'; gobe.async = true;
-						gobe.src = '<?php echo $this->path_web . '/components/js/wijax-library.js'; ?>';
-						var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(gobe, s);      
-					}, 1);
-					if(typeof $.go != 'undefined'){
-						$.go.channelInit( $('#secondary-content'), '<?php home_url(); ?>/wijax/go-brand-explorer-2');
-						$(this).unbind(event);
-					}
+<script type="text/javascript">	
+	;(function($){
+		$(window).load(function(){
+			$('a.wijax-source').each(function()
+			{
+				var widget_source = $(this).attr('href');
+				var widget_area = $(this).parent();
+				var widget_parent = $(this).parent().parent();
+				var widget_wrapper = $(this).parents('.widget_wijax');
+				var opts = $.parseJSON( $(widget_parent).find('span.wijax-opts').text() );
+				var varname = opts.varname;
+				$.getScript( widget_source , function() {
+					// insert the fetched markup
+					$( widget_area ).replaceWith( window[varname] );
+			
+					// find the widget title, add it to the DOM, remove the temp span
+					var widget_title = $(widget_parent).find('span.wijax-widgettitle').text();
+					$( widget_parent ).prepend('<'+opts.title_element+' class="'+ opts.title_class +'">'+ widget_title +'</'+opts.title_element+'>');
+					$(widget_parent).find('span.wijax-widgettitle').remove();
+			
+					// find and set the widget ID and classes
+					var widget_attr_el = $( widget_parent ).find( 'span.wijax-widgetclasses' );
+					var widget_id = $( widget_attr_el ).attr( 'id' );
+					var widget_classes = $( widget_attr_el ).attr( 'class' );
+					$( widget_wrapper ).attr( 'id' , widget_id );
+					$( widget_wrapper ).addClass( widget_classes );
+					$( widget_wrapper ).removeClass( 'widget_wijax' );
+					$(widget_attr_el).remove();
 				});
 			});
-		})(jQuery);
-		</script>
+		});
+	})(jQuery);
+</script>
 <?php
 	}
 
 } //end bSuite_Wijax
 
 // initialize that class
-new bSuite_Wijax();
+$wijax = new bSuite_Wijax();
 
 
 
@@ -154,9 +169,11 @@ new bSuite_Wijax();
  * Wijax widget class
  *
  */
-class Wijax_Widget extends WP_Widget {
+class Wijax_Widget extends WP_Widget
+{
 
-	function Wijax_Widget() {
+	function Wijax_Widget()
+	{
 		$widget_ops = array('classname' => 'widget_wijax', 'description' => __( 'Lazy load widgets after DOMDocumentReady') );
 		$this->WP_Widget('wijax', __('Wijax Widget Lazy Loader'), $widget_ops);
 
@@ -164,33 +181,52 @@ class Wijax_Widget extends WP_Widget {
 		add_filter( 'wijax-base-home' , array( $this , 'base_home' ) , 5 );
 	}
 
-	function widget( $args, $instance ) {
+	function widget( $args, $instance )
+	{
+		global $wijax;
+
 		extract( $args );
-		//print_r( $instance );
 
 		$base = apply_filters( 'wijax-base-'. $instance['base'] , '' );
+		if( ! $base )
+			return;
+		$wijax_source = $base . $instance['widget'];
 
-		$title = apply_filters( 'widget_title', empty( $instance['title'] ) ? '' : $instance['title'] );
-//echo $base . $instance['widget'];
 		echo $before_widget;
-		if ( ! empty( $category_description ) )
-			echo '<div class="archive-meta">' . $category_description . '</div>';
-		echo '<div class="clear"></div>';
+
+		preg_match( '/<([\S]*)/' , $before_title , $title_element );
+		$title_element = (string) $title_element[1];
+
+
+		preg_match( '/class.*?=.*?(\'|")(.+?)(\'|")/' , $before_title , $title_class );
+		$title_class = (string) $title_class[2];
+?>
+		<span class="wijax-loading">
+			<img src="<?php echo $wijax->path_web  .'/components/img/loading-gray.gif'; ?>" alt="loading external resource" />
+			<a href="<?php echo $wijax_source; ?>" class="wijax-source"></a>
+			<span class="wijax-opts" style="display: none;">
+				<?php echo json_encode(array( 'varname' => $wijax->varname( $wijax_source ) ,  'title_element' => $title_element ,  'title_class' => $title_class )); ?>
+			</span>
+		</span>
+<?php
 		echo $after_widget;
-
 	}
 
-	function base_home( $base )
+	function base_home()
 	{
-		return home_url() .'/wijax/';
+
+		return trailingslashit( home_url() ) .'wijax/';
 	}
 
-	function base_current( $base )
+	function base_current()
 	{
-		return esc_url_raw( home_url() . $_SERVER['REQUEST_URI'] .'/wijax/' );
+
+		$home_path = parse_url( home_url() , PHP_URL_PATH );
+		return esc_url_raw( trailingslashit( home_url() . str_replace( $home_path , '' , $_SERVER['REQUEST_URI'] )) .'wijax/' );
 	}
 
-	function update( $new_instance, $old_instance ) {
+	function update( $new_instance, $old_instance )
+	{
 		$instance = $old_instance;
 		$instance['title'] = strip_tags( $new_instance['title'] );
 		$instance['widget'] = sanitize_title( $new_instance['widget'] );
@@ -200,7 +236,8 @@ class Wijax_Widget extends WP_Widget {
 		return $instance;
 	}
 
-	function form( $instance ) {
+	function form( $instance )
+	{
 		//Defaults
 		$instance = wp_parse_args( (array) $instance, 
 			array( 
@@ -254,173 +291,52 @@ class Wijax_Widget extends WP_Widget {
 
 }// end Wijax_Widget
 
-/**
- *
- * Code for simplifying channel creation
- *
- * @module		channel.class.php
- * @author		Vasken Hauri
- * 
- * This code relies heavily upon the channel class created by 
- * Zachary Tirrell <zbtirrell@plymouth.edu> and  Matthew Batchelder <mtbatchelder@plymouth.edu>
- */ 
+
 
 class Wijax_Encode
 {
-	/**
-	 * callback
-	 *
-	 * Generate a callback function for the given text
-	 *
-	 * @since		version 2.0.0
-	 * @access	public
-	 * @param  	string $text Text to output
-	 * @param  	string $callback Callback function
-	 * @param   mixed $params Parameters to be appended to the JS callback
-	 */
-	public function callback($text, $callback, $params)
+	public static function out( $content , $varname )
 	{
-		//callback is being passed in separately...ensure that its corresponding params entry is unset
-		unset($params['callback']);
-		
-		//since the text to output is now part of params, unset it before the callback
-		unset($params['text']);
-
-		$find = array(
-			"'",
-			"\n",
-			"\r",
-			"\t",
-			"document.write('');\n"
-		);
-		
-		$replace = array(
-			"\'",
-			"'+\n'",
-			'',
-			'',
-			''
-		);
-		
-		//create a variable to put the page content into
-		$text="var the_text_to_output='".str_replace($find,$replace,$text)."';\n";
-		
-		//begin the callback
-		$output = $text.strip_tags($callback).'(the_text_to_output';
-	
-		//im not really a fan of this...i'll bet there's a better way
-		rsort($params);
-	
-		//are there parameters set?
-		if(is_array($params) && !empty($params))
-		{
-			//yup!  implode those puppies and append to the output
-			$output .= ',"'.implode('","',$params).'"';
-		}//end if
-		
-		//finish off the output
-		$output .= ');';
-		
-		return $output;
-	}//end callback
-
-	/**
-	 * out
-	 *
-	 * A utility function that outputs the channel content returned by Channel::text
-	 *
-	 * @since		version 2.0.0
-	 * @access	public
-	 * @param  	string $type Type of output (callback or write)
-	 * @param   mixed $params Parameters to be appended to the JS callback
-	 */
-	public static function out($type = 'write', $params = false)
-	{
-		//echo the return value of text
-		echo self::text($type, $params);		
+		header('Content-type: text/javascript');
+		echo self::encode( $content , $varname );
 	}//end out
 
-	/**
-	 * start
-	 *
-	 * Prepares the page for channel output
-	 *
-	 * @since		version 2.0.0
-	 * @access	public
-	 */
-	public function start()
+	public static function encode( $content , $varname )
 	{
-		ob_start();
-	}//end start
+		//create a variable to put the page content into
+		$output='var varname = "'. $varname .'"; window[varname]='. json_encode( $content ) .";\n";
 
-	/**
-	 * text
-	 *
-	 * Return the channel in a specified format
-	 *
-	 * @since		version 2.0.0
-	 * @access	public
-	 * @param  	string $type Type of output (callback or write)
-	 * @param   mixed $params Parameters to be appended to the JS callback
-	 */
-	public function text($type = 'write', $params = false)
-	{
-		if($type!='html') header('Content-type: text/javascript');
-		
-		extract($params);
-		
-		if($type == 'callback')
-		{
-			$text = self::callback($text, $params['callback'],$params);
-		}//end if
-		elseif($type == 'html')
-		{
-			$text = self::html($text, $params);
-		}//end elseif
-		else
-		{
-			$text = self::write($text);
-		}//end else
-		return $text;
-	}//end text
-
-	/**
-	 * write
-	 *
-	 * Formats the given text as a series of document.writes
-	 *
-	 * @since		version 2.0.0
-	 * @access	public
-	 * @param  	string $text Text to output
-	 */
-	public function write($text)
-	{
-		$find = array("'","\n","\r","\t","document.write('');\n");
-		$replace = array("\'","');\ndocument.write('",'','','');
-		$text="document.write('".str_replace($find,$replace,$text)."');";
-		return $text;
-	}//end write
-
-	/**
-	 * makeJSFriendly
-	 *
-	 * @since		version 1.0.0
-	 */
-	public function makeJSFriendy($text,$callback='',$vars='')
-	{
-		if($callback)
-		{
-			$find = array('\\',"'","\n","\r","\t","document.write('');\n");
-			$replace = array("&#92;","\'","'+\n'",'','','');
-			$text="var the_text_to_output='".str_replace($find,$replace,$text)."';";
-			return ''.$text."\n".$callback.'(the_text_to_output'.$vars.');';
-		}
-		else
-		{
-			$find = array("'","\n","\r","\t","document.write('');\n");
-			$replace = array("\'","');\ndocument.write('",'','','');
-			$text="document.write('".str_replace($find,$replace,$text)."');";
-			return $text;
-		}//end else
-	}//end makeJSFriendly
+		return $output;
+	}//end out
 }//end class Channel
+
+
+/*
+jQuery('a.wijax-source').each(function()
+{
+	var widget_source = jQuery(this).attr('href');
+	var widget_area = jQuery(this).parent();
+	var widget_parent = jQuery(this).parent().parent();
+	var widget_wrapper = jQuery(this).parents('.widget_wijax');
+	var opts = jQuery.parseJSON( jQuery(widget_parent).find('span.wijax-opts').text() );
+	var varname = opts.varname;
+	jQuery.getScript( widget_source , function() {
+		// insert the fetched markup
+		jQuery( widget_area ).replaceWith( window[varname] );
+
+		// find the widget title, add it to the DOM, remove the temp span
+		var widget_title = jQuery(widget_parent).find('span.wijax-widgettitle').text();
+		jQuery( widget_parent ).prepend('<'+opts.title_element+' class="'+ opts.title_class +'">'+ widget_title +'</'+opts.title_element+'>');
+		jQuery(widget_parent).find('span.wijax-widgettitle').remove();
+
+		// find the widget classes & ID
+		var widget_attr_el = jQuery( widget_parent ).find( 'span.wijax-widgetclasses' );
+		var widget_id = jQuery( widget_attr_el ).attr( 'id' );
+		var widget_classes = jQuery( widget_attr_el ).attr( 'class' );
+		jQuery( widget_wrapper ).attr( 'id' , widget_id );
+		jQuery( widget_wrapper ).addClass( widget_classes );
+		jQuery( widget_wrapper ).removeClass( 'widget_wijax' );
+		jQuery(widget_attr_el).remove();
+	});
+});
+*/

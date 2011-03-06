@@ -3720,7 +3720,7 @@ require_once( dirname( __FILE__) .'/inc_social.php' );
 if( ! class_exists( 'bSuite_Widget_PostLoop' ) )
 {
 	require_once( dirname( __FILE__) .'/components/cms-widgets.php' );
-//	require_once( dirname( __FILE__) .'/components/wijax.php' );
+	require_once( dirname( __FILE__) .'/components/wijax.php' );
 }
 require_once( dirname( __FILE__) .'/components/privacy.php' );
 //require_once( dirname( __FILE__) .'/components/head-meta.php' );
