@@ -5,6 +5,7 @@
  */
 class bSuite_Wijax {
 	var $ep_name = 'wijax';
+	var $salt = '';
 
 	function bSuite_Wijax()
 	{
@@ -33,20 +34,35 @@ class bSuite_Wijax {
 		}
 	}
 
-	function varname( $url = '' )
+	function normalize_url( $url , $local = true )
 	{
-		if( $url )
+		if( $local )
 		{
 			// trim the host component from the given url
 			$home_path = parse_url( home_url() , PHP_URL_PATH );
 			$home_host = str_replace( $home_path , '' , home_url() ); // easier to get the host by subtraction than reconstructing it from parse_url()
-			$base = '/'. ltrim( str_replace( $home_host , '' , $url ) , '/' );
+			$path = '/'. ltrim( str_replace( $home_host , '' , $url ) , '/' );
+		}
+		else
+		{
+			$path_parts = parse_url( $url );
+			$path = $path_parts['path'] . ( isset( $path_parts['query'] ) ? '?'. $path_parts['query'] : '' );
+		}
+		return $path;
+	}
+
+	function varname( $url = '' , $local = true )
+	{
+		if( $url )
+		{
+			$base = $this->normalize_url( $url , $local );
 		}
 		else
 		{
 			$base = $_SERVER['REQUEST_URI'];
 		}
-		return 'wijax_'. md5( $base );
+
+		return 'wijax_'. md5( $base . date('W') . $this->salt );
 	}
 
 	function widgets_init()
@@ -138,9 +154,10 @@ class bSuite_Wijax {
 					$( widget_area ).replaceWith( window[varname] );
 			
 					// find the widget title, add it to the DOM, remove the temp span
-					var widget_title = $(widget_parent).find('span.wijax-widgettitle').text();
+					var widget_title_el = $(widget_parent).find('span.wijax-widgettitle');
+					var widget_title = $(widget_title_el).text();
 					$( widget_parent ).prepend('<'+opts.title_element+' class="'+ opts.title_class +'">'+ widget_title +'</'+opts.title_element+'>');
-					$(widget_parent).find('span.wijax-widgettitle').remove();
+					$(widget_title_el).remove();
 			
 					// find and set the widget ID and classes
 					var widget_attr_el = $( widget_parent ).find( 'span.wijax-widgetclasses' );
@@ -187,16 +204,24 @@ class Wijax_Widget extends WP_Widget
 
 		extract( $args );
 
-		$base = apply_filters( 'wijax-base-'. $instance['base'] , '' );
-		if( ! $base )
-			return;
-		$wijax_source = $base . $instance['widget'];
+		if( empty( $instance['widget-custom'] ))
+		{
+			$base = apply_filters( 'wijax-base-'. $instance['base'] , '' );
+			if( ! $base )
+				return;
+			$wijax_source = $base . $instance['widget'];
+			$wijax_varname = $wijax->varname( $wijax_source );
+		}
+		else
+		{
+			$wijax_source = $instance['widget-custom'];
+			$wijax_varname = $wijax->varname( $instance['widget-custom'] , FALSE );
+		}
 
 		echo $before_widget;
 
 		preg_match( '/<([\S]*)/' , $before_title , $title_element );
-		$title_element = (string) $title_element[1];
-
+		$title_element = trim( (string) $title_element[1] , '<>');
 
 		preg_match( '/class.*?=.*?(\'|")(.+?)(\'|")/' , $before_title , $title_class );
 		$title_class = (string) $title_class[2];
@@ -205,7 +230,7 @@ class Wijax_Widget extends WP_Widget
 			<img src="<?php echo $wijax->path_web  .'/components/img/loading-gray.gif'; ?>" alt="loading external resource" />
 			<a href="<?php echo $wijax_source; ?>" class="wijax-source"></a>
 			<span class="wijax-opts" style="display: none;">
-				<?php echo json_encode(array( 'varname' => $wijax->varname( $wijax_source ) ,  'title_element' => $title_element ,  'title_class' => $title_class )); ?>
+				<?php echo json_encode(array( 'varname' => $wijax_varname ,  'title_element' => $title_element ,  'title_class' => $title_class )); ?>
 			</span>
 		</span>
 <?php
@@ -325,9 +350,10 @@ jQuery('a.wijax-source').each(function()
 		jQuery( widget_area ).replaceWith( window[varname] );
 
 		// find the widget title, add it to the DOM, remove the temp span
-		var widget_title = jQuery(widget_parent).find('span.wijax-widgettitle').text();
+		var widget_title_el = jQuery(widget_parent).find('span.wijax-widgettitle');
+		var widget_title = jQuery(widget_title_el).text();
 		jQuery( widget_parent ).prepend('<'+opts.title_element+' class="'+ opts.title_class +'">'+ widget_title +'</'+opts.title_element+'>');
-		jQuery(widget_parent).find('span.wijax-widgettitle').remove();
+		jQuery(widget_title_el).remove();
 
 		// find the widget classes & ID
 		var widget_attr_el = jQuery( widget_parent ).find( 'span.wijax-widgetclasses' );
