@@ -19,8 +19,13 @@ class bSuite_Wijax {
 		add_rewrite_endpoint( 'wijax' , EP_ALL );
 		add_filter( 'request' , array( &$this, 'request' ));
 
-//		if( ! is_admin())
+		if( !is_admin())
+		{
+			wp_register_script( 'jquery-md5', $this->path_web . '/components/js/jquery.md5.js', array('jquery'), '1' );
+			wp_register_script( 'wijax', $this->path_web . '/components/js/wijax-library.js', array('jquery' , 'jquery-md5'), TRUE );
+			wp_enqueue_script( 'wijax' );
 //			add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
+		}
 	}
 
 	function widgets_init() {
