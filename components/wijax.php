@@ -19,9 +19,6 @@ class bSuite_Wijax {
 		add_rewrite_endpoint( 'wijax' , EP_ALL );
 		add_filter( 'request' , array( &$this, 'request' ));
 
-		wp_register_script( 'wijax', $this->path_web . '/components/js/wijax-library.js', array('jquery'), TRUE );
-		wp_enqueue_script( 'wijax' );
-
 //		if( ! is_admin())
 //			add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
 	}
@@ -41,7 +38,7 @@ class bSuite_Wijax {
 		if( isset( $request['wijax'] ))
 		{
 			add_filter( 'template_redirect' , array( &$this, 'redirect' ), 0 );
-			define( IS_WIJAX , TRUE );
+			define( 'IS_WIJAX' , TRUE );
 			do_action( 'do_wijax' );
 		}
 
@@ -88,6 +85,9 @@ class bSuite_Wijax {
 	
 			$widget_data['params'][0]['before_widget'] = sprintf($widget_data['params'][0]['before_widget'], $widget_data['widget'], 'grid_' . $widget_data['size'] . ' ' .$widget_data['class'] . ' ' . $widget_data['id'] . ' ' . $extra_classes);
 
+
+			call_user_func_array( $widget_data['callback'], $widget_data['params'] );
+/*
 			ob_start();			
 			call_user_func_array( $widget_data['callback'], $widget_data['params'] );
 			$params['text'] = ob_get_clean();
@@ -95,7 +95,7 @@ class bSuite_Wijax {
 			if($_GET['js_callback']) $params['js_callback'] = $_GET['js_callback'];
 			$params['channel_id'] = $_GET['channel_id'];
 			Wijax_Encode::out( 'callback' , $params );
-
+*/
 		}//end foreach
 
 /*	
@@ -113,7 +113,11 @@ class bSuite_Wijax {
 	}
 
 	function print_js(){
-		?>
+?>
+		<script type="text/javascript" src="<?php echo $this->path_web . '/components/js/wijax-library.js'; ?>"></script>
+<?php 
+		return;
+?>
 		<script type="text/javascript">	
 		;(function($){
 			$(document).ready(function(){
