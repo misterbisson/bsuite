@@ -24,12 +24,7 @@ class bSuite_Wijax {
 
 		if( ! is_admin())
 		{
-			// http://plugins.jquery.com/project/md5
-			// wp_register_script( 'jquery-md5', $this->path_web . '/components/js/jquery.md5.js', array('jquery'), TRUE );
-			// http://urldecoderonline.com/javascript-url-decode-jquery-plugin.htm
-			// wp_register_script( 'jquery-urldecoder', $this->path_web . '/components/js/jquery.urldecoder.min.js', array('jquery'), TRUE );
-			wp_register_script( 'wijax', $this->path_web . '/components/js/wijax-library.js', array('jquery'), TRUE );
-			wp_enqueue_script( 'wijax' );
+			wp_enqueue_script( 'jquery' );
 			add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
 		}
 	}
@@ -53,6 +48,12 @@ class bSuite_Wijax {
 
 	function varname( $url = '' , $local = true )
 	{
+/*
+@todo: md5 the widget name as well
+$url = $url_base . $md5( $widget_name . date('W') . $this->salt )
+the pain is then matching them up on request
+*/
+
 		if( $url )
 		{
 			$base = $this->normalize_url( $url , $local );
