@@ -30,6 +30,9 @@ class bSuite_PostLoops {
 
 	function init()
 	{
+		add_image_size( 'nines-thumbnail-small' , 100 , 100 , TRUE );
+		add_image_size( 'nines-thumbnail-wide' , 200 , 150 , TRUE );
+
 		$this->get_instances();
 
 		$this->get_templates( 'post' );
@@ -544,6 +547,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		if( $ourposts->have_posts() ){
 			$postloops->current_postloop = $instance;
 
+			$postloops->thumbnail_size = isset( $instance['thumbnail_size'] ) ? $instance['thumbnail_size'] : 'nines-thumbnail-small';
+
 			$extra_classes = array();
 			$extra_classes[] = str_replace( '9spot', 'nines' , sanitize_title_with_dashes( $this->post_templates[ $instance['template'] ]['name'] ));
 			$extra_classes[] = 'widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] );
@@ -693,6 +698,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['count'] = absint( $new_instance['count'] );
 		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'comment_new', 'pop_recent', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
+		$instance['thumbnail_size'] = in_array( $new_instance['thumbnail_size'], (array) get_intermediate_image_sizes() ) ? $new_instance['thumbnail_size']: '';
 		$instance['columns'] = absint( $new_instance['columns'] );
 
 		$this->justupdated = TRUE;
@@ -956,6 +962,18 @@ die;
 			</div>
 		</div>
 
+		<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-container" class="postloop container posttype_normal">
+			<label for="<?php echo $this->get_field_id('thumbnail_size'); ?>"><?php _e( 'Thumbnail Size' ); ?></label>
+			<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('thumbnail_size'); ?>" id="<?php echo $this->get_field_id('thumbnail_size'); ?>" class="widefat">
+						<?php $this->control_thumbnails( $instance['thumbnail_size'] ); ?>
+					</select>
+				</p>
+			</div>
+		</div>
+
+
 <?php
 		if( $this->justupdated )
 		{
@@ -1062,6 +1080,19 @@ die;
 
 		ksort( $this->bloglist );
 		return $this->bloglist;
+	}
+
+
+
+	function control_thumbnails( $default = 'nines-thumbnail-small' )
+	{
+		foreach ( (array) get_intermediate_image_sizes() as $size ) :
+			if ( $default == $size )
+				$selected = " selected='selected'";
+			else
+				$selected = '';
+			echo "\n\t<option value=\"". $size .'" '. $selected .'>'. $size .'</option>';
+		endforeach;
 	}
 
 	function control_categories( $instance , $whichfield = 'categories_in' )
