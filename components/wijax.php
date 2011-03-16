@@ -150,6 +150,8 @@ the pain is then matching them up on request
 				var widget_wrapper = $(this).parents('.widget_wijax');
 				var opts = $.parseJSON( $(widget_parent).find('span.wijax-opts').text() );
 				var varname = opts.varname;
+				var title_before = unescape( opts.title_before );
+				var title_after = unescape( opts.title_after );
 				$.getScript( widget_source , function() {
 					// insert the fetched markup
 					$( widget_area ).replaceWith( window[varname] );
@@ -157,7 +159,7 @@ the pain is then matching them up on request
 					// find the widget title, add it to the DOM, remove the temp span
 					var widget_title_el = $(widget_parent).find('span.wijax-widgettitle');
 					var widget_title = $(widget_title_el).text();
-					$( widget_parent ).prepend('<'+opts.title_element+' class="'+ opts.title_class +'">'+ widget_title +'</'+opts.title_element+'>');
+					$( widget_parent ).prepend(title_before + widget_title + title_after);
 					$(widget_title_el).remove();
 			
 					// find and set the widget ID and classes
@@ -179,8 +181,8 @@ the pain is then matching them up on request
 } //end bSuite_Wijax
 
 // initialize that class
+global $wijax;
 $wijax = new bSuite_Wijax();
-
 
 
 /**
@@ -231,7 +233,13 @@ class Wijax_Widget extends WP_Widget
 			<img src="<?php echo $wijax->path_web  .'/components/img/loading-gray.gif'; ?>" alt="loading external resource" />
 			<a href="<?php echo $wijax_source; ?>" class="wijax-source"></a>
 			<span class="wijax-opts" style="display: none;">
-				<?php echo json_encode(array( 'varname' => $wijax_varname ,  'title_element' => $title_element ,  'title_class' => $title_class )); ?>
+				<?php echo json_encode( array( 
+					'varname' => $wijax_varname , 
+					'title_element' => $title_element ,
+					'title_class' => $title_class ,
+					'title_before' => rawurlencode( $before_title ),
+					'title_after' => rawurlencode( $after_title ),
+				)); ?>
 			</span>
 		</span>
 <?php
@@ -346,6 +354,8 @@ jQuery('a.wijax-source').each(function()
 	var widget_wrapper = jQuery(this).parents('.widget_wijax');
 	var opts = jQuery.parseJSON( jQuery(widget_parent).find('span.wijax-opts').text() );
 	var varname = opts.varname;
+	var title_before = unescape( opts.title_before );
+	var title_after = unescape( opts.title_after );
 	jQuery.getScript( widget_source , function() {
 		// insert the fetched markup
 		jQuery( widget_area ).replaceWith( window[varname] );
@@ -353,7 +363,7 @@ jQuery('a.wijax-source').each(function()
 		// find the widget title, add it to the DOM, remove the temp span
 		var widget_title_el = jQuery(widget_parent).find('span.wijax-widgettitle');
 		var widget_title = jQuery(widget_title_el).text();
-		jQuery( widget_parent ).prepend('<'+opts.title_element+' class="'+ opts.title_class +'">'+ widget_title +'</'+opts.title_element+'>');
+		jQuery( widget_parent ).prepend(title_before + widget_title + title_after);
 		jQuery(widget_title_el).remove();
 
 		// find the widget classes & ID
