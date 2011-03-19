@@ -527,7 +527,7 @@ class bSuite {
 		$tokens = &$this->tokens_get();
 
 		if($tokens[$thing[0]])
-			$return = call_user_func_array($tokens[$thing[0]], $thing[1]);
+			$return = call_user_func_array($tokens[$thing[0]], is_array( $thing[1] ) ? $thing[1] : array( $thing[1] ));
 
 		return($return);
 	}
