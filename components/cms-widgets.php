@@ -14,6 +14,8 @@ class bSuite_PostLoops {
 	// terms from the posts in each instance
 	var $terms; // $tags[ $loop_id ][ $blog_id ][ $taxonomy ][ $term_id ] = $count
 
+	var $thumbnail_size = 'nines-thumbnail-small'; // the default thumbnail size
+
 	function bSuite_PostLoops()
 	{
 		global $bsuite;
@@ -169,6 +171,9 @@ class bSuite_PostLoops {
 	{
 		$type = sanitize_file_name( $type );
 		$type_var = "templates_$type";
+
+		if( isset( $this->$type_var ))
+			return $this->$type_var;
 
 		$this->$type_var = array_merge( 
 				(array) $this->get_templates_readdir( dirname( dirname( __FILE__ )) .'/templates-'. $type .'/' ),
@@ -344,6 +349,7 @@ class bSuite_PostLoops {
 } //end bSuite_PostLoops
 
 // initialize that class
+global $postloops;
 $postloops = new bSuite_PostLoops();
 
 
