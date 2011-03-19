@@ -6,6 +6,7 @@
 class bSuite_Wijax {
 	var $ep_name = 'wijax';
 	var $salt = '';
+	var $allow_plaintext = TRUE;
 
 	function bSuite_Wijax()
 	{
@@ -48,12 +49,6 @@ class bSuite_Wijax {
 
 	function varname( $url = '' , $local = true )
 	{
-/*
-@todo: md5 the widget name as well
-$url = $url_base . $md5( $widget_name . date('W') . $this->salt )
-the pain is then matching them up on request
-*/
-
 		if( $url )
 		{
 			$base = $this->normalize_url( $url , $local );
@@ -64,6 +59,11 @@ the pain is then matching them up on request
 		}
 
 		return 'wijax_'. md5( $base . date('W') . $this->salt );
+	}
+
+	function encoded_name( $name )
+	{
+		return md5( $name . date('W') . $this->salt );
 	}
 
 	function widgets_init()
@@ -91,50 +91,110 @@ the pain is then matching them up on request
 
 	function redirect()
 	{
-		global $wp_registered_widgets;
+		global $postloops, $wp_registered_widgets;
 
 		$requested_widgets = array_filter( array_map( 'trim' , (array) explode( ',' , get_query_var('wijax') )));
 
 		if( 1 > count( $requested_widgets ))
-			return;
+			die;
+
+		// establish the available actions
+		$actions = array();
+
+		// get the available postloop templates
+		if( is_object( $postloops ) && ( $postloop_templates = $postloops->get_templates( 'post' )))
+		{
+			foreach( $postloop_templates as $k => $v )
+				$actions[ $this->encoded_name( 'templates-post-'. trim( $k , '.php' )) ] = (object ) array( 'key' => $k , 'type' => 'postloop');
+		}
+
+		// get the available widgets in the wijax area
+		if( ( $widgets = wp_get_sidebars_widgets() ) && is_array( $widgets['wijax-area'] ))
+		{
+			foreach( $widgets['wijax-area'] as $k)
+				$actions[ $this->encoded_name( $k ) ] = (object ) array( 'key' => $k , 'type' => 'widget');
+		}
 
 		foreach( $requested_widgets as $key )
 		{
-			if( ! $widget_data = $wp_registered_widgets[ $key ] )
-				continue;
+			// try the requested key against the md5 list
+			if( ! isset( $actions[ $key ] ))
+			{
+				// allow plaintext queries, md5 the key and try that against the list
+				$key = $this->encoded_name( $key );
+				if(( ! $this->allow_plaintext ) || ( ! isset( $actions[ $key ] )))
+					die;
+			}
 
-			preg_match( '/\-([0-9]+)$/' , $key , $instance_number );
-			$instance_number = absint( $instance_number[1] );
-			if( ! $instance_number )
-				continue;
+			// start output buffering
+			ob_start();
 
-			$widget_data['widget'] = $key;
-	
-			$widget_data['params'][0] = array(
-				'name' => $wp_registered_widgets[ $key ]['name'],
-				'id' => $key,
-				'before_widget' => '<span id="widget-%1$s" class="wijax-widgetclasses %2$s"></span>'."\n",
-				'after_widget'  => '',
-				'before_title'  => '<span class="wijax-widgettitle">',
-				'after_title'   => "</span>\n",
-				'widget_id' => $key,
-				'widget_name' => $wp_registered_widgets[ $key ]['name'],
-			);
+			// identify and execute the matching action
+			$do = 'do_'. $actions[ $key ]->type;
+			$this->$do( $actions[ $key ]->key );
+
+			// close the output buffer and send it to the client as a JS var
+			Wijax_Encode::out( ob_get_clean() , $this->varname() );
+
+			die; // only doing one widget now
+		}//end foreach
+		die;
+	}
+
+	function do_postloop( $template )
+	{
+		global $postloops, $wp_query;
+
+		if( ( ! is_object( $postloops )) || ( ! is_single() ))
+			return FALSE;
+
+		$postloop_templates = $postloops->get_templates( 'post' );
+
+		$ourposts = &$wp_query;
+		if( $ourposts->have_posts() )
+		{
+			while( $ourposts->have_posts() )
+			{
+				$ourposts->the_post();
+				 @include $postloop_templates[ $template ]['fullpath'];
+			}
+		}
+	}
+
+	function do_widget( $key )
+	{
+		global $wp_registered_widgets;
+
+		if( ! $widget_data = $wp_registered_widgets[ $key ] )
+			continue;
+
+		preg_match( '/\-([0-9]+)$/' , $key , $instance_number );
+		$instance_number = absint( $instance_number[1] );
+		if( ! $instance_number )
+			continue;
+
+		$widget_data['widget'] = $key;
+
+		$widget_data['params'][0] = array(
+			'name' => $wp_registered_widgets[ $key ]['name'],
+			'id' => $key,
+			'before_widget' => '<span id="widget-%1$s" class="wijax-widgetclasses %2$s"></span>'."\n",
+			'after_widget'  => '',
+			'before_title'  => '<span class="wijax-widgettitle">',
+			'after_title'   => "</span>\n",
+			'widget_id' => $key,
+			'widget_name' => $wp_registered_widgets[ $key ]['name'],
+		);
 
 //print_r( $widget_data['callback'][0]->number );
 
-			$widget_data['params'][1] = array(
-				'number' => absint( $instance_number ),
-			);
-	
-			$widget_data['params'][0]['before_widget'] = sprintf($widget_data['params'][0]['before_widget'], $widget_data['widget'], ( isset( $widget_data['size'] ) ? 'grid_' . $widget_data['size'] .' ' : '' ) .$widget_data['class'] . ' ' . $widget_data['id'] . ' ' . $extra_classes);
+		$widget_data['params'][1] = array(
+			'number' => absint( $instance_number ),
+		);
 
-			ob_start();			
-			call_user_func_array( $widget_data['callback'], $widget_data['params'] );
-			Wijax_Encode::out( ob_get_clean() , $this->varname() );
+		$widget_data['params'][0]['before_widget'] = sprintf($widget_data['params'][0]['before_widget'], $widget_data['widget'], ( isset( $widget_data['size'] ) ? 'grid_' . $widget_data['size'] .' ' : '' ) .$widget_data['class'] . ' ' . $widget_data['id'] . ' ' . $extra_classes);
 
-		}//end foreach
-		die;
+		call_user_func_array( $widget_data['callback'], $widget_data['params'] );
 	}
 
 	function print_js(){
@@ -212,7 +272,7 @@ class Wijax_Widget extends WP_Widget
 			$base = apply_filters( 'wijax-base-'. $instance['base'] , '' );
 			if( ! $base )
 				return;
-			$wijax_source = $base . $instance['widget'];
+			$wijax_source = $base . $wijax->encoded_name( $instance['widget'] );
 			$wijax_varname = $wijax->varname( $wijax_source );
 		}
 		else
@@ -231,9 +291,10 @@ class Wijax_Widget extends WP_Widget
 ?>
 		<span class="wijax-loading">
 			<img src="<?php echo $wijax->path_web  .'/components/img/loading-gray.gif'; ?>" alt="loading external resource" />
-			<a href="<?php echo $wijax_source; ?>" class="wijax-source"></a>
+			<a href="<?php echo $wijax_source; ?>" class="wijax-source" rel="nofollow"></a>
 			<span class="wijax-opts" style="display: none;">
 				<?php echo json_encode( array( 
+					'source' => $wijax_source ,
 					'varname' => $wijax_varname , 
 					'title_element' => $title_element ,
 					'title_class' => $title_class ,
