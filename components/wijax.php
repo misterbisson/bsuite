@@ -79,7 +79,7 @@ class bSuite_Wijax {
 
 	public function request( $request )
 	{
-		if( isset( $request['wijax'] ))
+		if( isset( $request[ $this->ep_name ] ))
 		{
 			add_filter( 'template_redirect' , array( &$this, 'redirect' ), 0 );
 			define( 'IS_WIJAX' , TRUE );
@@ -93,7 +93,7 @@ class bSuite_Wijax {
 	{
 		global $postloops, $wp_registered_widgets;
 
-		$requested_widgets = array_filter( array_map( 'trim' , (array) explode( ',' , get_query_var('wijax') )));
+		$requested_widgets = array_filter( array_map( 'trim' , (array) explode( ',' , get_query_var( $this->ep_name ) )));
 
 		if( 1 > count( $requested_widgets ))
 			die;
@@ -241,8 +241,8 @@ class bSuite_Wijax {
 } //end bSuite_Wijax
 
 // initialize that class
-global $wijax;
-$wijax = new bSuite_Wijax();
+global $mywijax;
+$mywijax = new bSuite_Wijax();
 
 
 /**
@@ -263,7 +263,7 @@ class Wijax_Widget extends WP_Widget
 
 	function widget( $args, $instance )
 	{
-		global $wijax;
+		global $mywijax;
 
 		extract( $args );
 
@@ -272,13 +272,13 @@ class Wijax_Widget extends WP_Widget
 			$base = apply_filters( 'wijax-base-'. $instance['base'] , '' );
 			if( ! $base )
 				return;
-			$wijax_source = $base . $wijax->encoded_name( $instance['widget'] );
-			$wijax_varname = $wijax->varname( $wijax_source );
+			$wijax_source = $base . $mywijax->encoded_name( $instance['widget'] );
+			$wijax_varname = $mywijax->varname( $wijax_source );
 		}
 		else
 		{
 			$wijax_source = $instance['widget-custom'];
-			$wijax_varname = $wijax->varname( $instance['widget-custom'] , FALSE );
+			$wijax_varname = $mywijax->varname( $instance['widget-custom'] , FALSE );
 		}
 
 		echo $before_widget;
@@ -290,7 +290,7 @@ class Wijax_Widget extends WP_Widget
 		$title_class = (string) $title_class[2];
 ?>
 		<span class="wijax-loading">
-			<img src="<?php echo $wijax->path_web  .'/components/img/loading-gray.gif'; ?>" alt="loading external resource" />
+			<img src="<?php echo $mywijax->path_web  .'/components/img/loading-gray.gif'; ?>" alt="loading external resource" />
 			<a href="<?php echo $wijax_source; ?>" class="wijax-source" rel="nofollow"></a>
 			<span class="wijax-opts" style="display: none;">
 				<?php echo json_encode( array( 
