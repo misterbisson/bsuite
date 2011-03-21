@@ -15,7 +15,7 @@ class bSuite_Wijax {
 		$this->path_web = is_object( $bsuite ) ? $bsuite->path_web : get_template_directory_uri();
 
 		add_action( 'init', array( &$this, 'init' ));
-		add_action( 'widgets_init', array( &$this , 'widgets_init' ) , 1 );
+		add_action( 'widgets_init', array( &$this , 'widgets_init' ) , 11 );
 		add_filter( 'query_vars', array( &$this, 'add_query_var' ));
 	}
 
@@ -183,16 +183,27 @@ class bSuite_Wijax {
 
 		$widget_data['widget'] = $key;
 
+		// Substitute HTML id and class attributes into before_widget
+		$classname_ = '';
+		foreach ( (array) $wp_registered_widgets[$id]['classname'] as $cn ) {
+			if ( is_string($cn) )
+				$classname_ .= '_' . $cn;
+			elseif ( is_object($cn) )
+				$classname_ .= '_' . get_class($cn);
+		}
+		$classname_ = ltrim($classname_, '_');
+
 		$widget_data['params'][0] = array(
 			'name' => $wp_registered_widgets[ $key ]['name'],
 			'id' => $key,
-			'before_widget' => '<span id="widget-%1$s" class="wijax-widgetclasses %2$s"></span>'."\n",
+			'before_widget' => '<span id="widget-%1$s" class="wijax-widgetclasses '. $classname_ .' %2$s"></span>'."\n",
 			'after_widget'  => '',
 			'before_title'  => '<span class="wijax-widgettitle">',
 			'after_title'   => "</span>\n",
 			'widget_id' => $key,
 			'widget_name' => $wp_registered_widgets[ $key ]['name'],
 		);
+
 
 //print_r( $widget_data['callback'][0]->number );
 
