@@ -32,8 +32,11 @@ class bSuite_PostLoops {
 
 	function init()
 	{
-		add_image_size( 'nines-thumbnail-small' , 100 , 100 , TRUE );
-		add_image_size( 'nines-thumbnail-wide' , 200 , 150 , TRUE );
+		if( function_exists( 'add_image_size' ))
+		{
+			add_image_size( 'nines-thumbnail-small' , 100 , 100 , TRUE );
+			add_image_size( 'nines-thumbnail-wide' , 200 , 150 , TRUE );
+		}
 
 		$this->get_instances();
 
