@@ -16,10 +16,12 @@ class bSuite_Wijax {
 
 		add_action( 'init', array( &$this, 'init' ));
 		add_action( 'widgets_init', array( &$this , 'widgets_init' ) , 1 );
+		add_filter( 'query_vars', array( &$this, 'add_query_var' ));
 	}
 
 	function init()
 	{
+
 		add_rewrite_endpoint( $this->ep_name , EP_ALL );
 		add_filter( 'request' , array( &$this, 'request' ));
 
@@ -28,6 +30,12 @@ class bSuite_Wijax {
 			wp_enqueue_script( 'jquery' );
 			add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
 		}
+	}
+
+	function add_query_var( $qvars )
+	{
+		$qvars[] = $this->ep_name;
+		return $qvars;
 	}
 
 	function normalize_url( $url , $local = true )
@@ -392,6 +400,8 @@ class Wijax_Encode
 {
 	public static function out( $content , $varname )
 	{
+		if ( function_exists( 'status_header' ) )
+			status_header( 200 );
 		header('Content-type: text/javascript');
 		echo self::encode( $content , $varname );
 	}//end out
