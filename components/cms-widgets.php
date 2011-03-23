@@ -707,7 +707,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['count'] = absint( $new_instance['count'] );
 		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'comment_new', 'pop_recent', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
-		$instance['thumbnail_size'] = in_array( $new_instance['thumbnail_size'], (array) get_intermediate_image_sizes() ) ? $new_instance['thumbnail_size']: '';
+		if( function_exists( 'get_intermediate_image_sizes' ))
+			$instance['thumbnail_size'] = in_array( $new_instance['thumbnail_size'], (array) get_intermediate_image_sizes() ) ? $new_instance['thumbnail_size']: '';
 		$instance['columns'] = absint( $new_instance['columns'] );
 
 		$this->justupdated = TRUE;
@@ -970,17 +971,23 @@ die;
 				</p>
 			</div>
 		</div>
-
-		<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-container" class="postloop container posttype_normal">
-			<label for="<?php echo $this->get_field_id('thumbnail_size'); ?>"><?php _e( 'Thumbnail Size' ); ?></label>
-			<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-contents" class="contents hide-if-js">
-				<p>
-					<select name="<?php echo $this->get_field_name('thumbnail_size'); ?>" id="<?php echo $this->get_field_id('thumbnail_size'); ?>" class="widefat">
-						<?php $this->control_thumbnails( $instance['thumbnail_size'] ); ?>
-					</select>
-				</p>
+<?php
+		if( function_exists( 'get_intermediate_image_sizes' ))
+		{
+?>
+			<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-container" class="postloop container posttype_normal">
+				<label for="<?php echo $this->get_field_id('thumbnail_size'); ?>"><?php _e( 'Thumbnail Size' ); ?></label>
+				<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-contents" class="contents hide-if-js">
+					<p>
+						<select name="<?php echo $this->get_field_name('thumbnail_size'); ?>" id="<?php echo $this->get_field_id('thumbnail_size'); ?>" class="widefat">
+							<?php $this->control_thumbnails( $instance['thumbnail_size'] ); ?>
+						</select>
+					</p>
+				</div>
 			</div>
-		</div>
+<?php
+		}
+?>
 
 
 <?php
@@ -1095,6 +1102,9 @@ die;
 
 	function control_thumbnails( $default = 'nines-thumbnail-small' )
 	{
+		if( ! function_exists( 'get_intermediate_image_sizes' ))
+			return;
+
 		foreach ( (array) get_intermediate_image_sizes() as $size ) :
 			if ( $default == $size )
 				$selected = " selected='selected'";
