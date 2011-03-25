@@ -1445,8 +1445,8 @@ class bSuite_Widget_Pages extends WP_Widget {
 
 	function widget( $args, $instance ) {
 		extract( $args );
-
-		if( $instance['startpage'] == -1 )
+		
+		if( $instance['startpage'] < 0 ||  $instance['startpage'] == 'c' )
 		{
 			if( is_singular() )
 			{
@@ -1467,19 +1467,38 @@ class bSuite_Widget_Pages extends WP_Widget {
 		$homelink = empty( $instance['homelink'] ) ? '' : $instance['homelink'];
 		$sortby = empty( $instance['sortby'] ) ? 'menu_order' : $instance['sortby'];
 		$exclude = empty( $instance['exclude'] ) ? '' : $instance['exclude'];
-		$startpage = isset( $instance['startpage'] ) ? ( $instance['startpage'] == -1 ? $post->ID : absint( $instance['startpage'] )) : 0;
 		$depth = isset( $instance['depth'] ) ? $instance['depth'] : 1;
+		
+		if( $instance['startpage'] < 0 )
+		{
+			// get the ancestor tree, including the current page
+			$ancestors = $post->ancestors;
+			array_unshift( $ancestors , $post->ID ); //append the current page to the ancestors array in the correct order
+
+			// reverse the array so the slice can return empty if startpage is larger than the array
+			$startpage = current( array_slice( array_reverse( (array) $ancestors ) , absint( $instance['startpage'] ) -1 , 1 ));
+			if( ! $startpage )
+				return;
+		}
+		else if( $instance['startpage'] >= 0 )
+		{
+			$startpage = $instance['startpage'];
+		}
+		else if( $instance['startpage'] == 'c' )
+		{
+			$startpage = $post->ID;
+		}
 
 		if ( $sortby == 'menu_order' )
 			$sortby = 'menu_order, post_title';
 
 		$out = wp_list_pages( array(
-			'child_of' => $startpage, 
-			'title_li' => '', 
-			'echo' => 0, 
-			'sort_column' => $sortby, 
-			'exclude' => $exclude, 
-			'depth' => $depth 
+				'child_of' => $startpage, 
+				'title_li' => '', 
+				'echo' => 0, 
+				'sort_column' => $sortby, 
+				'exclude' => $exclude, 
+				'depth' => $depth 
 		));
 
 		if( $instance['expandtree'] && ( $instance['startpage'] >= 0 ) && is_page() ){
@@ -1499,7 +1518,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 				}
 
 				// get any children, insert them into the tree
-				if( $children = wp_list_pages( array( 'child_of' => $post->ID, 'title_li' => '', 'echo' => 0, 'sort_column' => $sortby, 'exclude' => $exclude, 'depth' => $depth ))){
+				if( $children = wp_list_pages( array( 'child_of' => $post->ID, 'title_li' => '', 'echo' => 0, 'sort_column' => $sortby, 'exclude' => $exclude, 'depth' => $depth ))){		
 					$subtree = preg_replace( '/current_page_item[^<]*<a([^<]*)/i', 'current_page_item"><a\1<ul>'. $children .'</ul>', $subtree );
 				}
 
@@ -1510,7 +1529,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 				}
 			}
 		}
-
+		
 		if ( !empty( $out ) ) {
 			echo $before_widget;
 			if ( $title )
@@ -1537,7 +1556,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 			$instance['sortby'] = 'menu_order';
 		}
 		$instance['depth'] = absint( $new_instance['depth'] );
-		$instance['startpage'] = intval( $new_instance['startpage'] );
+		$instance['startpage'] = $new_instance['startpage'] == 'c' ? 'c' : intval( $new_instance['startpage'] ) ;
 		$instance['expandtree'] = absint( $new_instance['expandtree'] );
 		$instance['exclude'] = strip_tags( $new_instance['exclude'] );
 
@@ -1591,13 +1610,16 @@ class bSuite_Widget_Pages extends WP_Widget {
 			<label for="<?php echo $this->get_field_id('startpage'); ?>"><?php _e( 'Start page hierarchy at:' ); ?></label>
 			<?php echo str_replace( 
 				'<select name="page_id" id="page_id">',
-				
+
 				'<select name="'. $this->get_field_name('startpage') .'" id="'. $this->get_field_id('startpage') .'" class="widefat">
 				<option value="0"'. selected( $instance['startpage'], '0', FALSE ) .'>'. __( 'Root' ) .'</option>
-				<option value="-1"'. selected( $instance['startpage'], '-1', FALSE ) .'>'. __( 'Current Page' ) .'</option>
+				<option value="-1"'. selected( $instance['startpage'], '-1', FALSE ) .'>'. __( 'Root -1' ) .'</option>
+				<option value="-2"'. selected( $instance['startpage'], '-2', FALSE ) .'>'. __( 'Root -2' ) .'</option>
+				<option value="0">---------------------</option>
+				<option value="c"'. selected( $instance['startpage'], 'c', FALSE ) .'>'. __( 'Current Page' ) .'</option>
 				<option value="0">---------------------</option>',
-				
-				wp_dropdown_pages( array( 'echo' => 0 , 'selected' => $instance['startpage'] > 0 ? absint( $instance['startpage'] ) : 0 ))); ?>
+
+				wp_dropdown_pages( array( 'echo' => 0 , 'selected' => ( $instance['startpage'] > 0  ? absint( $instance['startpage'] ) : 0 ) ))); ?>
 		</p>
 
 		<p><input id="<?php echo $this->get_field_id('expandtree'); ?>" name="<?php echo $this->get_field_name('expandtree'); ?>" type="checkbox" value="1" <?php if ( $instance['expandtree'] ) echo 'checked="checked"'; ?>/>
