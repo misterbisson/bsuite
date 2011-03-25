@@ -286,7 +286,7 @@ class Wijax_Widget extends WP_Widget
 
 		extract( $args );
 
-		if( empty( $instance['widget-custom'] ))
+		if( 'remote' != $instance['base'] )
 		{
 			$base = apply_filters( 'wijax-base-'. $instance['base'] , '' );
 			if( ! $base )
@@ -296,8 +296,8 @@ class Wijax_Widget extends WP_Widget
 		}
 		else
 		{
-			$wijax_source = $instance['widget-custom'];
-			$wijax_varname = $mywijax->varname( $instance['widget-custom'] , FALSE );
+			$wijax_source = $instance['base-remote'] . $wijax->encoded_name( $instance['widget-custom'] );
+			$wijax_varname = $wijax->varname( $wijax_source , FALSE );
 		}
 
 		echo $before_widget;
@@ -344,8 +344,9 @@ class Wijax_Widget extends WP_Widget
 		$instance = $old_instance;
 		$instance['title'] = strip_tags( $new_instance['title'] );
 		$instance['widget'] = sanitize_title( $new_instance['widget'] );
-		$instance['widget-custom'] = esc_url_raw( $new_instance['widget-custom'] );
+		$instance['widget-custom'] = sanitize_title( $new_instance['widget-custom'] );
 		$instance['base'] = sanitize_title( $new_instance['base'] );
+		$instance['base-remote'] = esc_url_raw( $new_instance['base-remote'] );
 
 		return $instance;
 	}
@@ -384,9 +385,9 @@ class Wijax_Widget extends WP_Widget
 
 			$list .= '<option value="'. $item .'" '. selected( $instance[ $whichfield ] , $item , FALSE ) .'>'. $item .'</option>';
 		}
-		$list .= '<option value="custom" '. selected( $instance[ $whichfield ] , 'custom' , FALSE ) .'>Custom</option>';
+		$list .= '<option value="custom" '. selected( $instance[ $whichfield ] , 'custom' , FALSE ) .'>Custom widget</option>';
 
-		return '<p><label for="'. $this->get_field_id( $whichfield ) .'">Widget</label><select name="'. $this->get_field_name( $whichfield ) .'" id="'. $this->get_field_id( $whichfield ) .'" class="widefat">'. $list . '</select></p><p><label for="'. $this->get_field_id( $whichfield .'-custom' ) .'">Custom Widget Path</label><input name="'. $this->get_field_name( $whichfield .'-custom' ) .'" id="'. $this->get_field_id( $whichfield .'-custom' ) .'" class="widefat" type="text" value="'. esc_url( $instance[ $whichfield .'-custom' ] ).'"></p>';
+		return '<p><label for="'. $this->get_field_id( $whichfield ) .'">Widget</label><select name="'. $this->get_field_name( $whichfield ) .'" id="'. $this->get_field_id( $whichfield ) .'" class="widefat">'. $list . '</select></p><p><label for="'. $this->get_field_id( $whichfield .'-custom' ) .'">Custom Widget Name</label><input name="'. $this->get_field_name( $whichfield .'-custom' ) .'" id="'. $this->get_field_id( $whichfield .'-custom' ) .'" class="widefat" type="text" value="'. sanitize_title( $instance[ $whichfield .'-custom' ] ).'"></p>';
 	}
 
 	function control_base( $instance , $whichfield = 'base' )
@@ -395,12 +396,13 @@ class Wijax_Widget extends WP_Widget
 		$bases = apply_filters( 'wijax-bases' , array(
 			'current' => 'The currently requested URL',
 			'home' => 'The blog home URL',
+			'remote' => 'Remote base URL',
 		));
 
 		foreach( (array) $bases as $k => $v )
 			$list .= '<option value="'. $k .'" '. selected( $instance[ $whichfield ] , $k , FALSE ) .'>'. $v .'</option>';
 
-		return '<p><label for="'. $this->get_field_id( $whichfield ) .'">Base URL</label><select name="'. $this->get_field_name( $whichfield ) .'" id="'. $this->get_field_id( $whichfield ) .'" class="widefat">'. $list . '</select><br /><small>The base URL affects widget content and caching</small></p>';
+		return '<p><label for="'. $this->get_field_id( $whichfield ) .'">Base URL</label><select name="'. $this->get_field_name( $whichfield ) .'" id="'. $this->get_field_id( $whichfield ) .'" class="widefat">'. $list . '</select><br /><small>The base URL affects widget content and caching</small></p><p><label for="'. $this->get_field_id( $whichfield .'-remote' ) .'">Remote Base URL</label><input name="'. $this->get_field_name( $whichfield .'-remote' ) .'" id="'. $this->get_field_id( $whichfield .'-remote' ) .'" class="widefat" type="text" value="'. esc_url( $instance[ $whichfield .'-remote' ] ).'"></p>';
 	}
 
 }// end Wijax_Widget
