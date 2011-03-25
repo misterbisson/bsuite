@@ -296,8 +296,8 @@ class Wijax_Widget extends WP_Widget
 		}
 		else
 		{
-			$wijax_source = $instance['base-remote'] . $wijax->encoded_name( $instance['widget-custom'] );
-			$wijax_varname = $wijax->varname( $wijax_source , FALSE );
+			$wijax_source = $instance['base-remote'] . $mywijax->encoded_name( $instance['widget-custom'] );
+			$wijax_varname = $mywijax->varname( $wijax_source , FALSE );
 		}
 
 		echo $before_widget;
