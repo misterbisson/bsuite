@@ -185,7 +185,7 @@ class bSuite_Wijax {
 
 		// Substitute HTML id and class attributes into before_widget
 		$classname_ = '';
-		foreach ( (array) $wp_registered_widgets[$id]['classname'] as $cn ) {
+		foreach ( (array) $wp_registered_widgets[ $key ]['classname'] as $cn ) {
 			if ( is_string($cn) )
 				$classname_ .= '_' . $cn;
 			elseif ( is_object($cn) )
@@ -204,8 +204,8 @@ class bSuite_Wijax {
 			'widget_name' => $wp_registered_widgets[ $key ]['name'],
 		);
 
-
 //print_r( $widget_data['callback'][0]->number );
+//print_r( $widget_data['params'][0] );
 
 		$widget_data['params'][1] = array(
 			'number' => absint( $instance_number ),
