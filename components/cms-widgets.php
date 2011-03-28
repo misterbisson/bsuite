@@ -364,8 +364,6 @@ class bSuite_PostLoop_Scroller
 {
 	function __construct()
 	{
-echo "<h2>Hi!</h2>";
-
 		global $bsuite;
 
 		$this->path_web = is_object( $bsuite ) ? $bsuite->path_web : get_template_directory_uri();
@@ -399,6 +397,10 @@ echo "<h2>Hi!</h2>";
 <script type="text/javascript">	
 	;(function($){
 		$(window).load(function(){
+			// set the size of some items
+			$('.items div').width( $('.scrollable').width() );
+			$('.scrollable').height( $('.items div').height() );
+
 			// initialize scrollable
 			$(".scrollable").scrollable({ circular: true }).navigator()
 		});

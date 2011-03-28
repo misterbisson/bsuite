@@ -12,10 +12,7 @@
 	position:relative;
 	overflow:hidden;
 	width: 100%;
-	height:200px;/* Needs to be set to the height of the .items */
-
-	/* custom decorations */
-	border:1px solid #ccc;
+	height:600px; /* Set via JS to the height of the .items */
 }
 
 /*
@@ -33,7 +30,7 @@
 
 .items div {
 	float:left;
-	width:680px; /* Needs to be set to the height of the .scrollable in pixels */
+	width:960; /* Set via JS to the computed width of the .scrollable in pixels */
 }
 /* active item */
 .scrollable .active {
