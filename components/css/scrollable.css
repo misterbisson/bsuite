@@ -97,6 +97,7 @@ a.disabled {
 
 /* position and dimensions of the navigator */
 .navi {
+	display:inline-block;
 /*
 	margin-left:328px;
 	width:200px;
@@ -113,7 +114,6 @@ a.disabled {
 /*	float:left; */
 	margin:3px;
 	background:url(../img/scrollable-navigator.png) 0 0 no-repeat;
-	display:block;
 	font-size:1px;
 }
 
