@@ -357,6 +357,61 @@ $postloops = new bSuite_PostLoops();
 
 
 /**
+ * PostLoop Scroller class
+ *
+ */
+class bSuite_PostLoop_Scroller
+{
+	function __construct()
+	{
+echo "<h2>Hi!</h2>";
+
+		global $bsuite;
+
+		$this->path_web = is_object( $bsuite ) ? $bsuite->path_web : get_template_directory_uri();
+
+		// register and queue javascripts
+		wp_register_script( 'scrollable', $this->path_web . '/components/js/scrollable.min.js', array('jquery'), TRUE );
+		wp_register_script( 'scrollable-navigator', $this->path_web . '/components/js/scrollable.navigator.min.js', array('scrollable'), TRUE );
+		wp_register_script( 'scrollable-autoscroll', $this->path_web . '/components/js/scrollable.autoscroll.min.js', array('scrollable'), TRUE );
+
+		wp_register_style( 'scrollable', $this->path_web .'/components/css/scrollable.css' );
+		wp_enqueue_style( 'scrollable' );
+
+		add_action( 'postloop_f_default_scroller' , array( &$this, 'do_postloop' ) , 5 , 3 );
+	}
+
+	function do_postloop( $action , $ourposts , $postloops )
+	{
+		switch( $action )
+		{
+			case 'before':
+//				late_enqueue_script( 'scrollable' );
+				late_enqueue_script( 'scrollable-navigator' );
+				add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
+				break;
+		}
+	}
+
+	function print_js()
+	{
+?>
+<script type="text/javascript">	
+	;(function($){
+		$(window).load(function(){
+			// initialize scrollable
+			$(".scrollable").scrollable({ circular: true }).navigator()
+		});
+	})(jQuery);
+</script>
+<?php
+	}
+}
+new bSuite_PostLoop_Scroller();
+
+
+
+/**
  * PostLoop widget class
  *
  */
@@ -567,13 +622,17 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			if ( $instance['title_show'] && $title )
 				echo $before_title . $title . $after_title .'<div class="widget_subtitle">'. $instance['subtitle'] .'</div>';
 
-			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) && $this->post_templates[ $instance['template'] ]['wrapper'] )
+			$action_name = sanitize_title( basename( $this->post_templates[ $instance['template'] ]['fullpath'] , '.php' ));
+			$action_name = empty( $action_name ) ? 'postloop' : 'postloop_'. $action_name;
+
+			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) )
 			{
-				$has_wrapper = TRUE;
-				if( ! @include str_replace( '.php', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
+				$has_wrapper = $this->post_templates[ $instance['template'] ]['wrapper'];
+				if( $has_wrapper && (! @include str_replace( '.php', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] )))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 
+			do_action( $action_name , 'before' , $ourposts , $postloops );
 			while( $ourposts->have_posts() ){
 
 				unset( $GLOBALS['pages'] ); // to address ticket: http://core.trac.wordpress.org/ticket/12651
@@ -595,6 +654,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				foreach( $terms as $term )
 					$postloops->terms[ $this->number ][ $term->taxonomy ][ $term->term_id ]++;
 
+				do_action( $action_name , 'post' , $ourposts , $postloops );
 				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] )
 				{
 ?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
@@ -617,6 +677,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				if( ! @include str_replace( '.php', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
+			do_action( $action_name , 'after' , $ourposts , $postloops );
 
 			echo $after_widget;
 		}
@@ -1867,6 +1928,21 @@ class bSuite_Widget_Pagednav extends WP_Widget {
 	}
 
 }// end bSuite_Widget_Pagednav
+
+
+
+function late_enqueue_script( $handle, $src = false, $deps = array(), $ver = false, $in_footer = false )
+{
+	global $wp_scripts;
+
+	// enqueue the named script
+	wp_enqueue_script( $handle , $src , $deps , $ver , $in_footer );
+
+	// resolve dependencies and place everything in the array of items to put in the footer
+	$to_do_orig = (array) $wp_scripts->to_do;
+	$wp_scripts->all_deps( array( $handle ));
+	$wp_scripts->in_footer = array_merge( (array) $wp_scripts->in_footer , (array) array_diff( (array) $wp_scripts->to_do , $to_do_orig ) );
+}
 
 
 // register these widgets
