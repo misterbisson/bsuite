@@ -362,21 +362,40 @@ $postloops = new bSuite_PostLoops();
  */
 class bSuite_PostLoop_Scroller
 {
-	function __construct()
+	function __construct( $args = '' )
 	{
-		global $bsuite;
+		// get settings
+		$defaults = array(
+			// configuration
+			'actionname' => 'postloop_f_default_scroller',
+			'selector' => '.scrollable',
+			'lazy' => FALSE,
+			'css' => TRUE,
 
+			// scrollable options
+			'keyboard' => TRUE, // FALSE or 'static'
+			'circular' => TRUE,
+			'vertical' => FALSE,
+			'mousewheel' => FALSE,
+
+			// scrollable plugins
+			'navigator' => TRUE,  // FALSE or selector (html id or classname)
+			'autoscroll' => FALSE, // TRUE or integer representing interval
+		);
+		$this->settings = (object) wp_parse_args( $args, $defaults );
+
+		// get the path to our scripts and styles
+		global $bsuite;
 		$this->path_web = is_object( $bsuite ) ? $bsuite->path_web : get_template_directory_uri();
 
-		// register and queue javascripts
+		// register scripts and styles
 		wp_register_script( 'scrollable', $this->path_web . '/components/js/scrollable.min.js', array('jquery'), TRUE );
 		wp_register_script( 'scrollable-navigator', $this->path_web . '/components/js/scrollable.navigator.min.js', array('scrollable'), TRUE );
 		wp_register_script( 'scrollable-autoscroll', $this->path_web . '/components/js/scrollable.autoscroll.min.js', array('scrollable'), TRUE );
-
 		wp_register_style( 'scrollable', $this->path_web .'/components/css/scrollable.css' );
-		wp_enqueue_style( 'scrollable' );
 
-		add_action( 'postloop_f_default_scroller' , array( &$this, 'do_postloop' ) , 5 , 3 );
+		// register our hook to the named action
+		add_action( $this->settings->actionname , array( &$this, 'do_postloop' ) , 5 , 3 );
 	}
 
 	function do_postloop( $action , $ourposts , $postloops )
@@ -384,8 +403,13 @@ class bSuite_PostLoop_Scroller
 		switch( $action )
 		{
 			case 'before':
-//				late_enqueue_script( 'scrollable' );
-				late_enqueue_script( 'scrollable-navigator' );
+				late_enqueue_script( 'scrollable' );
+				if( $this->settings->navigator )
+					late_enqueue_script( 'scrollable-navigator' );
+				if( $this->settings->autoscroll )
+					late_enqueue_script( 'scrollable-autoscroll' );
+				if( $this->settings->css )
+					late_enqueue_style( 'scrollable' );
 				add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
 				break;
 		}
@@ -393,16 +417,19 @@ class bSuite_PostLoop_Scroller
 
 	function print_js()
 	{
+//$(".scroller").scrollable({circular: true}).navigator("#myNavi").autoscroll({interval: 4000});
+//navigator(".navi");
+
 ?>
 <script type="text/javascript">	
 	;(function($){
 		$(window).load(function(){
 			// set the size of some items
-			$('.items div').width( $('.scrollable').width() );
-			$('.scrollable').height( $('.items div').height() );
+			$('.items div').width( $('<?php echo $this->settings->selector; ?>').width() );
+			$('<?php echo $this->settings->selector; ?>').height( $('.items div').height() );
 
 			// initialize scrollable
-			$(".scrollable").scrollable({ circular: true }).navigator()
+			$('<?php echo $this->settings->selector; ?>').scrollable({ circular: true }).navigator()
 		});
 	})(jQuery);
 </script>
@@ -1932,7 +1959,6 @@ class bSuite_Widget_Pagednav extends WP_Widget {
 }// end bSuite_Widget_Pagednav
 
 
-
 function late_enqueue_script( $handle, $src = false, $deps = array(), $ver = false, $in_footer = false )
 {
 	global $wp_scripts;
@@ -1944,6 +1970,59 @@ function late_enqueue_script( $handle, $src = false, $deps = array(), $ver = fal
 	$to_do_orig = (array) $wp_scripts->to_do;
 	$wp_scripts->all_deps( array( $handle ));
 	$wp_scripts->in_footer = array_merge( (array) $wp_scripts->in_footer , (array) array_diff( (array) $wp_scripts->to_do , $to_do_orig ) );
+}
+
+function late_enqueue_style( $handle, $src = false, $deps = array(), $ver = false, $media = 'all' )
+{
+	global $wp_styles;
+
+	// enqueue the named script
+	wp_enqueue_style( $handle, $src, $deps, $ver, $media );
+
+	// resolve dependencies and place everything in the array of items to put in the footer
+	$to_do_orig = (array) $wp_styles->to_do;
+	$wp_styles->all_deps( array( $handle ));
+	$wp_styles->in_footer = array_merge( (array) $wp_styles->in_footer , (array) array_diff( (array) $wp_styles->to_do , $to_do_orig ) );
+
+	add_filter( 'print_footer_scripts', 'print_late_styles' );
+}
+
+function print_late_styles()
+{
+	global $wp_styles;
+
+	$tags = array();
+	foreach( (array) $wp_styles->to_do as $handle )
+	{
+		if ( isset($wp_styles->registered[$handle]->args) )
+			$media = esc_attr( $wp_styles->registered[$handle]->args );
+		else
+			$media = 'all';
+
+		$href = $wp_styles->_css_href( $wp_styles->registered[$handle]->src, $ver, $handle );
+		$rel = isset($wp_styles->registered[$handle]->extra['alt']) && $wp_styles->registered[$handle]->extra['alt'] ? 'alternate stylesheet' : 'stylesheet';
+		$title = isset($wp_styles->registered[$handle]->extra['title']) ? "title='" . esc_attr( $wp_styles->registered[$handle]->extra['title'] ) . "'" : '';
+
+		$tags[] = "$('head').append(\"<link rel='$rel' id='$handle-css' $title href='$href' type='text/css' media='$media' />\");\n";
+	}		
+
+	if( ! array( $tags ))
+		return;
+
+?>
+<script type="text/javascript">	
+	;(function($){
+		$(window).load(function(){
+			// set the size of some items
+<?php foreach( $tags as $tag )
+{
+	echo "			$tag";
+} ?>
+
+		});
+	})(jQuery);
+</script>
+<?php
 }
 
 
