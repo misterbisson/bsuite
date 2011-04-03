@@ -115,3 +115,13 @@ function json_int_to_string( $string )
 	return preg_replace( '/:(\d+)/' , ':"${1}"' , $string );
 }
 
+// Show cron array for debugging
+function show_cron()
+{
+	if (current_user_can('manage_options')) {
+		echo '<pre>' .  print_r(_get_cron_array(), true) . '</pre>';  
+	};
+	exit; 
+}
+add_action( 'wp_ajax_show_cron', 'show_cron' ); 
+
