@@ -110,7 +110,7 @@ function twitter_user_info( $screen_name , $by = 'screen_name' )
 		$user = json_decode( wp_remote_retrieve_body( $temp_results ));
 
 		if( empty( $user->error ))
-			wp_cache_add( (string) $screen_name , $user, 'twitter_screen_name' , 604801 ); // cache for 7 days
+			wp_cache_set( (string) $screen_name , $user, 'twitter_screen_name' , 604801 ); // cache for 7 days
 	}
 
 	return $user;

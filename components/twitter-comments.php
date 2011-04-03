@@ -1,6 +1,6 @@
 <?php
 
-function twitter_comments()
+function ingest_twitter_comments()
 {
 	global $wpdb;
 
@@ -73,10 +73,11 @@ function twitter_comments()
 	}
 
 }
+add_action( 'ingest_twitter_comments' , 'ingest_twitter_comments' );
 
 function schedule_twitter_comments()
 {
 	if ( ! wp_next_scheduled( 'twitter_comments' ) )
-		wp_schedule_event( time() , 'hourly' , 'twitter_comments' );
+		wp_schedule_event( time() , 'hourly' , 'ingest_twitter_comments' );
 }
 add_action( 'admin_head' , 'schedule_twitter_comments' );

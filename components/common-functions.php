@@ -63,7 +63,7 @@ function follow_url( $location , $verbose = FALSE , $refresh = FALSE )
 				$destination = array_pop( find_urls( $header ));
 		}
 
-		wp_cache_set( (string) $location , $trail, 'follow_url' ); // cache for 8 hours
+		wp_cache_set( (string) $location , $trail, 'follow_url' , 3607); // cache for an hour
 	}
 
 	if( $verbose )
@@ -106,3 +106,12 @@ function comment_id_by_meta_delete_cache( $comment_id )
 	}
 }
 add_action( 'delete_comment' , 'comment_id_by_meta_delete_cache' );
+
+function json_int_to_string( $string )
+{
+	//32-bit PHP doesn't play nicely with the large ints FB returns, so we
+	//encapsulate large ints in double-quotes to force them to be strings
+	//http://stackoverflow.com/questions/2907806/handling-big-user-ids-returned-by-fql-in-php
+	return preg_replace( '/:(\d+)/' , ':"${1}"' , $string );
+}
+
