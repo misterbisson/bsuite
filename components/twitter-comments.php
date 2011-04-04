@@ -71,7 +71,6 @@ function ingest_twitter_comments()
 		// possibly useful for determining rank of a tweet: 
 		// $tweet->metadata->recent_retweets & $tweet->from_user->followers_count
 	}
-
 }
 add_action( 'ingest_twitter_comments' , 'ingest_twitter_comments' );
 
@@ -81,3 +80,10 @@ function schedule_twitter_comments()
 		wp_schedule_event( time() , 'hourly' , 'ingest_twitter_comments' );
 }
 add_action( 'admin_head' , 'schedule_twitter_comments' );
+
+function twitter_comments_admin_comment_types_dropdown( $types )
+{
+	$types['tweet'] = __( 'Tweets' );
+	return $types;
+}
+add_filter( 'admin_comment_types_dropdown' , 'twitter_comments_admin_comment_types_dropdown' );

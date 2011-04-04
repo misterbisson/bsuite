@@ -80,7 +80,7 @@ function ingest_fb_comments( $post_id = NULL )
 			'comment_author_email' => $fb_comment->fromid . '@facebook.id',
 			'comment_author_url' => 'http://facebook.com/profile.php?id=' . $fb_comment->fromid,
 			'comment_content' => $fb_comment->text,
-			'comment_type' => 'facebook',
+			'comment_type' => 'fbcomment',
 			'comment_date' => date('Y-m-d H:i:s', $fb_comment->time + ( 3600 * $tz_offset )),
 		);
 
@@ -143,3 +143,10 @@ function fb_check_comments( $content )
 	return $content;
 }
 add_action( 'the_content' , 'fb_check_comments' );
+
+function fb_comments_admin_comment_types_dropdown( $types )
+{
+	$types['fbcomment'] = __( 'Facebook Comments' );
+	return $types;
+}
+add_filter( 'admin_comment_types_dropdown' , 'fb_comments_admin_comment_types_dropdown' );
