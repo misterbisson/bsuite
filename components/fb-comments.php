@@ -52,6 +52,13 @@ function ingest_fb_comments( $post_id = NULL )
 	if( is_array( $replies ))
 		$fb_comments = array_merge( (array) $fb_comments , (array) $replies );
 
+	// these are not the comments you were looking for. duh, there are no comments
+	if( ! count( $fb_comments ))
+	{
+		update_post_meta( $post_id , '_fb_comment_ingestion_last' , time() );
+		return;
+	}
+
 	// get the user info for those comments
 	// make an array of the user IDs from the comments
 	foreach( (array) $fb_comments as $fb_comment )
