@@ -79,23 +79,27 @@ function ingest_fb_comments( $post_id = NULL )
 	// iterate over all the comments and insert them
 	foreach( $fb_comments as $fb_comment )
 	{
-		$fb_comment->username = $uids_to_names[ $fb_comment->fromid ];
-
-		$wp_comm = array(
-			'comment_post_ID' => $post_id,
-			'comment_author' => $fb_comment->username,
-			'comment_author_email' => $fb_comment->fromid . '@facebook.id',
-			'comment_author_url' => 'http://facebook.com/profile.php?id=' . $fb_comment->fromid,
-			'comment_content' => $fb_comment->text,
-			'comment_type' => 'fbcomment',
-			'comment_date' => date('Y-m-d H:i:s', $fb_comment->time + ( 3600 * $tz_offset )),
-		);
-
-		if( ! comment_id_by_meta( $comment->id , 'fb_comment_id' ))
+		if( ! comment_id_by_meta( $fb_comment->id , 'fb_comment_id' ))
 		{	
-			$comment_id = wp_insert_comment($wp_comm);
-			add_comment_meta($comment_id, 'fb_comment_id', $comment->id);
-			comment_id_by_meta_update_cache( $comment_id , $tweet->id , 'tweet_id' );
+
+			$fb_comment->username = $uids_to_names[ $fb_comment->fromid ];
+
+			$wp_commment = array(
+				'comment_post_ID' => $post_id,
+				'comment_author' => $fb_comment->username,
+				'comment_author_email' => $fb_comment->fromid . '@facebook.id',
+				'comment_author_url' => 'http://facebook.com/profile.php?id=' . $fb_comment->fromid,
+				'comment_content' => $fb_comment->text,
+				'comment_type' => 'fbcomment',
+				'comment_date' => date('Y-m-d H:i:s', $fb_comment->time + ( 3600 * $tz_offset )),
+			);
+
+			$comment_id = wp_insert_comment( $wp_commment );
+			add_comment_meta($comment_id, 'fb_comment_id', $fb_comment->id);
+			comment_id_by_meta_update_cache( $comment_id , $fb_comment->id , 'fb_comment_id' );
+
+			if ( get_option('comments_notify') )
+				wp_notify_postauthor( $comment_id , $wp_commment->comment_type );
 		}	
 	}
 
