@@ -1,5 +1,10 @@
 <?php
 
+/*
+ * Twitter_Search class
+ * @author Casey Bisson
+ */
+
 class Twitter_Search
 {
 	function tweets()
@@ -116,3 +121,33 @@ function twitter_user_info( $screen_name , $by = 'screen_name' )
 	return $user;
 }
 
+/**
+ * Author: Vasken Hauri
+ * Prints JS to load Twitter JS SDK in a deferred manner
+ */
+
+function print_twitter_js(){
+	?>
+	<script type="text/javascript">	
+	;(function($){
+		$(window).load(function(){
+/* we're not using the twitter anwhere code
+			setTimeout(function() {
+				var gotwitter = document.createElement('script'); gotwitter.type = 'text/javascript'; gotwitter.async = true;
+				gotwitter.src = 'http://platform.twitter.com/anywhere.js?id=wHOn9j2yjUXxnweDOWwmw&v=1';
+				var z = document.getElementsByTagName('script')[0]; z.parentNode.insertBefore(gotwitter, z);      
+			}, 1);
+*/
+			setTimeout(function() {
+				var gotwitter = document.createElement('script'); gotwitter.type = 'text/javascript'; gotwitter.async = true;
+				gotwitter.src = 'http://platform.twitter.com/widgets.js';
+				var z = document.getElementsByTagName('script')[0]; z.parentNode.insertBefore(gotwitter, z);      
+			}, 1);
+		});
+	})(jQuery);
+	</script>
+<?php
+}
+
+if(!is_admin())
+	add_filter( 'print_footer_scripts', 'print_twitter_js' );

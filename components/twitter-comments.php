@@ -69,7 +69,7 @@ function ingest_twitter_comments()
 			wp_update_comment_count( $post_id );
 		
 		if ( get_option('comments_notify') )
-			wp_notify_postauthor( $comment_id , $comment->comment_type );
+			wp_notify_postauthor( $comment_id , 'comment' ); // only works for comments, so we fudge
 
 		// possibly useful for determining rank of a tweet: 
 		// $tweet->metadata->recent_retweets & $tweet->from_user->followers_count

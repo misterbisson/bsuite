@@ -99,7 +99,7 @@ function ingest_fb_comments( $post_id = NULL )
 			comment_id_by_meta_update_cache( $comment_id , $fb_comment->id , 'fb_comment_id' );
 
 			if ( get_option('comments_notify') )
-				wp_notify_postauthor( $comment_id , $wp_commment->comment_type );
+				wp_notify_postauthor( $comment_id , 'comment' ); //hardcoded to type 'comment'
 		}	
 	}
 
