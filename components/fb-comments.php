@@ -44,7 +44,7 @@ function ingest_fb_comments( $post_id = NULL )
 	$fb_comments = json_decode( json_int_to_string( $response ));	
 
 	// get replies to those comments
-	$reply_query = 'SELECT fromid , time , text , id , username FROM comment WHERE object_id in (' . $comment_query . ') AND time > '. $last_check .' LIMIT '. $comment_limit;
+	$reply_query = 'SELECT post_fbid , fromid , time , text , id , username FROM comment WHERE object_id in (' . $comment_query . ') AND time > '. $last_check .' LIMIT '. $comment_limit;
 	$response = fb_api_fetch( $api_root . urlencode( $reply_query ) .'&format=json' , $post_id );
 	$replies = json_decode( json_int_to_string( $response ));
 
@@ -84,6 +84,9 @@ function ingest_fb_comments( $post_id = NULL )
 
 			$fb_comment->username = $uids_to_names[ $fb_comment->fromid ];
 
+			preg_match( '/[^_]*/' , $fb_comment->id , $fb_parent_comment_id );
+			$fb_parent_comment_id = $fb_parent_comment_id[0];
+
 			$wp_commment = array(
 				'comment_post_ID' => $post_id,
 				'comment_author' => $fb_comment->username,
@@ -91,12 +94,20 @@ function ingest_fb_comments( $post_id = NULL )
 				'comment_author_url' => 'http://facebook.com/profile.php?id=' . $fb_comment->fromid,
 				'comment_content' => $fb_comment->text,
 				'comment_type' => 'fbcomment',
+				'comment_parent' => comment_id_by_meta( $fb_parent_comment_id , 'fb_comment_post_id' ),
 				'comment_date' => date('Y-m-d H:i:s', $fb_comment->time + ( 3600 * $tz_offset )),
 			);
 
+			// insert the comment and return the comment ID
 			$comment_id = wp_insert_comment( $wp_commment );
-			add_comment_meta($comment_id, 'fb_comment_id', $fb_comment->id);
+
+			// add the db comment id meta
+			add_comment_meta( $comment_id, 'fb_comment_id', $fb_comment->id );
 			comment_id_by_meta_update_cache( $comment_id , $fb_comment->id , 'fb_comment_id' );
+
+			// add the fb comment post id meta, allows relating child comments to their parents
+			add_comment_meta( $comment_id, 'fb_comment_post_id', $fb_comment->post_fbid );
+			comment_id_by_meta_update_cache( $comment_id , $fb_comment->post_fbid , 'fb_comment_post_id' );
 
 			if ( get_option('comments_notify') )
 				wp_notify_postauthor( $comment_id , 'comment' ); //hardcoded to type 'comment'
