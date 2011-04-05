@@ -35,11 +35,23 @@ add_filter( 'language_attributes' , 'fbjs_add_namespace' );
 
 function fbjs_include_js( $output )
 {
+	global $post;
 ?>
-    <div id="fb-root"></div>
-    <script>
+	<div id="fb-root"></div>
+	<script>
 		window.fbAsyncInit = function() {
 			FB.init({appId: <?php echo FBJS_APP_ID; ?>, status: true, cookie: true, xfbml: true});
+<?php
+			if( is_singular() ) 
+			{
+?>
+				FB.Event.subscribe('comment.create', function(response) {
+					var ajaxurl = '<?php echo home_url('wp-admin/admin-ajax.php?action=new_fb_comment&post_id='); ?>';
+					jQuery.get(ajaxurl + <?php echo $post->ID; ?>);
+				});	
+<?php
+			}
+?>
 		};
 		(function($) {
 			$(window).load(function(){
@@ -50,9 +62,7 @@ function fbjs_include_js( $output )
 				document.getElementById('fb-root').appendChild(e);
 			});
 		}(jQuery));
-    </script>
-
-
+	</script>
 <?php
 }
 add_action( 'get_footer' , 'fbjs_include_js' );
