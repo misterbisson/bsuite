@@ -70,7 +70,7 @@ class bSuite_List_Children
 	
 	function list_pages_callback( $arg )
 	{
-		global $id, $post;
+		global $id, $post , $bsuite;
 	
 		if( $this->list_pages->show_excerpt ){
 			$post_orig = unserialize( serialize( $post )); // how else to prevent passing object by reference?
@@ -79,7 +79,7 @@ class bSuite_List_Children
 			$post = get_post( $arg[1] );
 			$id = $post->ID;
 	
-			$content = ( $this->list_pages->show_icon ? '<a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a>' : '' ) . apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
+			$content = ( $this->list_pages->show_icon ? '<a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $bsuite->icon_get_h( $arg[1] , 's' ) .'</a>' : '' ) . apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
 	
 			$post = $post_orig;
 			$id = $id_orig;
@@ -90,7 +90,7 @@ class bSuite_List_Children
 	
 		}else{
 			$content = apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
-			return( $arg[0] .'<ul><li class="page_icon page_icon-'. $arg[1] .'"><a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a></li></ul>' );
+			return( $arg[0] .'<ul><li class="page_icon page_icon-'. $arg[1] .'"><a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $bsuite->icon_get_h( $arg[1] , 's' ) .'</a></li></ul>' );
 	
 		}
 	
