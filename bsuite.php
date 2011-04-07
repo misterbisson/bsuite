@@ -3,7 +3,7 @@
 Plugin Name: bSuite
 Plugin URI: http://maisonbisson.com/bsuite/
 Description: Stats tracking, improved sharing, related posts, CMS features, and a kitchen sink. <a href="http://maisonbisson.com/bsuite/">Documentation here</a>.
-Version: 5 alpha 1
+Version: 5 alpha 2
 Author: Casey Bisson
 Author URI: http://maisonbisson.com/blog/
 */
@@ -54,11 +54,6 @@ class bSuite {
 		//
 
 		// shortcodes
-		add_shortcode('pagemenu', array(&$this, 'shortcode_list_pages'));
-		add_shortcode('list_pages', array(&$this, 'shortcode_list_pages'));
-		add_shortcode('attachmentsmenu', array(&$this, 'shortcode_list_attachments'));
-		add_shortcode('list_attachments', array(&$this, 'shortcode_list_attachments'));
-		add_shortcode('innerindex', array(&$this, 'shortcode_innerindex'));
 		add_shortcode('include', array(&$this, 'shortcode_include'));
 		add_shortcode('icon', array(&$this, 'shortcode_icon'));
 		add_shortcode('feed', array(&$this, 'shortcode_feed'));
@@ -85,11 +80,6 @@ class bSuite {
 		add_filter('the_excerpt_rss', array(&$this, 'tokens_the_excerpt_rss'), 0);
 		add_filter('get_the_excerpt ', array(&$this, 'tokens_the_excerpt'), 0);
 		add_filter('widget_text', array(&$this, 'tokens'), 0);
-
-		//innerindex
-		add_filter('content_save_pre', array(&$this, 'innerindex_nametags'));
-		add_filter('save_post', array(&$this, 'innerindex_delete_cache'));
-		$this->kses_allowedposttags(); // allow IDs on H1-H6 tags
 
 		// bsuggestive related posts
 		add_filter('save_post', array(&$this, 'bsuggestive_delete_cache'));
@@ -254,131 +244,6 @@ class bSuite {
 	//
 	// shortcode functions
 	//
-	function shortcode_list_pages( $arg ){
-		// [pagemenu ]
-		global $id;
-
-		$arg = shortcode_atts( array(
-			'title' => 'Contents',
-			'div_class' => 'contents pagemenu list_pages',
-			'ul_class' => 'contents pagemenu list_pages',
-			'ol_class' => FALSE,
-			'excerpt'   => FALSE,
-			'icon'   => FALSE,
-			'echo' => 0,
-			'show_parent' => FALSE,
-			'child_of' => $id,
-			'depth' => 1,
-			'sort_column' => 'menu_order, post_title',
-			'title_li' => '',
-			'show_date'   => '',
-			'date_format' => get_option('date_format'),
-			'exclude'     => '',
-			'authors'     => '',
-		), $arg );
-
-		$prefix = $suffix = '';
-		if( $arg['div_class'] ){
-			$prefix .= '<div class="'. esc_attr( $arg['div_class'] ) .'">';
-			$suffix .= '</div>';
-			if( $arg['title'] )
-				$prefix .= '<h3>'. esc_html( $arg['title'] ) .'</h3>';
-			if( $arg['ul_class'] ){
-				$prefix .= '<ul>';
-				$suffix = '</ul>'. $suffix;
-			}else if( $arg['ol_class'] ){
-				$prefix .= '<ol>';
-				$suffix = '</ol>'. $suffix;
-			}
-		}else{
-			if( $arg['title'] )
-				$prefix .= '<h3 class="'. esc_attr( $arg['ul_class'] .' '. $arg['ol_class'] ) .'">'. $arg['title'] .'</h3>';
-			if( $arg['ul_class'] ){
-				$prefix .= '<ul class="'. esc_attr( $arg['ul_class'] ).'">';
-				$suffix = '</ul>'. $suffix;
-			}else if( $arg['ol_class'] ){
-				$prefix .= '<ol class="'. esc_attr( $arg['ol_class'] ) .'">';
-				$suffix = '</ol>'. $suffix;
-			}
-		}
-
-		if(( $arg['excerpt'] ) || ( $arg['icon'] )){
-			$this->list_pages->show_excerpt = $arg['excerpt'];
-			$this->list_pages->show_icon = $arg['icon'];
-			return( $prefix . ( $arg['show_parent'] ? '<li class="page_item page_item-parent"><a href="'. get_permalink( $arg['child_of'] ) .'">'. get_the_title( $arg['child_of'] ) .'</a></li>' : '' ) . preg_replace_callback( '/<li class="page_item page-item-([0-9]*)"><a(.*)<\/a>/i', array( &$this, 'shortcode_list_pages_callback'), wp_list_pages( $arg )) . $suffix );
-		}
-		return( $prefix . ( $arg['show_parent'] ? '<li class="page_item page_item-parent"><a href="'. get_permalink( $arg['child_of'] ) .'">'. get_the_title( $arg['child_of'] ) .'</a></li>' : '' ) . wp_list_pages( $arg ) . $suffix );
-	}
-
-	function shortcode_list_pages_callback( $arg ){
-		global $id, $post;
-
-		if( $this->list_pages->show_excerpt ){
-			$post_orig = unserialize( serialize( $post )); // how else to prevent passing object by reference?
-			$id_orig = $id;
-
-			$post = get_post( $arg[1] );
-			$id = $post->ID;
-
-			$content = ( $this->list_pages->show_icon ? '<a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a>' : '' ) . apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
-
-			$post = $post_orig;
-			$id = $id_orig;
-
-			if( 5 < strlen( $content ))
-				return( $arg[0] .'<ul><li class="page_excerpt page_excerpt-'. $arg[1] .'">'. $content .'</li></ul>' );
-			return( $arg[0] );
-
-		}else{
-			$content = apply_filters( 'the_content', get_post_field( 'post_excerpt', $arg[1] ));
-			return( $arg[0] .'<ul><li class="page_icon page_icon-'. $arg[1] .'"><a href="'. get_permalink( $arg[1] ) .'" class="bsuite_post_icon_link" rel="bookmark" title="Permanent Link to '. attribute_escape( get_the_title( $arg[1] )) .'">'. $this->icon_get_h( $arg[1] , 's' ) .'</a></li></ul>' );
-
-		}
-
-	}
-
-	function shortcode_list_attachments($attr) {
-		global $post;
-	
-		static $instance = 0;
-		$instance++;
-	
-		// Allow plugins/themes to override the default gallery template.
-		$output = apply_filters('post_gallery', '', $attr);
-		if ( $output != '' )
-			return $output;
-	
-		// We're trusting author input, so let's at least make sure it looks like a valid orderby statement
-		if ( isset( $attr['orderby'] ) ) {
-			$attr['orderby'] = sanitize_sql_orderby( $attr['orderby'] );
-			if ( !$attr['orderby'] )
-				unset( $attr['orderby'] );
-		}
-	
-		extract( shortcode_atts( array(
-			'order'      => 'ASC',
-			'orderby'    => 'menu_order ID',
-			'id'         => $post->ID,
-			'itemtag'    => 'dl',
-			'icontag'    => 'dt',
-			'captiontag' => 'dd',
-		), $attr ));
-	// 			'columns'    => 3,
-	// 'size' => 'thumbnail'
-	// 'post_mime_type' => 'image',
-	
-		$id = intval($id);
-		$attachments = get_children( array('post_parent' => $id, 'post_status' => 'inherit', 'post_type' => 'attachment',  'order' => $order, 'orderby' => $orderby) );
-	
-		if ( empty($attachments) )
-			return '';
-	
-		$output = "\n";
-		foreach ( $attachments as $att_id => $attachment )
-			$output .= '<li>'. wp_get_attachment_link( $att_id, FALSE, FALSE ) . "</li>\n";
-		return '<ul>'. $output .'</ul>';
-	
-	}
 
 	function shortcode_icon( $arg ){
 		// [innerindex ]
@@ -392,34 +257,6 @@ class bSuite {
 		), $arg );
 
 		return( $this->icon_get_h( $arg['post_id'], $arg['size'], $arg['width'], $arg['height'] ));
-	}
-
-	function shortcode_innerindex( $arg ){
-		// [innerindex ]
-		global $id;
-
-		$arg = shortcode_atts( array(
-			'title' => 'Contents',
-			'div_class' => 'contents innerindex',
-		), $arg );
-
-		$prefix = $suffix = '';
-		if( $arg['div_class'] ){
-			$prefix .= '<div class="'. $arg['div_class'] .'">';
-			$suffix .= '</div>';
-			if( $arg['title'] )
-				$prefix .= '<h3>'. $arg['title'] .'</h3>';
-		}else{
-			if( $arg['title'] )
-				$prefix .= '<h3>'. $arg['title'] .'</h3>';
-		}
-
-		if ( !$menu = wp_cache_get( $id, 'bsuite_innerindex' )) {
-			$menu = $this->innerindex_build( get_post_field( 'post_content', $id ));
-			wp_cache_add( $id, $menu, 'bsuite_innerindex', 864000 );
-		}
-
-		return( $prefix . str_replace( '%%the_permalink%%', get_permalink( $id ), $menu ) . $suffix );
 	}
 
 	function shortcode_include( $arg ){
@@ -579,7 +416,6 @@ class bSuite {
 		// setup some default tokens
 		$tokens['date'] = array(&$this, 'token_get_date');
 		$tokens['pagemenu'] = array(&$this, 'token_get_pagemenu');
-		$tokens['innerindex'] = array(&$this, 'innerindex');
 		$tokens['feed'] = array(&$this, 'token_get_feed');
 		$tokens['redirect'] = array(&$this, 'token_get_redirect');
 
@@ -616,101 +452,6 @@ class bSuite {
 		return($this->get_feed($stuff[0], $stuff[1], $stuff[2], TRUE));
 	}
 	// end token-related functions
-
-
-
-	//innerindex
-	function innerindex($title = 'Contents:'){
-		global $id, $post_cache;
-
-		if ( !$menu = wp_cache_get( $id, 'bsuite_innerindex' )) {
-			$menu = $this->innerindex_build( get_post_field( 'post_content', $id ));
-			wp_cache_add( $id, $menu, 'bsuite_innerindex', 864000 );
-		}
-
-		if($this->is_excerpt){
-			return( str_replace( '%%the_permalink%%', get_permalink( $id ), $menu ));
-		}else{
-			return( '<div class="innerindex"><h3>'. $title .'</h3>'. str_replace( '%%the_permalink%%', get_permalink( $id ), $menu ) .'</div>' );
-		}
-	}
-
-	function innerindex_build($content)
-	{
-		// find <h*> tags with IDs in the content and build an index of them
-		preg_match_all(
-			'|<h[^>]+>.+?</h[^>]+>|U',
-			$content,
-			$things
-			);
-
-		$menu = '<ol>';
-		$closers = $count = 0;
-		foreach($things[0] as $thing)
-		{
-			preg_match('|<h([0-9])|U', $thing, $h);
-			preg_match('|id="([^"]*)"|U', $thing, $anchor);
-
-			if(!$last)
-				$last = $low = $h[1];
-
-			if($anchor[1])
-			{
-				if($h[1] > $last)
-				{
-					$menu .= '<ol>';
-					$closers++;
-
-					if( 1 < ( $h[1] - $last ))
-					{
-						$menu .= str_repeat( '<li><ol>', $h[1] - $last -1 );
-						$closers = $closers + ( $h[1] - $last -1 );
-					}
-				}else if($count){
-					$menu .= '</li>';
-				}
-
-				if(($h[1] < $last) && ($h[1] >= $low))
-				{
-					$menu .= str_repeat( '</ol></li>', $last - $h[1] );
-					$closers = $closers - ( $last - $h[1] );
-				}
-
-				$last = $h[1];
-
-				$menu .= '<li><a href="%%the_permalink%%#'. $anchor[1] .'">'. strip_tags($thing) .'</a>';
-				$count++;
-			}
-		}
-		$menu .= '</li>'. str_repeat('</ol></li>', $closers) . '</ol>';
-		return($menu);
-	}
-
-	function innerindex_delete_cache($id) {
-		$id = (int) $id;
-		wp_cache_delete( $id, 'bsuite_innerindex' );
-	}
-
-	function innerindex_nametags($content){
-		// find <h*> tags in the content
-		$content = preg_replace_callback(
-			"/(\<h([0-9])?([^\>]*)?\>)(.*?)(\<\/h[0-9]\>)/",
-			array(&$this,'innerindex_nametags_callback'),
-			$content
-			);
-		return($content);
-	}
-
-	function innerindex_nametags_callback( $content )
-	{
-		// receive <h*> tags and insert the ID
-		static $slugs;
-		$slugs[] = $slug = substr( sanitize_title_with_dashes( $content[4] ), 0, 30);
-		$count = count( array_keys( $slugs, $slug ));
-		$content = '<h'. $content[2] .' id="'. $slug . ( 1 < $count ? $count : '' ) .'" '. trim( preg_replace( '/id[^"]*"[^"]*"/', '', $content[3] )) .'>'. $content[4] . $content[5];
-		return($content);
-	}
-	// end innerindex-related
 
 
 
@@ -3722,6 +3463,12 @@ if( ! class_exists( 'bSuite_Widget_PostLoop' ) )
 	require_once( dirname( __FILE__) .'/components/cms-widgets.php' );
 	require_once( dirname( __FILE__) .'/components/wijax.php' );
 }
+require_once( dirname( __FILE__) .'/components/common-functions.php' );
+require_once( dirname( __FILE__) .'/components/twitter-comments.php' );
+require_once( dirname( __FILE__) .'/components/twitter-api.php' );
+require_once( dirname( __FILE__) .'/components/fb-comments.php' );
+require_once( dirname( __FILE__) .'/components/innerindex.php' );
+require_once( dirname( __FILE__) .'/components/listchildren.php' );
 require_once( dirname( __FILE__) .'/components/privacy.php' );
 //require_once( dirname( __FILE__) .'/components/head-meta.php' );
 
