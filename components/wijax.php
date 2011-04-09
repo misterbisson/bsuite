@@ -219,38 +219,78 @@ class bSuite_Wijax {
 	function print_js(){
 ?>
 <script type="text/javascript">	
+	var wijax_widget_reload = true;	
 	;(function($){
+		$.fn.myWijaxLoader = function()
+		{
+			var widget_source = $(this).attr('href');
+			var widget_area = $(this).parent();
+			var widget_parent = $(this).parent().parent();
+			var widget_wrapper = $(this).parents('.widget_wijax');
+			var opts = $.parseJSON( $(widget_parent).find('span.wijax-opts').text() );
+			var varname = opts.varname;
+			var title_before = unescape( opts.title_before );
+			var title_after = unescape( opts.title_after );
+			$.getScript( widget_source , function() {
+				// insert the fetched markup
+				$( widget_area ).replaceWith( window[varname] );
+
+				// find the widget title, add it to the DOM, remove the temp span
+				var widget_title_el = $(widget_parent).find('span.wijax-widgettitle');
+				var widget_title = $(widget_title_el).text();
+				if(widget_title) //don't set a widget title div if there is no title text
+					$( widget_parent ).prepend(title_before + widget_title + title_after);
+				$(widget_title_el).remove();
+
+				// find and set the widget ID and classes
+				var widget_attr_el = $( widget_parent ).find( 'span.wijax-widgetclasses' );
+				var widget_id = $( widget_attr_el ).attr( 'id' );
+				var widget_classes = $( widget_attr_el ).attr( 'class' );
+				$( widget_wrapper ).attr( 'id' , widget_id );
+				$( widget_wrapper ).addClass( widget_classes );
+				$( widget_wrapper ).removeClass( 'widget_wijax' );
+				$(widget_attr_el).remove();
+			});
+		};
+
+		// do the onload widgets
 		$(window).load(function(){
-			$('a.wijax-source').each(function()
-			{
+			$('a.wijax-source.wijax-onload').each(function() {
+				$(this).myWijaxLoader();
+			});	
+		});	
+
+		// do the onscroll actions
+		$(document).one('scroll', function(){
+
+			// widgets
+			$('a.wijax-source.wijax-onscroll').each(function() {
+				$(this).myWijaxLoader();
+			});
+
+			// excerpts
+			$('a.wijax-excerpt').each(function(index){
 				var widget_source = $(this).attr('href');
 				var widget_area = $(this).parent();
-				var widget_parent = $(this).parent().parent();
-				var widget_wrapper = $(this).parents('.widget_wijax');
-				var opts = $.parseJSON( $(widget_parent).find('span.wijax-opts').text() );
+				var opts = $.parseJSON( $(widget_area).find('span.wijax-opts').text() );
 				var varname = opts.varname;
-				var title_before = unescape( opts.title_before );
-				var title_after = unescape( opts.title_after );
 				$.getScript( widget_source , function() {
 					// insert the fetched markup
-					$( widget_area ).replaceWith( window[varname] );
-			
-					// find the widget title, add it to the DOM, remove the temp span
-					var widget_title_el = $(widget_parent).find('span.wijax-widgettitle');
-					var widget_title = $(widget_title_el).text();
-					$( widget_parent ).prepend(title_before + widget_title + title_after);
-					$(widget_title_el).remove();
-			
-					// find and set the widget ID and classes
-					var widget_attr_el = $( widget_parent ).find( 'span.wijax-widgetclasses' );
-					var widget_id = $( widget_attr_el ).attr( 'id' );
-					var widget_classes = $( widget_attr_el ).attr( 'class' );
-					$( widget_wrapper ).attr( 'id' , widget_id );
-					$( widget_wrapper ).addClass( widget_classes );
-					$( widget_wrapper ).removeClass( 'widget_wijax' );
-					$(widget_attr_el).remove();
+					$( widget_area ).replaceWith( window[varname] ); 
+
+					// apply the tweet buttons
+					if(twttr){
+						jQuery('#content').find('a.twitter-share-button').each(function(){
+							var tweet_button = new twttr.TweetButton( $(this).get(0) );
+							tweet_button.render();
+						});
+					}
+
+					// apply the FB actions
+					if(FB)
+						fbAsyncInit();
 				});
-			});
+			});	
 		});
 	})(jQuery);
 </script>
@@ -307,10 +347,12 @@ class Wijax_Widget extends WP_Widget
 
 		preg_match( '/class.*?=.*?(\'|")(.+?)(\'|")/' , $before_title , $title_class );
 		$title_class = (string) $title_class[2];
+
+		$loadtime = ($instance['loadtime']) ? $instance['loadtime'] : 'onload';
 ?>
 		<span class="wijax-loading">
 			<img src="<?php echo $mywijax->path_web  .'/components/img/loading-gray.gif'; ?>" alt="loading external resource" />
-			<a href="<?php echo $wijax_source; ?>" class="wijax-source" rel="nofollow"></a>
+			<a href="<?php echo $wijax_source; ?>" class="wijax-source <?php echo 'wijax-' . $loadtime;?>" rel="nofollow"></a>
 			<span class="wijax-opts" style="display: none;">
 				<?php echo json_encode( array( 
 					'source' => $wijax_source ,
@@ -347,6 +389,7 @@ class Wijax_Widget extends WP_Widget
 		$instance['widget-custom'] = sanitize_title( $new_instance['widget-custom'] );
 		$instance['base'] = sanitize_title( $new_instance['base'] );
 		$instance['base-remote'] = esc_url_raw( $new_instance['base-remote'] );
+		$instance['loadtime'] = in_array( $new_instance['loadtime'], array( 'onload', 'onscroll') ) ? $new_instance['loadtime'] : 'onscroll';
 
 		return $instance;
 	}
@@ -371,6 +414,7 @@ class Wijax_Widget extends WP_Widget
 <?php
 		echo $this->control_widgets( $instance );
 		echo $this->control_base( $instance );
+		echo $this->control_loadtime( $instance );
 	}
 
 	function control_widgets( $instance , $whichfield = 'widget' )
@@ -405,6 +449,19 @@ class Wijax_Widget extends WP_Widget
 		return '<p><label for="'. $this->get_field_id( $whichfield ) .'">Base URL</label><select name="'. $this->get_field_name( $whichfield ) .'" id="'. $this->get_field_id( $whichfield ) .'" class="widefat">'. $list . '</select><br /><small>The base URL affects widget content and caching</small></p><p><label for="'. $this->get_field_id( $whichfield .'-remote' ) .'">Remote Base URL</label><input name="'. $this->get_field_name( $whichfield .'-remote' ) .'" id="'. $this->get_field_id( $whichfield .'-remote' ) .'" class="widefat" type="text" value="'. esc_url( $instance[ $whichfield .'-remote' ] ).'"></p>';
 	}
 
+	function control_loadtime( $instance , $whichfield = 'loadtime' )
+	{
+
+		$loadtimes = apply_filters( 'wijax-loadtime' , array(
+			'onload' 	=> 'Load content immediately when page loads',
+			'onscroll' 	=> 'Wait for user to scroll page to load content',
+		));
+
+		foreach( (array) $loadtimes as $k => $v )
+			$list .= '<option value="'. $k .'" '. selected( $instance[ $whichfield ] , $k , FALSE ) .'>'. $v .'</option>';
+
+		return '<p><label for="'. $this->get_field_id( $whichfield ) .'">Loadtime</label><select name="'. $this->get_field_name( $whichfield ) .'" id="'. $this->get_field_id( $whichfield ) .'" class="widefat">'. $list . '</select><br /><small>Consider waiting to load content below the fold</small></p>';
+	}
 }// end Wijax_Widget
 
 
@@ -427,37 +484,3 @@ class Wijax_Encode
 		return $output;
 	}//end out
 }//end class Channel
-
-
-/*
-jQuery('a.wijax-source').each(function()
-{
-	var widget_source = jQuery(this).attr('href');
-	var widget_area = jQuery(this).parent();
-	var widget_parent = jQuery(this).parent().parent();
-	var widget_wrapper = jQuery(this).parents('.widget_wijax');
-	var opts = jQuery.parseJSON( jQuery(widget_parent).find('span.wijax-opts').text() );
-	var varname = opts.varname;
-	var title_before = unescape( opts.title_before );
-	var title_after = unescape( opts.title_after );
-	jQuery.getScript( widget_source , function() {
-		// insert the fetched markup
-		jQuery( widget_area ).replaceWith( window[varname] );
-
-		// find the widget title, add it to the DOM, remove the temp span
-		var widget_title_el = jQuery(widget_parent).find('span.wijax-widgettitle');
-		var widget_title = jQuery(widget_title_el).text();
-		jQuery( widget_parent ).prepend(title_before + widget_title + title_after);
-		jQuery(widget_title_el).remove();
-
-		// find the widget classes & ID
-		var widget_attr_el = jQuery( widget_parent ).find( 'span.wijax-widgetclasses' );
-		var widget_id = jQuery( widget_attr_el ).attr( 'id' );
-		var widget_classes = jQuery( widget_attr_el ).attr( 'class' );
-		jQuery( widget_wrapper ).attr( 'id' , widget_id );
-		jQuery( widget_wrapper ).addClass( widget_classes );
-		jQuery( widget_wrapper ).removeClass( 'widget_wijax' );
-		jQuery(widget_attr_el).remove();
-	});
-});
-*/
