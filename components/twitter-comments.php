@@ -16,7 +16,7 @@ function ingest_twitter_comments()
 		if( ! isset( $tweet->from_user->name))
 			continue; // give up if the username lookup failed
 
-		if( comment_id_by_meta( $tweet->id, 'tweet_id'))
+		if( comment_id_by_meta( $tweet->id_str, 'tweet_id'))
 			continue; // skip the tweet if we've already imported it
 		
 		// map the URLs in the tweet to local posts
@@ -53,7 +53,7 @@ function ingest_twitter_comments()
 			'comment_post_ID' => $post_id,
 			'comment_author' => $tweet->from_user->name,
 			'comment_author_email' => $tweet->from_user->id_str . '@twitter.id',
-			'comment_author_url' => 'http://twitter.com/'. $tweet->from_user->screen_name .'/status/'. $tweet->id,
+			'comment_author_url' => 'http://twitter.com/'. $tweet->from_user->screen_name .'/status/'. $tweet->id_str,
 			'comment_content' => $tweet->text,
 			'comment_type' => 'tweet',
 			'comment_date' => date('Y-m-d H:i:s', strtotime( $tweet->created_at ) + (3600 * $tz_offset)),
@@ -61,8 +61,8 @@ function ingest_twitter_comments()
 
 		// insert the comment
 		$comment_id = wp_insert_comment( $comment );
-		add_comment_meta($comment_id, 'tweet_id', $tweet->id);
-		comment_id_by_meta_update_cache( $comment_id , $tweet->id , 'tweet_id' );
+		add_comment_meta($comment_id, 'tweet_id', $tweet->id_str);
+		comment_id_by_meta_update_cache( $comment_id , $tweet->id_str , 'tweet_id' );
 
 		// update the comment count
 		if( 0 < $post_id )
