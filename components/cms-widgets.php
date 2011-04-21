@@ -1538,17 +1538,12 @@ class bSuite_Widget_Pages extends WP_Widget {
 		
 		if( $instance['startpage'] < 0 ||  $instance['startpage'] == 'c' )
 		{
-			if( is_singular() )
-			{
-				global $wp_query;
-				setup_postdata( $wp_query->post );
-				global $post;
-			}
-			else
-			{
+			if( ! is_singular() ) // can't generate a menu in this situation
 				return;
-			}
 		}
+
+		if( is_singular() )
+			$post = get_post( get_queried_object_id() ); // getting the post for use later
 
 		if( is_404() )
 			$instance['expandtree'] = 0;
@@ -1591,9 +1586,8 @@ class bSuite_Widget_Pages extends WP_Widget {
 				'depth' => $depth 
 		));
 
-		if( $instance['expandtree'] && ( $instance['startpage'] >= 0 ) && is_page() ){
-			global $post;
-
+		if( $instance['expandtree'] && ( $instance['startpage'] >= 0 ) && is_page() )
+		{
 			// get the ancestor tree, including the current page
 			$ancestors = $post->ancestors;
 			$ancestors[] = $post->ID;
