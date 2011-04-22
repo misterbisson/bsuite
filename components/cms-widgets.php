@@ -1543,7 +1543,17 @@ class bSuite_Widget_Pages extends WP_Widget {
 		}
 
 		if( is_singular() )
+		{
 			$post = get_post( get_queried_object_id() ); // getting the post for use later
+
+			if( $post->post_parent && ( ! isset( $post->ancestors ) || ! count( $post->ancestors )))
+			{ // the post has a parent, but the ancestors array is unset or empty
+				unset( $post->ancestors );
+				_get_post_ancestors( $post );
+				echo '<!-- pages_widget: explicitly looked up post ancestors -->';
+			}
+			echo '<!-- pages_widget: this appears to be page ID '. $post->ID .' with '. count( $post->ancestors ) .' ancestors -->';
+		}
 
 		if( is_404() )
 			$instance['expandtree'] = 0;
