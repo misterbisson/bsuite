@@ -174,12 +174,12 @@ class bSuite_Wijax {
 		global $wp_registered_widgets;
 
 		if( ! $widget_data = $wp_registered_widgets[ $key ] )
-			continue;
+			return;
 
 		preg_match( '/\-([0-9]+)$/' , $key , $instance_number );
 		$instance_number = absint( $instance_number[1] );
 		if( ! $instance_number )
-			continue;
+			return;
 
 		$widget_data['widget'] = $key;
 
