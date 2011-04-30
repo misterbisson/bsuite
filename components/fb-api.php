@@ -53,15 +53,12 @@ function fbjs_include_js( $output )
 			}
 ?>
 		};
-		(function($) {
-			$(window).load(function(){
-				var e = document.createElement('script');
-				e.type = 'text/javascript';
-				e.src = document.location.protocol + '//connect.facebook.net/en_US/all.js';
-				e.async = true;
-				document.getElementById('fb-root').appendChild(e);
-			});
-		}(jQuery));
+
+		var e = document.createElement('script');
+		e.type = 'text/javascript';
+		e.src = document.location.protocol + '//connect.facebook.net/en_US/all.js';
+		e.async = true;
+		document.getElementById('fb-root').appendChild(e);
 	</script>
 <?php
 }
