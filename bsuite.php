@@ -1634,10 +1634,14 @@ $engine = $this->get_search_engine( $ref );
 		return(TRUE);
 	}
 
-	function searchsmart_post_link_direct( $permalink, $post ){
+	function searchsmart_post_link_direct( $permalink, $post )
+	{
+		$final_link = $permalink;
+
 		if( $redirect = get_post_meta( $post->ID, 'redirect', TRUE ))
-			return( $redirect );
-		return( $permalink );
+			$final_link = $redirect;
+
+		return apply_filters( 'bsuite_searchsmart_post_link_direct', $final_link, $permalink, $post );
 	}
 
 	function searchsmart_edit( $content ){
