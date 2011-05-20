@@ -231,66 +231,71 @@ class bSuite_Wijax {
 			var varname = opts.varname;
 			var title_before = unescape( opts.title_before );
 			var title_after = unescape( opts.title_after );
-			$.getScript( widget_source , function() {
-				// insert the fetched markup
-				$( widget_area ).replaceWith( window[varname] );
+			
+			$.ajax({ 
+				url: widget_source, 
+				cache: true,
+				success: function() {
+					// insert the fetched markup
+					$( widget_area ).replaceWith( window[varname] );
+			
+					// find the widget title, add it to the DOM, remove the temp span
+					var widget_title_el = $(widget_parent).find('span.wijax-widgettitle');
+					var widget_title = $(widget_title_el).text();
 
-				// find the widget title, add it to the DOM, remove the temp span
-				var widget_title_el = $(widget_parent).find('span.wijax-widgettitle');
-				var widget_title = $(widget_title_el).text();
-				if(widget_title) //don't set a widget title div if there is no title text
-					$( widget_parent ).prepend(title_before + widget_title + title_after);
-				$(widget_title_el).remove();
-
-				// find and set the widget ID and classes
-				var widget_attr_el = $( widget_parent ).find( 'span.wijax-widgetclasses' );
-				var widget_id = $( widget_attr_el ).attr( 'id' );
-				var widget_classes = $( widget_attr_el ).attr( 'class' );
-				$( widget_wrapper ).attr( 'id' , widget_id );
-				$( widget_wrapper ).addClass( widget_classes );
-				$( widget_wrapper ).removeClass( 'widget_wijax' );
-				$(widget_attr_el).remove();
+					//don't set a widget title div if there is no title text
+					if(widget_title)
+						$( widget_parent ).prepend(title_before + widget_title + title_after);
+					
+					$(widget_title_el).remove();
+			
+					// find and set the widget ID and classes
+					var widget_attr_el = $( widget_parent ).find( 'span.wijax-widgetclasses' );
+					var widget_id = $( widget_attr_el ).attr( 'id' );
+					var widget_classes = $( widget_attr_el ).attr( 'class' );
+					$( widget_wrapper ).attr( 'id' , widget_id );
+					$( widget_wrapper ).addClass( widget_classes );
+					$( widget_wrapper ).removeClass( 'widget_wijax' );
+					$(widget_attr_el).remove();
+				}
 			});
 		};
 
 		// do the onload widgets
 		$(window).load(function(){
+			// find and load the widgets
 			$('a.wijax-source.wijax-onload').each(function() {
 				$(this).myWijaxLoader();
 			});	
+
+			//if we've already scrolled, fire the scroll event and get the excerpts and widgets	
+			if( (window.pageYOffset > 25) || (document.body.scrollTop > 25) )
+				$(document).trigger('scroll');
 		});	
 
 		// do the onscroll actions
 		$(document).one('scroll', function(){
-
-			// widgets
-			$('a.wijax-source.wijax-onscroll').each(function() {
-				$(this).myWijaxLoader();
-			});
-
-			// excerpts
+			// post excerpts
 			$('a.wijax-excerpt').each(function(index){
 				var widget_source = $(this).attr('href');
 				var widget_area = $(this).parent();
 				var opts = $.parseJSON( $(widget_area).find('span.wijax-opts').text() );
 				var varname = opts.varname;
-				$.getScript( widget_source , function() {
-					// insert the fetched markup
-					$( widget_area ).replaceWith( window[varname] ); 
-
-					// apply the tweet buttons
-					if(twttr){
-						jQuery('#content').find('a.twitter-share-button').each(function(){
-							var tweet_button = new twttr.TweetButton( $(this).get(0) );
-							tweet_button.render();
-						});
+			
+				$.ajax({ 
+					url: widget_source, 
+					cache: true,
+					success: function() {
+						// insert the fetched markup
+						$( widget_area ).replaceWith( window[varname] ); 
 					}
-
-					// apply the FB actions
-					if(FB)
-						fbAsyncInit();
 				});
 			});	
+
+			// widgets
+			$('a.wijax-source.wijax-onscroll').each(function() {
+				$(this).myWijaxLoader();
+			});
 		});
 	})(jQuery);
 </script>
