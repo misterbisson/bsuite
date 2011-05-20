@@ -3470,6 +3470,8 @@ if( ! class_exists( 'bSuite_Widget_PostLoop' ) )
 require_once( dirname( __FILE__) .'/components/common-functions.php' );
 require_once( dirname( __FILE__) .'/components/twitter-comments.php' );
 require_once( dirname( __FILE__) .'/components/twitter-api.php' );
+require_once( dirname( __FILE__) .'/components/open-graph.php' );
+require_once( dirname( __FILE__) .'/components/fb-api.php' );
 require_once( dirname( __FILE__) .'/components/fb-comments.php' );
 require_once( dirname( __FILE__) .'/components/innerindex.php' );
 require_once( dirname( __FILE__) .'/components/listchildren.php' );

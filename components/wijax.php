@@ -234,6 +234,7 @@ class bSuite_Wijax {
 			
 			$.ajax({ 
 				url: widget_source, 
+				dataType: 'script',
 				cache: true,
 				success: function() {
 					// insert the fetched markup
@@ -284,6 +285,7 @@ class bSuite_Wijax {
 			
 				$.ajax({ 
 					url: widget_source, 
+					dataType: 'script',
 					cache: true,
 					success: function() {
 						// insert the fetched markup
