@@ -79,8 +79,10 @@ add_filter('wp', 'opengraph_default_metadata');
 /**
  * Default title property, using the page title.
  */
-function opengraph_default_title( $title ) {
-	if ( is_singular() && empty($title) ) {
+function opengraph_default_title( $title = '' )
+{
+	if ( is_singular() && empty($title) )
+	{
 		global $wp_query;
 		$title = $wp_query->queried_object->post_title;
 	}
@@ -92,7 +94,8 @@ function opengraph_default_title( $title ) {
 /**
  * Default type property.
  */
-function opengraph_default_type( $type ) {
+function opengraph_default_type( $type = '' )
+{
 	if ( empty($type) ) $type = 'blog';
 	return $type;
 }
@@ -101,11 +104,14 @@ function opengraph_default_type( $type ) {
 /**
  * Default image property, using the post-thumbnail.
  */
-function opengraph_default_image( $image ) {
+function opengraph_default_image( $image = '' )
+{
 	global $wp_query;
-	if ( is_singular() && empty($image) && current_theme_supports('post-thumbnails') && has_post_thumbnail($wp_query->queried_object_id) ) {
+	if ( is_singular() && empty($image) && current_theme_supports('post-thumbnails') && has_post_thumbnail($wp_query->queried_object_id) )
+	{
 		$thumbnail = wp_get_attachment_image_src( get_post_thumbnail_id( $wp_query->queried_object_id ), 'post-thumbnail');
-		if ($thumbnail) {
+		if ($thumbnail)
+		{
 			$image = $thumbnail[0];
 		}
 	}
@@ -117,13 +123,17 @@ function opengraph_default_image( $image ) {
 /**
  * Default url property, using the permalink for the page.
  */
-function opengraph_default_url( $url ) {
+function opengraph_default_url( $url = '' )
+{
     if ( ! empty( $url )) return $url;
 
-	if ( is_singular() ) {
+	if ( is_singular() )
+	{
 		global $wp_query;
 		$url = get_permalink($wp_query->queried_object_id);
-	}else{
+	}
+	else
+	{
 		$url = trailingslashit( get_bloginfo('url' ));
 	}
 
@@ -134,7 +144,8 @@ function opengraph_default_url( $url ) {
 /**
  * Default site_name property, using the bloginfo name.
  */
-function opengraph_default_sitename( $name ) {
+function opengraph_default_sitename( $name = '' )
+{
 	if ( empty($name) ) $name = get_bloginfo('name');
 	return $name;
 }
@@ -143,7 +154,8 @@ function opengraph_default_sitename( $name ) {
 /**
  * Default description property, using the bloginfo description.
  */
-function opengraph_default_description( $description ) {
+function opengraph_default_description( $description = '' )
+{
     if ( !empty($description) ) return $description;
 
 	// get blog description as default
@@ -161,13 +173,13 @@ function opengraph_default_description( $description ) {
 /**
  * Output Open Graph <meta> tags in the page header.
  */
-function opengraph_meta_tags() {
+function opengraph_meta_tags()
+{
 	global $opengraph_ns_set;
 
 	$xml_ns = '';
-	if ( !$opengraph_ns_set ) {
+	if ( !$opengraph_ns_set )
 		$xml_ns = 'xmlns:og="' . esc_attr(OPENGRAPH_NS_URI) . '" ';
-	}
 
 	$metadata = opengraph_metadata();
 	foreach ( $metadata as $key => $value ) {
