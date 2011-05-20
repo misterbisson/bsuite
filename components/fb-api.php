@@ -5,7 +5,7 @@ Plugin URI:
 Description: Includes the Facebook JS API,
 Author: Casey Bisson
 Author URI: http://MaisonBisson.com/
-Version: 1.1
+Version: 1.0-trunk
 Text Domain: opengraph
 */
 
@@ -41,6 +41,17 @@ function fbjs_include_js( $output )
 	<script>
 		window.fbAsyncInit = function() {
 			FB.init({appId: <?php echo FBJS_APP_ID; ?>, status: true, cookie: true, xfbml: true});
+<?php
+			if( is_singular() ) 
+			{
+?>
+				FB.Event.subscribe('comment.create', function(response) {
+					var ajaxurl = '<?php echo home_url('wp-admin/admin-ajax.php?action=new_fb_comment&post_id='); ?>';
+					jQuery.get(ajaxurl + <?php echo $post->ID; ?>);
+				});	
+<?php
+			}
+?>
 		};
 
 		var e = document.createElement('script');

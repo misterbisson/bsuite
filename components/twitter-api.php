@@ -127,26 +127,24 @@ function twitter_user_info( $screen_name , $by = 'screen_name' )
  */
 
 function print_twitter_js(){
-?>
+	?>
 	<script type="text/javascript">	
-<?php 
-	if( defined( 'TWTTR_APP_ID' ) )
-	{
-?>
-		setTimeout(function() {
-			var bstwittera = document.createElement('script'); bstwittera.type = 'text/javascript'; bstwittera.async = true;
-			bstwittera.src = 'http://platform.twitter.com/anywhere.js?id=<?php echo TWTTR_APP_ID ; ?>&v=1';
-			var z = document.getElementsByTagName('script')[0]; z.parentNode.insertBefore(bstwittera, z);      
-		}, 1);
-
-<?php 
-	}
-?>
-		setTimeout(function() {
-			var bstwitterb = document.createElement('script'); bstwitterb.type = 'text/javascript'; bstwitterb.async = true;
-			bstwitterb.src = 'http://platform.twitter.com/widgets.js';
-			var z = document.getElementsByTagName('script')[0]; z.parentNode.insertBefore(bstwitterb, z);      
-		}, 1);
+	;(function($){
+		$(window).load(function(){
+/* we're not using the twitter anwhere code
+			setTimeout(function() {
+				var gotwitter = document.createElement('script'); gotwitter.type = 'text/javascript'; gotwitter.async = true;
+				gotwitter.src = 'http://platform.twitter.com/anywhere.js?id=wHOn9j2yjUXxnweDOWwmw&v=1';
+				var z = document.getElementsByTagName('script')[0]; z.parentNode.insertBefore(gotwitter, z);      
+			}, 1);
+*/
+			setTimeout(function() {
+				var gotwitter = document.createElement('script'); gotwitter.type = 'text/javascript'; gotwitter.async = true;
+				gotwitter.src = 'http://platform.twitter.com/widgets.js';
+				var z = document.getElementsByTagName('script')[0]; z.parentNode.insertBefore(gotwitter, z);      
+			}, 1);
+		});
+	})(jQuery);
 	</script>
 <?php
 }
