@@ -40,7 +40,7 @@ class bSuite {
 		wp_enqueue_script( 'highlight' );
 
 		// is this wpmu?
-		if( function_exists( 'is_site_admin' ))
+		if( function_exists( 'is_super_admin' ))
 			$this->is_mu = TRUE;
 		else
 			$this->is_mu = FALSE;

@@ -1167,7 +1167,7 @@ die;
 		if( isset( $this->bloglist ))
 			return $this->bloglist;
 
-		if( is_site_admin() )
+		if( is_super_admin() )
 		{
 			// I have to do this because get_blog_list() doesn't allow me to select private blogs
 			// This query only executes for superadmins , and then only if BSUITE_ALLOW_BLOG_SWITCH isn't false
