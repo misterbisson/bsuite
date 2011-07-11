@@ -1306,7 +1306,16 @@ die;
 	}
 	
 	function control_template_dropdown( $default = '' ) {
-		foreach ( $this->post_templates as $template => $info ) :
+		$templates = $this->post_templates; 
+		
+		// Sort templates by name  
+		$names = array();
+		foreach ($templates as $info) {
+			$names[] = $info['name']; 
+		}		
+		array_multisort($templates, $names); 
+		
+		foreach ( $templates as $template => $info ) :
 			if ( $default == $template )
 				$selected = " selected='selected'";
 			else
