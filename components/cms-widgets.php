@@ -1997,10 +1997,10 @@ function late_enqueue_style( $handle, $src = false, $deps = array(), $ver = fals
 	$wp_styles->all_deps( array( $handle ));
 	$wp_styles->in_footer = array_merge( (array) $wp_styles->in_footer , (array) array_diff( (array) $wp_styles->to_do , $to_do_orig ) );
 
-	add_filter( 'print_footer_scripts', 'print_late_styles' );
+	add_filter( 'print_footer_scripts', 'bsuite_print_late_styles' );
 }
 
-function print_late_styles()
+function bsuite_print_late_styles()
 {
 	global $wp_styles;
 
