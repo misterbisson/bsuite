@@ -27,7 +27,8 @@ class bSuite_Wijax {
 
 		if( ! is_admin())
 		{
-			wp_enqueue_script( 'jquery' );
+			wp_register_script( 'waypoints', $this->path_web . '/components/js/waypoints.min.js', array('jquery'), '1' );
+			wp_enqueue_script( 'waypoints' );
 			add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
 		}
 	}
@@ -122,6 +123,9 @@ class bSuite_Wijax {
 			foreach( $widgets['wijax-area'] as $k)
 				$actions[ $this->encoded_name( $k ) ] = (object ) array( 'key' => $k , 'type' => 'widget');
 		}
+
+		// filter the actions to allow other plugins to interact with it
+		$actions = apply_filters( 'wijax-actions', $actions );
 
 		foreach( $requested_widgets as $key )
 		{
@@ -385,7 +389,7 @@ class Wijax_Widget extends WP_Widget
 	{
 
 		$home_path = parse_url( home_url() , PHP_URL_PATH );
-		return esc_url_raw( trailingslashit( home_url() . str_replace( $home_path , '' , $_SERVER['REQUEST_URI'] )) .'wijax/' );
+		return esc_url_raw( trailingslashit( home_url() . str_replace( $home_path , '' , parse_url( $_SERVER['REQUEST_URI'] , PHP_URL_PATH ))) .'wijax/' );
 	}
 
 	function update( $new_instance, $old_instance )
