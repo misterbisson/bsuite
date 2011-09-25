@@ -69,8 +69,8 @@ class Widget_FB_Like extends WP_Widget
 		echo $before_widget . $before_title . $title . $after_title;
 ?>
 		<span id="fb_activity_like">
-			<fb:like ref="top_activity" width="50" show_faces="false" send="false" layout="box_count" href="<?php echo site_url(); ?>" font="segoe ui"></fb:like>
-			<fb:facepile href="<?php echo site_url(); ?>" width="225" max_rows="1"  font="segoe ui"></fb:facepile>
+			<fb:like ref="top_activity" width="50" show_faces="false" send="false" layout="box_count" href="<?php echo trailingslashit( site_url() ); ?>" font="segoe ui"></fb:like>
+			<fb:facepile href="<?php echo trailingslashit( site_url() ); ?>" width="225" max_rows="1"  font="segoe ui"></fb:facepile>
 		</span>
 <?php
 		echo $after_widget;
