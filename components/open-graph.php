@@ -163,7 +163,7 @@ function opengraph_default_description( $description = '' )
 
 	// replace the description with a more specific one if available
     global $wp_query;
-    if ( is_singular() )
+    if ( is_singular() && ! empty( $wp_query->queried_object->post_excerpt ))
 		$description = apply_filters( 'get_the_excerpt' , $wp_query->queried_object->post_excerpt );
 
     return $description;
