@@ -5,10 +5,10 @@ class bSuite_List_Children
 	
 	function __construct()
 	{
-		add_shortcode('pagemenu', array( $this, 'shortcode_list_pages' ));
-		add_shortcode('list_pages', array( $this, 'shortcode_list_pages' ));
-		add_shortcode('attachmentsmenu', array( $this, 'shortcode_list_attachments' ));
-		add_shortcode('list_attachments', array( $this, 'shortcode_list_attachments' ));
+		add_shortcode('pagemenu', array( $this, 'list_pages' ));
+		add_shortcode('list_pages', array( $this, 'list_pages' ));
+		add_shortcode('attachmentsmenu', array( $this, 'list_attachments' ));
+		add_shortcode('list_attachments', array( $this, 'list_attachments' ));
 	}
 
 	function list_pages( $arg )
