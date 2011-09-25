@@ -44,7 +44,7 @@ function ingest_fb_comments( $post_id = NULL )
 	$fb_comments = json_decode( json_int_to_string( $response ));	
 
 	// get replies to those comments
-	$reply_query = 'SELECT post_fbid , fromid , time , text , id , username FROM comment WHERE object_id in (SELECT post_fbid FROM comment WHERE object_id = "' . $comments_fbid . '" ORDER BY time DESC LIMIT '. $comment_limit .')';
+	$reply_query = 'SELECT fromid , time , text , id , username FROM comment WHERE object_id in (SELECT post_fbid FROM comment WHERE object_id = "' . $comments_fbid . '" ORDER BY time DESC LIMIT '. $comment_limit .')';
 	$response = fb_api_fetch( $api_root . urlencode( $reply_query ) .'&format=json' , $post_id );
 	$replies = json_decode( json_int_to_string( $response ));
 
