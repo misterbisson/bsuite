@@ -40,7 +40,7 @@ class bSuite {
 		wp_enqueue_script( 'highlight' );
 
 		// is this wpmu?
-		if( function_exists( 'is_super_admin' ))
+		if( function_exists( 'is_site_admin' ))
 			$this->is_mu = TRUE;
 		else
 			$this->is_mu = FALSE;
@@ -3473,6 +3473,7 @@ require_once( dirname( __FILE__) .'/components/twitter-api.php' );
 require_once( dirname( __FILE__) .'/components/open-graph.php' );
 require_once( dirname( __FILE__) .'/components/fb-api.php' );
 require_once( dirname( __FILE__) .'/components/fb-comments.php' );
+require_once( dirname( __FILE__) .'/components/fb-widgets.php' );
 require_once( dirname( __FILE__) .'/components/innerindex.php' );
 require_once( dirname( __FILE__) .'/components/listchildren.php' );
 require_once( dirname( __FILE__) .'/components/privacy.php' );
