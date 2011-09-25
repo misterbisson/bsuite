@@ -273,31 +273,14 @@ class bSuite_Wijax {
 				$(this).myWijaxLoader();
 			});	
 
-			//if we've already scrolled, fire the scroll event and get the excerpts and widgets	
-			if( (window.pageYOffset > 25) || (document.body.scrollTop > 25) )
-				$(document).trigger('scroll');
+			// if we've already scrolled or there is a hash in the url,
+			// fire the scroll event and get the excerpts and widgets	
+			if( ( document.location.hash ) || ( window.pageYOffset > 25 ) || ( document.body.scrollTop > 25 ) )
+				$( document ).trigger( 'scroll' );
 		});	
 
 		// do the onscroll actions
 		$(document).one('scroll', function(){
-			// post excerpts
-			$('a.wijax-excerpt').each(function(index){
-				var widget_source = $(this).attr('href');
-				var widget_area = $(this).parent();
-				var opts = $.parseJSON( $(widget_area).find('span.wijax-opts').text() );
-				var varname = opts.varname;
-			
-				$.ajax({ 
-					url: widget_source, 
-					dataType: 'script',
-					cache: true,
-					success: function() {
-						// insert the fetched markup
-						$( widget_area ).replaceWith( window[varname] ); 
-					}
-				});
-			});	
-
 			// widgets
 			$('a.wijax-source.wijax-onscroll').each(function() {
 				$(this).myWijaxLoader();
