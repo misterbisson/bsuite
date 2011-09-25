@@ -1545,7 +1545,7 @@ class bSuite_Widget_Pages extends WP_Widget {
 	function widget( $args, $instance ) {
 		extract( $args );
 		
-		if( $instance['startpage'] < 0 ||  $instance['startpage'] == 'c' )
+		if( $instance['startpage'] < 0 ||  $instance['startpage'] === 'c' )
 		{
 			if( ! is_singular() ) // can't generate a menu in this situation
 				return;
