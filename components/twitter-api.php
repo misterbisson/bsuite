@@ -6,10 +6,14 @@
  * Search Twitter with a given term or phrase
  * Example: $twitter_search->search ( array( 'q' => 'search phrase' )) 
  * 
+ * Available query args: https://dev.twitter.com/docs/api/1/get/search
+ *
  * @author Casey Bisson
  */
 class Twitter_Search
 {
+	var $get_user_info = TRUE;
+
 	function tweets()
 	{
 		if( ! empty( $this->api_response->results ))
@@ -21,7 +25,7 @@ class Twitter_Search
 	function next()
 	{
 		if( ! empty( $this->api_response->next_page ))
-			$this->search( $this->args , 'next' );
+			return $this->search( $this->args , 'next' );
 		else
 			return FALSE;
 	}
@@ -29,7 +33,7 @@ class Twitter_Search
 	function refresh()
 	{
 		if( ! empty( $this->api_response->refresh_url ))
-			$this->search( $this->args , 'refresh' );
+			return $this->search( $this->args , 'refresh' );
 		else
 			return FALSE;
 	}
@@ -44,6 +48,7 @@ class Twitter_Search
 				if( ! empty( $this->api_response->next_page ))
 				{
 					$query_url = 'http://search.twitter.com/search.json' . $this->api_response->next_page;
+					unset( $this->api_response );
 					break;
 				}
 			
@@ -51,6 +56,7 @@ class Twitter_Search
 				if( ! empty( $this->api_response->refresh_url ))
 				{
 					$query_url = 'http://search.twitter.com/search.json' . $this->api_response->refresh_url;
+					unset( $this->api_response );
 					break;
 				}
 
@@ -84,6 +90,7 @@ class Twitter_Search
 		}
 
 		$this->api_response = json_decode( wp_remote_retrieve_body( $temp_results ));
+		$this->api_response_headers = wp_remote_retrieve_headers( $temp_results );
 		unset( $temp_results );
 
 		if( ! empty( $this->api_response->error ))
@@ -97,8 +104,11 @@ class Twitter_Search
 		{
 			// we can't rely on the user_ids in the result, so we do a name lookup and unset the unreliable data.
 			// http://code.google.com/p/twitter-api/issues/detail?id=214
-			$result->from_user = twitter_user_info( $result->from_user );
-			unset( $result->from_user_id_str , $result->from_user_id , $result->to_user_id_str , $result->to_user_id , $result->from_user->status );
+			if( $this->get_user_info )
+			{
+				$result->from_user = twitter_user_info( $result->from_user );
+				unset( $result->from_user_id_str , $result->from_user_id , $result->to_user_id_str , $result->to_user_id , $result->from_user->status );
+			}
 
 			$this->api_response->min_id = $result->id;
 			$this->api_response->min_id_str = $result->id_str;
@@ -149,75 +159,72 @@ function twitter_user_info( $screen_name , $by = 'screen_name' )
  * Get the public Twitter history for a given user
  * Example: $twitter_search->search ( array( 'q' => 'search phrase' )) 
  * 
+ * Available query args: https://dev.twitter.com/docs/api/1/get/statuses/user_timeline
+ *
  * @author Casey Bisson
  */
 class Twitter_User_Stream
 {
 	function tweets()
 	{
-		if( ! empty( $this->api_response->results ))
-			return $this->api_response->results;
+		if( ! empty( $this->api_response ))
+			return $this->api_response;
 		else
 			return FALSE;
 	}
 
 	function next()
 	{
-		if( ! empty( $this->api_response->results ))
-			$this->stream( $this->args , 'next' );
+		if( ! empty( $this->api_response ))
+			return $this->stream( $this->args , 'next' );
 		else
 			return FALSE;
 	}
 
 	function refresh()
 	{
-		if( ! empty( $this->api_response->results ))
-			$this->stream( $this->args , 'refresh' );
+		if( ! empty( $this->api_response ))
+			return $this->stream( $this->args , 'refresh' );
 		else
 			return FALSE;
 	}
 
 	function stream( $args , $method = 'stream' )
 	{
+
 		switch( $method )
 		{
 			case 'next':
 			case 'next_page':
-				if( ! empty( $this->api_response->next_page ))
-				{
-					$query_url = 'http://search.twitter.com/search.json' . $this->api_response->next_page;
-					break;
-				}
+				$args['max_id'] = $this->api_response[ count( $this->api_response ) -1 ]->id_str;
+				unset( $this->api_response );
+				break;
 			
 			case 'refresh':
-				if( ! empty( $this->api_response->refresh_url ))
-				{
-					$query_url = 'http://search.twitter.com/search.json' . $this->api_response->refresh_url;
-					break;
-				}
-
-			case 'stream':
-			default:
-				$defaults = array(
-					'user_id' => '',
-					'screen_name' => '',
-					'since_id' => '',
-					'max_id' => '',
-					'count' => 10,
-					'page' => '',
-					'trim_user' => TRUE,
-					'contributor_details' => FALSE,
-					'include_entities' => TRUE,
-					'exclude_replies' => FALSE,
-					'include_rts' => TRUE,
-				);
-				$args = wp_parse_args( $args, $defaults );
-
-				// save the args
-				$this->args = $args;
-
-				$query_url = add_query_arg( $args , 'http://api.twitter.com/1/statuses/user_timeline.json' );
+				$args['since_id'] = $this->api_response[0]->id_str;
+				unset( $this->api_response );
+				break;
 		}
+
+		$defaults = array(
+			'user_id' => FALSE,
+			'screen_name' => FALSE,
+			'since_id' => FALSE,
+			'max_id' => FALSE,
+			'count' => 10,
+			'page' => FALSE,
+			'trim_user' => 'true',
+			'contributor_details' => 'false',
+			'include_entities' => 'true',
+			'exclude_replies' => 'false',
+			'include_rts' => 'true',
+		);
+		$args = wp_parse_args( $args, $defaults );
+
+		// save the args
+		$this->args = $args;
+
+		$query_url = add_query_arg( $args , 'http://api.twitter.com/1/statuses/user_timeline.json' );
 
 		$temp_results = wp_remote_get( $query_url );
 		if ( is_wp_error( $temp_results ))
@@ -227,6 +234,7 @@ class Twitter_User_Stream
 		}
 
 		$this->api_response = json_decode( wp_remote_retrieve_body( $temp_results ));
+		$this->api_response_headers = wp_remote_retrieve_headers( $temp_results );
 		unset( $temp_results );
 
 		if( ! empty( $this->api_response->error ))
@@ -235,14 +243,8 @@ class Twitter_User_Stream
 			unset( $this->api_response );
 			return FALSE;
 		}
-/*
-		foreach( $this->api_response->results as $result )
-		{
-			$this->api_response->min_id = $result->id;
-			$this->api_response->min_id_str = $result->id_str;
-		}
-*/
-		return $this->api_response->results;
+
+		return $this->api_response;
 	}
 }
 
