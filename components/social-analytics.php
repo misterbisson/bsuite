@@ -13,7 +13,17 @@ class bSuite_Social_Analytics
 		$this->users	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_users';
 //		$this->pop		= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_pop';
 
+		$this->type_array = array(
+			1 => 'share_url',
+			2 => 'share_domain',
+		);
+
 		$this->createtables();
+	}
+
+	function get_type( $type )
+	{
+		return array_search( $type , $this->type_array );
 	}
 
 	function get_term( $id )
@@ -107,15 +117,17 @@ class bSuite_Social_Analytics
 		global $wpdb;
 
 		$user_id = $this->insert_user( $user_name );
+		$action_date = date( 'Y-m-d' , strtotime( $date ));
+		$object_type = $this->get_type( $type );
 		$object_id = $this->insert_term( $object );
 
-		if( empty( $user_id )|| empty( $object_id ))
+		if( empty( $user_id ) || empty( $action_date ) || empty( $object_type ) || empty( $object_id ))
 			return FALSE;
 
 		if( FALSE === $wpdb->insert( $this->urlmap, array( 
 			'user_id' 		=> $user_id,
-			'urlmap_date' 	=> date( 'Y-m-d' , strtotime( $date )),
-			'object_type' 	=> sanitize_title_with_dashes( $type ),
+			'urlmap_date' 	=> $action_date,
+			'object_type' 	=> $object_type,
 			'object_id' 	=> $object_id,
 		)))
 		{
@@ -151,10 +163,10 @@ class bSuite_Social_Analytics
 				urlmap_id BIGINT NOT NULL AUTO_INCREMENT ,
 				user_id BIGINT NULL ,
 				urlmap_date DATE NULL ,
-				object_type VARCHAR(11) NULL ,
+				object_type BIGINT NULL ,
 				object_id BIGINT NULL ,
 				PRIMARY KEY (urlmap_id),
-				UNIQUE INDEX the_unique (user_id ASC, urlmap_date ASC, object_id ASC),
+				UNIQUE INDEX the_unique (user_id ASC, urlmap_date ASC, object_type ASC, object_id ASC),
 				KEY user_id (user_id ASC),
 				KEY object_id (object_id ASC)
 			) ENGINE=MyISAM $charset_collate
