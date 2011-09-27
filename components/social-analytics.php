@@ -14,8 +14,9 @@ class bSuite_Social_Analytics
 //		$this->pop		= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_pop';
 
 		$this->type_array = array(
-			1 => 'share_url',
-			2 => 'share_domain',
+			1 => 'url',
+			2 => 'cleanurl',
+			3 => 'domain',
 		);
 
 		$this->createtables();
@@ -112,23 +113,43 @@ class bSuite_Social_Analytics
 
 
 
-	function map_insert( $user_name , $date , $type , $object )
+	function map_insert( $user_name , $date , $object )
 	{
-		global $wpdb;
-
 		$user_id = $this->insert_user( $user_name );
 		$action_date = date( 'Y-m-d' , strtotime( $date ));
-		$object_type = $this->get_type( $type );
+
+		// get the ID for the unmolested URL
 		$object_id = $this->insert_term( $object );
 
-		if( empty( $user_id ) || empty( $action_date ) || empty( $object_type ) || empty( $object_id ))
+		// parse the URL and get IDs for various components of it
+		$url = parse_url( $object );
+		$url['host'] = preg_replace( '/www[^\.]*\./i', '', $url['host'] ); // remove www and similar components from the hostname
+		$clean_object_id = $this->insert_term( $url['scheme'] .'://'. $url['host'] . ( isset( $url['port'] ) ? ':'. $url['port'] : '' ) . ( isset( $url['path'] ) ? $url['path'] : '/' ));
+		$domain_object_id = $this->insert_term( $url['host'] );
+
+		if( empty( $user_id ) || empty( $action_date ) || empty( $object_id ))
 			return FALSE;
+
+		// insert the domain relationship
+		$this->_map_insert( $user_id , $action_date , $domain_object_id , $this->get_type( 'domain' ) );
+
+		// insert the cleaned URL
+		if( $clean_object_id != $object_id ) // only insert the clean url if it differs from the regular URL
+			$this->_map_insert( $user_id , $action_date , $clean_object_id , $this->get_type( 'cleanurl' ) );
+
+		// insert the URL relationship
+		return $this->_map_insert( $user_id , $action_date , $object_id , $this->get_type( 'url' ) );
+	}
+
+	function _map_insert( $user_id , $action_date , $object_id , $object_type )
+	{
+		global $wpdb;
 
 		if( FALSE === $wpdb->insert( $this->urlmap, array( 
 			'user_id' 		=> $user_id,
 			'urlmap_date' 	=> $action_date,
-			'object_type' 	=> $object_type,
 			'object_id' 	=> $object_id,
+			'object_type' 	=> $object_type,
 		)))
 		{
 			$error = new WP_Error( 'db_insert_error' , __('Could not insert map item into the database') , $wpdb->last_error );
@@ -163,8 +184,8 @@ class bSuite_Social_Analytics
 				urlmap_id BIGINT NOT NULL AUTO_INCREMENT ,
 				user_id BIGINT NULL ,
 				urlmap_date DATE NULL ,
-				object_type BIGINT NULL ,
 				object_id BIGINT NULL ,
+				object_type BIGINT NULL ,
 				PRIMARY KEY (urlmap_id),
 				UNIQUE INDEX the_unique (user_id ASC, urlmap_date ASC, object_type ASC, object_id ASC),
 				KEY user_id (user_id ASC),
