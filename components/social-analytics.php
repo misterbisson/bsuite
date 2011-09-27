@@ -14,12 +14,13 @@ class bSuite_Social_Analytics
 //		$this->pop		= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_pop';
 
 		$this->type_array = array(
+			0 => 'url_local',
 			1 => 'url',
-			2 => 'cleanurl',
+			2 => 'url_clean',
 			3 => 'domain',
 		);
 
-		$this->createtables();
+//		$this->createtables();
 	}
 
 	function get_type( $type )
@@ -111,6 +112,52 @@ class bSuite_Social_Analytics
 
 
 
+	function get_related( $objects , $ignore = FALSE )
+	{
+		global $wpdb;
+
+		foreach( (array) $objects as $object )
+		{
+			// get the ID for the unmolested URL
+			$object_ids[] = $this->insert_term( $object );
+
+			// parse the URL and get IDs for various components of it
+			$url = parse_url( $object );
+			$url['host'] = preg_replace( '/www[^\.]*\./i', '', $url['host'] ); // remove www and similar components from the hostname
+			$object_ids[] = $this->insert_term( $url['scheme'] .'://'. $url['host'] . ( isset( $url['port'] ) ? ':'. $url['port'] : '' ) . ( isset( $url['path'] ) ? $url['path'] : '/' ));
+//			$object_ids[] = $this->insert_term( $url['host'] );
+		}
+		$object_ids = array_unique( $object_ids );
+
+		if( $ignore )
+			$ignore_sql = 'AND h.object_id NOT IN( '. implode( ',' , $object_ids ) .' )';
+		else
+			$ignore_sql = '';
+
+		$query = 
+			"SELECT t.name AS url , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+			FROM
+			(
+				SELECT user_id
+				FROM $this->urlmap
+				WHERE object_id IN ( ". implode( ',' , $object_ids ) ." )
+				GROUP BY user_id DESC
+				LIMIT 250
+			) s
+			JOIN $this->urlmap h ON h.user_id = s.user_id
+			JOIN $this->terms t ON t.term_id = h.object_id
+			JOIN $this->users u ON u.user_id = h.user_id
+			WHERE 1=1
+			$ignore_sql
+			AND h.object_type = 0
+			GROUP BY h.object_id
+			ORDER BY hits DESC
+			LIMIT 0,25";
+
+		$urls = $wpdb->get_results( $query );
+
+		return json_encode( $urls );
+	}
 
 
 	function map_insert( $user_name , $date , $object )
@@ -135,10 +182,13 @@ class bSuite_Social_Analytics
 
 		// insert the cleaned URL
 		if( $clean_object_id != $object_id ) // only insert the clean url if it differs from the regular URL
-			$this->_map_insert( $user_id , $action_date , $clean_object_id , $this->get_type( 'cleanurl' ) );
+			$this->_map_insert( $user_id , $action_date , $clean_object_id , $this->get_type( 'url_clean' ) );
 
 		// insert the URL relationship
-		return $this->_map_insert( $user_id , $action_date , $object_id , $this->get_type( 'url' ) );
+		if( preg_match( '/gigaom\.com/' , $url['host'] ))
+			return $this->_map_insert( $user_id , $action_date , $clean_object_id , $this->get_type( 'url_local' ) );
+		else
+			return $this->_map_insert( $user_id , $action_date , $object_id , $this->get_type( 'url' ) );
 	}
 
 	function _map_insert( $user_id , $action_date , $object_id , $object_type )
