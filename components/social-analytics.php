@@ -231,22 +231,6 @@ class bSuite_Social_Analytics
 
 	function insert_fakes( $urls )
 	{
-		$images = array(
-			'http://gigaom2.files.wordpress.com/2011/09/iphone-5-mock-up.jpg?w=567',
-			'http://gigaom2.files.wordpress.com/2011/04/iphone4-feature.jpg?w=412',
-			'http://gigaom2.files.wordpress.com/2011/09/griddeo-channels.jpg?w=604',
-			'http://gigaom2.files.wordpress.com/2011/09/644336486_4c5e69e2c2_z.jpg?w=604',
-			'http://gigaom2.files.wordpress.com/2011/09/1z5o3339.jpg?w=300',
-		);
-
-		$authors = array(
-			array( 'name' => 'Ryan Lawler' , 'url' => 'http://gigaom.com/author/ryangigaom/' ),
-			array( 'name' => 'Erica Ogg' , 'url' => 'http://gigaom.com/author/ericaogg/' ),
-			array( 'name' => 'Katie Fehrenbacher' , 'url' => 'http://gigaom.com/author/katiefehren/' ),
-			array( 'name' => 'Mathew Ingram' , 'url' => 'http://gigaom.com/author/mathewingram/' ),
-			array( 'name' => 'Om Malik' , 'url' => 'http://gigaom.com/author/om/' ),
-		);
-
 		foreach( $urls as $k => $v )
 		{
 			// get the object type
@@ -263,10 +247,6 @@ class bSuite_Social_Analytics
 					$v->type = 'news';
 			}
 
-			$v->title = $images[ array_rand( $images ) ];
-			$v->excerpt = $images[ array_rand( $images ) ];
-			$v->image = $images[ array_rand( $images ) ];
-			$v->author = $authors[ array_rand( $authors ) ];
 			$v->users = array_filter( array_map( 'trim' , explode( ',' , $v->users )));
 		}
 
@@ -299,7 +279,7 @@ class bSuite_Social_Analytics
 				ORDER BY s.urlmap_date DESC
 			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
-			JOIN $this->urlinfo i ON i.object_id = h.object_id
+			LEFT JOIN $this->urlinfo i ON i.object_id = h.object_id
 			";
 
 		$object_ids = $wpdb->get_results( $query );
@@ -318,6 +298,8 @@ class bSuite_Social_Analytics
 		$user_id = $this->is_user( $user_name );
 		if( ! (int)  $user_id )
 			return FALSE;
+
+		$old_popular = $this->get_old_popular();
 
 		$query = 
 			"SELECT object_id
@@ -343,14 +325,14 @@ class bSuite_Social_Analytics
 				JOIN $this->urlmap ha ON ha.user_id = s.user_id
 				JOIN $this->users u ON u.user_id = ha.user_id
 				WHERE 1=1
-				AND ha.object_id NOT IN ( ". implode( ',' , $object_ids ) ." )
+				AND ha.object_id NOT IN ( ". implode( ',' , array_merge( (array) $object_ids , (array) array_slice( $old_popular , 0 , 5 ))) ." )
 				AND ha.object_type = 0
 				GROUP BY ha.object_id
 				ORDER BY hits DESC
 				LIMIT 0,50
 			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
-			JOIN $this->urlinfo i ON i.object_id = h.object_id
+			LEFT JOIN $this->urlinfo i ON i.object_id = h.object_id
 			";
 
 		$urls = $wpdb->get_results( $query );
@@ -406,7 +388,7 @@ class bSuite_Social_Analytics
 				LIMIT 0,50
 			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
-			JOIN $this->urlinfo i ON i.object_id = h.object_id
+			LEFT JOIN $this->urlinfo i ON i.object_id = h.object_id
 			";
 
 		$urls = $wpdb->get_results( $query );
@@ -436,12 +418,36 @@ class bSuite_Social_Analytics
 				LIMIT 0,25
 			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
-			JOIN $this->urlinfo i ON i.object_id = h.object_id
+			LEFT JOIN $this->urlinfo i ON i.object_id = h.object_id
 			";
 
 		$urls = $wpdb->get_results( $query );
 
 		return $this->insert_fakes( $urls );
+	}
+
+
+	function get_old_popular()
+	{
+		global $wpdb;
+
+		$the_date = date( 'Y-m-d' , strtotime( '-2 days' ));
+
+		$query = 
+			"
+			SELECT ha.object_id , COUNT(*) AS hits
+			FROM $this->urlmap ha
+			WHERE 1=1
+			AND urlmap_date <= '$the_date'
+			AND ha.object_type = 0
+			GROUP BY ha.object_id
+			ORDER BY hits DESC
+			LIMIT 0,25
+			";
+
+		$ids = $wpdb->get_col( $query );
+
+		return $ids;
 	}
 
 
