@@ -300,6 +300,7 @@ class bSuite_Social_Analytics
 			return FALSE;
 
 		$old_popular = $this->get_old_popular();
+		$the_date = date( 'Y-m-d' , strtotime( '-11 days' ));
 
 		$query = 
 			"SELECT object_id
@@ -313,7 +314,7 @@ class bSuite_Social_Analytics
 			SELECT i.* , t.name AS url , users , hits
 			FROM
 			(
-				SELECT ha.object_id , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+				SELECT ha.object_id , MIN(urlmap_date) AS the_date , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
 				FROM
 				(
 					SELECT user_id
@@ -325,14 +326,15 @@ class bSuite_Social_Analytics
 				JOIN $this->urlmap ha ON ha.user_id = s.user_id
 				JOIN $this->users u ON u.user_id = ha.user_id
 				WHERE 1=1
-				AND ha.object_id NOT IN ( ". implode( ',' , array_merge( (array) $object_ids , (array) array_slice( $old_popular , 0 , 5 ))) ." )
+				AND ha.object_id NOT IN ( ". implode( ',' , array_merge( (array) $object_ids , (array) array_slice( $old_popular , 0 , 3 ))) ." )
 				AND ha.object_type = 0
 				GROUP BY ha.object_id
-				ORDER BY hits DESC
+				ORDER BY the_date DESC
 				LIMIT 0,50
 			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
 			LEFT JOIN $this->urlinfo i ON i.object_id = h.object_id
+			ORDER BY hits DESC , url_date DESC
 			";
 
 		$urls = $wpdb->get_results( $query );
@@ -369,7 +371,7 @@ class bSuite_Social_Analytics
 			SELECT i.* , t.name AS url , users , hits
 			FROM
 			(
-				SELECT ha.object_id , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+				SELECT ha.object_id , MIN(urlmap_date) AS the_date , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
 				FROM
 				(
 					SELECT user_id
@@ -384,11 +386,12 @@ class bSuite_Social_Analytics
 				$ignore_sql
 				AND ha.object_type = 0
 				GROUP BY ha.object_id
-				ORDER BY hits DESC
+				ORDER BY the_date DESC
 				LIMIT 0,50
 			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
 			LEFT JOIN $this->urlinfo i ON i.object_id = h.object_id
+			ORDER BY hits DESC , url_date DESC
 			";
 
 		$urls = $wpdb->get_results( $query );
@@ -407,18 +410,19 @@ class bSuite_Social_Analytics
 			SELECT i.* , t.name AS url , users , hits
 			FROM
 			(
-				SELECT ha.object_id , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+				SELECT ha.object_id , MIN(urlmap_date) AS the_date , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
 				FROM $this->urlmap ha
 				JOIN $this->users u ON u.user_id = ha.user_id
 				WHERE 1=1
 				AND urlmap_date >= '$the_date'
 				AND ha.object_type = 0
 				GROUP BY ha.object_id
-				ORDER BY hits DESC
-				LIMIT 0,25
+				ORDER BY the_date DESC
+				LIMIT 0,50
 			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
 			LEFT JOIN $this->urlinfo i ON i.object_id = h.object_id
+			ORDER BY hits DESC , url_date DESC
 			";
 
 		$urls = $wpdb->get_results( $query );
@@ -431,7 +435,7 @@ class bSuite_Social_Analytics
 	{
 		global $wpdb;
 
-		$the_date = date( 'Y-m-d' , strtotime( '-2 days' ));
+		$the_date = date( 'Y-m-d' , strtotime( '-3 days' ));
 
 		$query = 
 			"
