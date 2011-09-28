@@ -8,7 +8,7 @@ class bSuite_Social_Analytics
 		global $wpdb;
 //		$this->activity	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_activity';
 		$this->urlmap	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_urlmap';
-//		$this->urlinfo	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_urlinfo';
+		$this->urlinfo	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_urlinfo';
 		$this->terms	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_terms';
 		$this->users	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_users';
 //		$this->pop		= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_pop';
@@ -20,7 +20,7 @@ class bSuite_Social_Analytics
 			3 => 'domain',
 		);
 
-//		$this->createtables();
+		$this->createtables();
 	}
 
 	function get_type( $type )
@@ -85,7 +85,7 @@ class bSuite_Social_Analytics
 		global $wpdb;
 
 		$cache_key = md5( substr( $user_name, 0, 128 ) );
-		if ( ! $term_id = wp_cache_get( $cache_key, 'bsocial_userids' ))
+		if ( ! $user_id = wp_cache_get( $cache_key, 'bsocial_userids' ))
 		{
 			$user_id = (int) $wpdb->get_var( "SELECT user_id FROM $this->users WHERE ". $wpdb->prepare( "user_name = %s", substr( $user_name, 0, 128 )));
 			wp_cache_add( $cache_key, $user_id, 'bsocial_userids', 0 );
@@ -101,7 +101,7 @@ class bSuite_Social_Analytics
 		{
 			if ( FALSE === $wpdb->insert( $this->users, array( 'user_name' => $user_name )))
 			{
-				new WP_Error('db_insert_error', __('Could not insert term into the database'), $wpdb->last_error);
+				new WP_Error('db_insert_error', __('Could not insert user into the database'), $wpdb->last_error);
 				return;
 			}
 			$user_id = (int) $wpdb->insert_id;
@@ -109,6 +109,120 @@ class bSuite_Social_Analytics
 		return $user_id;
 	}
 
+
+	function insert_fakes( $urls )
+	{
+		$images = array(
+			'http://gigaom2.files.wordpress.com/2011/09/iphone-5-mock-up.jpg?w=567',
+			'http://gigaom2.files.wordpress.com/2011/04/iphone4-feature.jpg?w=412',
+			'http://gigaom2.files.wordpress.com/2011/09/griddeo-channels.jpg?w=604',
+			'http://gigaom2.files.wordpress.com/2011/09/644336486_4c5e69e2c2_z.jpg?w=604',
+			'http://gigaom2.files.wordpress.com/2011/09/1z5o3339.jpg?w=300',
+		);
+
+		$authors = array(
+			array( 'name' => 'Ryan Lawler' , 'url' => 'http://gigaom.com/author/ryangigaom/' ),
+			array( 'name' => 'Erica Ogg' , 'url' => 'http://gigaom.com/author/ericaogg/' ),
+			array( 'name' => 'Katie Fehrenbacher' , 'url' => 'http://gigaom.com/author/katiefehren/' ),
+			array( 'name' => 'Mathew Ingram' , 'url' => 'http://gigaom.com/author/mathewingram/' ),
+			array( 'name' => 'Om Malik' , 'url' => 'http://gigaom.com/author/om/' ),
+		);
+
+		foreach( $urls as $k => $v )
+		{
+			// get the object type
+			switch( parse_url( $v->url , PHP_URL_HOST ))
+			{
+				case 'event.gigaom.com':
+					$v->type = 'event';
+					break;
+				case 'pro.gigaom.com':
+					$v->type = 'research';
+					break;
+				case 'gigaom.com':
+				default:
+					$v->type = 'news';
+			}
+
+			$v->title = $images[ array_rand( $images ) ];
+			$v->excerpt = $images[ array_rand( $images ) ];
+			$v->image = $images[ array_rand( $images ) ];
+			$v->author = $authors[ array_rand( $authors ) ];
+			$v->users = array_filter( array_map( 'trim' , explode( ',' , $v->users )));
+		}
+
+		return $urls;
+	}
+
+
+	function user_history( $user_name )
+	{
+		global $wpdb;
+
+		$user_id = $this->is_user( $user_name );
+		if( ! (int)  $user_id )
+			return FALSE;
+
+		$query = 
+			"SELECT t.name AS url , s.urlmap_date AS `date`
+			FROM
+			(
+				SELECT object_id, urlmap_date
+				FROM wp_bsocial_urlmap
+				WHERE user_id = $user_id
+				AND object_type IN (0)
+				LIMIT 15
+			) s
+			JOIN $this->terms t ON t.term_id = s.object_id
+			ORDER BY s.urlmap_date DESC";
+		$object_ids = $wpdb->get_results( $query );
+
+		if( empty( $object_ids ))
+			return FALSE;
+
+		return $this->insert_fakes( $object_ids );
+	}
+
+
+	function get_related_by_user( $user_name )
+	{
+		global $wpdb;
+
+		$user_id = $this->is_user( $user_name );
+		if( ! (int)  $user_id )
+			return FALSE;
+
+		$query = 
+			"SELECT object_id
+			FROM wp_bsocial_urlmap
+			WHERE user_id = $user_id
+			AND object_type IN (0,1,2)";
+		$object_ids = $wpdb->get_col( $query );
+
+		$query = 
+			"SELECT t.name AS url , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+			FROM
+			(
+				SELECT user_id
+				FROM $this->urlmap
+				WHERE object_id IN ( ". implode( ',' , $object_ids ) ." )
+				GROUP BY user_id DESC
+				LIMIT 250
+			) s
+			JOIN $this->urlmap h ON h.user_id = s.user_id
+			JOIN $this->terms t ON t.term_id = h.object_id
+			JOIN $this->users u ON u.user_id = h.user_id
+			WHERE 1=1
+			AND h.object_id NOT IN ( ". implode( ',' , $object_ids ) ." )
+			AND h.object_type = 0
+			GROUP BY h.object_id
+			ORDER BY hits DESC
+			LIMIT 0,25";
+
+		$urls = $wpdb->get_results( $query );
+
+		return $this->insert_fakes( $urls );
+	}
 
 
 
@@ -156,7 +270,30 @@ class bSuite_Social_Analytics
 
 		$urls = $wpdb->get_results( $query );
 
-		return json_encode( $urls );
+		return $this->insert_fakes( $urls );
+	}
+
+	function get_popular()
+	{
+		global $wpdb;
+
+		$the_date = date( 'Y-m-d' , strtotime( '-2 days' ));
+
+		$query = 
+			"SELECT t.name AS url , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+			FROM $this->urlmap h
+			JOIN $this->terms t ON t.term_id = h.object_id
+			JOIN $this->users u ON u.user_id = h.user_id
+			WHERE 1=1
+			AND urlmap_date >= '$the_date'
+			AND h.object_type = 0
+			GROUP BY h.object_id
+			ORDER BY hits DESC
+			LIMIT 0,25";
+
+		$urls = $wpdb->get_results( $query );
+
+		return $this->insert_fakes( $urls );
 	}
 
 
@@ -165,14 +302,18 @@ class bSuite_Social_Analytics
 		$user_id = $this->insert_user( $user_name );
 		$action_date = date( 'Y-m-d' , strtotime( $date ));
 
-		// get the ID for the unmolested URL
-		$object_id = $this->insert_term( $object );
-
 		// parse the URL and get IDs for various components of it
 		$url = parse_url( $object );
+
+		if( ! isset( $url['host'] ))
+			return FALSE;
+
 		$url['host'] = preg_replace( '/www[^\.]*\./i', '', $url['host'] ); // remove www and similar components from the hostname
 		$clean_object_id = $this->insert_term( $url['scheme'] .'://'. $url['host'] . ( isset( $url['port'] ) ? ':'. $url['port'] : '' ) . ( isset( $url['path'] ) ? $url['path'] : '/' ));
 		$domain_object_id = $this->insert_term( $url['host'] );
+
+		// get the ID for the unmolested URL
+		$object_id = $this->insert_term( $object );
 
 		if( empty( $user_id ) || empty( $action_date ) || empty( $object_id ))
 			return FALSE;
@@ -240,6 +381,17 @@ class bSuite_Social_Analytics
 				UNIQUE INDEX the_unique (user_id ASC, urlmap_date ASC, object_type ASC, object_id ASC),
 				KEY user_id (user_id ASC),
 				KEY object_id (object_id ASC)
+			) ENGINE=MyISAM $charset_collate
+		");
+
+		dbDelta("
+			CREATE TABLE $this->urlinfo (
+				object_id BIGINT NOT NULL ,
+				url_date DATE NULL ,
+				author_name varchar(256) NULL ,
+				author_url varchar(256) NULL ,
+				image_url varchar(256) NULL ,
+				PRIMARY KEY (object_id)
 			) ENGINE=MyISAM $charset_collate
 		");
 
