@@ -5,6 +5,9 @@ class bSuite_Social_Analytics
 
 	function __construct()
 	{
+		add_action( 'wp_ajax_bsocial_urlinfo', array( $this , '_lazy_insert_urlinfo' )); 
+		add_action( 'wp_ajax_nopriv_bsocial_urlinfo', array( $this , '_lazy_insert_urlinfo' )); 
+
 		global $wpdb;
 //		$this->activity	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_activity';
 		$this->urlmap	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_urlmap';
@@ -13,6 +16,7 @@ class bSuite_Social_Analytics
 		$this->users	= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_users';
 //		$this->pop		= ( empty( $wpdb->base_prefix ) ? $wpdb->prefix : $wpdb->base_prefix ) .'bsocial_pop';
 
+
 		$this->type_array = array(
 			0 => 'url_local',
 			1 => 'url',
@@ -20,7 +24,7 @@ class bSuite_Social_Analytics
 			3 => 'domain',
 		);
 
-		$this->createtables();
+//		$this->createtables();
 	}
 
 	function get_type( $type )
@@ -110,6 +114,121 @@ class bSuite_Social_Analytics
 	}
 
 
+
+	function get_urlinfo( $url_or_id )
+	{
+		global $wpdb;
+
+		// validate the input as either an object ID or URL
+		if( is_numeric( $url_or_id ) && get_term( $url_or_id ))
+			$object_id = (int) $url_or_id;
+		else if ( ! $object_id = $this->is_term( $url_or_id ))
+			return FALSE;
+
+		if ( ! $info = wp_cache_get( $object_id, 'bsocial_urlinfo' ))
+		{
+			$info = $wpdb->get_results( "SELECT * FROM $this->urlinfo WHERE ". $wpdb->prepare( "object_id = %s", (int) $object_id ));
+			wp_cache_set( $object_id, $info, 'bsocial_urlinfo', 0 );
+		}
+		return $info;
+	}
+
+	function insert_urlinfo( $url_or_id )
+	{
+		global $wpdb;
+
+		if( ! $info = $this->get_urlinfo( $url_or_id ))
+		{
+
+			// validate the input as either an object ID or URL
+			if( is_numeric( $url_or_id ) && ( $object_id = $url_or_id ) && ( ! $url = get_term( $url_or_id )))
+				return FALSE;
+			else if( $object_id = $this->insert_term( $url_or_id ))
+				$url = $url_or_id;
+
+			// scrape the data from the page
+			if( ! $info = $this->scrape_url( $url ))
+				return FALSE;
+
+			// insert the data
+			if( false === $wpdb->insert( $this->urlinfo , array(
+				'object_id' => $object_id,
+				'url_date' => $info->url_date,
+				'title' => $info->title,
+				'description' => $info->description,
+				'author_name' => $info->author_name,
+				'author_url' => $info->author_url,
+				'image_url' => $info->image_url,
+			)))
+			{
+				$error = new WP_Error( 'db_insert_error', __( 'Could not insert urlinfo into the database' ), $wpdb->last_error );
+				return $error;
+			}
+		}
+		return $info;
+	}
+
+	function lazy_insert_urlinfo( $url_or_id )
+	{
+		// validate the input as either an object ID or URL
+		if( is_numeric( $url_or_id ) && get_term( $url_or_id ))
+			$object_id = (int) $url_or_id;
+		else if ( ! $object_id = $this->insert_term( $url_or_id ))
+			return FALSE;
+
+		// hand the fetch off to a external process via HTTP request
+		wp_remote_get( admin_url( 'admin-ajax?action=bsocial_urlinfo&object_id='. $object_id ) , array( 'timeout' => 1 ));
+	}
+
+	function _lazy_insert_urlinfo()
+	{
+		$object_id = $_REQUEST['object_id'];
+
+		if( ! $this->get_term( $object_id ))
+			die;
+
+		echo json_encode( $this->insert_urlinfo( $object_id ));
+
+		die;
+	}
+
+	function scrape_url( $url )
+	{
+		$temp_results = wp_remote_get( $url );
+		if ( is_wp_error( $temp_results ))
+			return $temp_results;
+
+		$html = wp_remote_retrieve_body( $temp_results );
+
+		preg_match_all( '#<meta property="og:([^"]*)" content="([^"]*)"#' , $html , $matches );
+		foreach( $matches[1] as $k => $v )
+		{
+			switch( $v )
+			{
+				case 'title':
+					$data['title'] = $matches[2][ $k ];
+					break;
+
+				case 'description':
+					$data['description'] = $matches[2][ $k ];
+					break;
+
+				case 'image':
+					$data['image_url'] = $matches[2][ $k ];
+					break;
+			}
+		}
+
+		preg_match_all( "#<meta name='DC.date' content='([^']*)'#" , $html , $matches );
+		$data['url_date'] = $matches[1][0];
+
+		preg_match_all( '#<a rel="author" href="([^"]*)"[^>]*>([^<]*)</a>#' , $html , $matches );
+		$data['author_name'] = $matches[2][0];
+		$data['author_url'] = $matches[1][0];
+
+		return (object) $data;
+	}
+
 	function insert_fakes( $urls )
 	{
 		$images = array(
@@ -164,17 +283,25 @@ class bSuite_Social_Analytics
 			return FALSE;
 
 		$query = 
-			"SELECT t.name AS url , s.urlmap_date AS `date`
+			"
+			SELECT i.* , t.name AS url , `date`
 			FROM
 			(
-				SELECT object_id, urlmap_date
-				FROM wp_bsocial_urlmap
-				WHERE user_id = $user_id
-				AND object_type IN (0)
-				LIMIT 15
-			) s
-			JOIN $this->terms t ON t.term_id = s.object_id
-			ORDER BY s.urlmap_date DESC";
+				SELECT s.object_id , s.urlmap_date AS `date`
+				FROM
+				(
+					SELECT object_id, urlmap_date
+					FROM wp_bsocial_urlmap
+					WHERE user_id = $user_id
+					AND object_type IN (0)
+					LIMIT 15
+				) s
+				ORDER BY s.urlmap_date DESC
+			) h
+			JOIN $this->terms t ON t.term_id = h.object_id
+			JOIN $this->urlinfo i ON i.object_id = h.object_id
+			";
+
 		$object_ids = $wpdb->get_results( $query );
 
 		if( empty( $object_ids ))
@@ -200,24 +327,31 @@ class bSuite_Social_Analytics
 		$object_ids = $wpdb->get_col( $query );
 
 		$query = 
-			"SELECT t.name AS url , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+			"
+			SELECT i.* , t.name AS url , users , hits
 			FROM
 			(
-				SELECT user_id
-				FROM $this->urlmap
-				WHERE object_id IN ( ". implode( ',' , $object_ids ) ." )
-				GROUP BY user_id DESC
-				LIMIT 250
-			) s
-			JOIN $this->urlmap h ON h.user_id = s.user_id
+				SELECT ha.object_id , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+				FROM
+				(
+					SELECT user_id
+					FROM $this->urlmap
+					WHERE object_id IN ( ". implode( ',' , $object_ids ) ." )
+					GROUP BY user_id DESC
+					LIMIT 250
+				) s
+				JOIN $this->urlmap ha ON ha.user_id = s.user_id
+				JOIN $this->users u ON u.user_id = ha.user_id
+				WHERE 1=1
+				AND ha.object_id NOT IN ( ". implode( ',' , $object_ids ) ." )
+				AND ha.object_type = 0
+				GROUP BY ha.object_id
+				ORDER BY hits DESC
+				LIMIT 0,50
+			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
-			JOIN $this->users u ON u.user_id = h.user_id
-			WHERE 1=1
-			AND h.object_id NOT IN ( ". implode( ',' , $object_ids ) ." )
-			AND h.object_type = 0
-			GROUP BY h.object_id
-			ORDER BY hits DESC
-			LIMIT 0,25";
+			JOIN $this->urlinfo i ON i.object_id = h.object_id
+			";
 
 		$urls = $wpdb->get_results( $query );
 
@@ -249,24 +383,31 @@ class bSuite_Social_Analytics
 			$ignore_sql = '';
 
 		$query = 
-			"SELECT t.name AS url , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+			"
+			SELECT i.* , t.name AS url , users , hits
 			FROM
 			(
-				SELECT user_id
-				FROM $this->urlmap
-				WHERE object_id IN ( ". implode( ',' , $object_ids ) ." )
-				GROUP BY user_id DESC
-				LIMIT 250
-			) s
-			JOIN $this->urlmap h ON h.user_id = s.user_id
+				SELECT ha.object_id , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+				FROM
+				(
+					SELECT user_id
+					FROM $this->urlmap
+					WHERE object_id IN ( ". implode( ',' , $object_ids ) ." )
+					GROUP BY user_id DESC
+					LIMIT 250
+				) s
+				JOIN $this->urlmap ha ON ha.user_id = s.user_id
+				JOIN $this->users u ON u.user_id = ha.user_id
+				WHERE 1=1
+				$ignore_sql
+				AND ha.object_type = 0
+				GROUP BY ha.object_id
+				ORDER BY hits DESC
+				LIMIT 0,50
+			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
-			JOIN $this->users u ON u.user_id = h.user_id
-			WHERE 1=1
-			$ignore_sql
-			AND h.object_type = 0
-			GROUP BY h.object_id
-			ORDER BY hits DESC
-			LIMIT 0,25";
+			JOIN $this->urlinfo i ON i.object_id = h.object_id
+			";
 
 		$urls = $wpdb->get_results( $query );
 
@@ -280,16 +421,23 @@ class bSuite_Social_Analytics
 		$the_date = date( 'Y-m-d' , strtotime( '-2 days' ));
 
 		$query = 
-			"SELECT t.name AS url , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
-			FROM $this->urlmap h
+			"
+			SELECT i.* , t.name AS url , users , hits
+			FROM
+			(
+				SELECT ha.object_id , GROUP_CONCAT( u.user_name ) as users , COUNT(*) AS hits
+				FROM $this->urlmap ha
+				JOIN $this->users u ON u.user_id = ha.user_id
+				WHERE 1=1
+				AND urlmap_date >= '$the_date'
+				AND ha.object_type = 0
+				GROUP BY ha.object_id
+				ORDER BY hits DESC
+				LIMIT 0,25
+			) h
 			JOIN $this->terms t ON t.term_id = h.object_id
-			JOIN $this->users u ON u.user_id = h.user_id
-			WHERE 1=1
-			AND urlmap_date >= '$the_date'
-			AND h.object_type = 0
-			GROUP BY h.object_id
-			ORDER BY hits DESC
-			LIMIT 0,25";
+			JOIN $this->urlinfo i ON i.object_id = h.object_id
+			";
 
 		$urls = $wpdb->get_results( $query );
 
@@ -309,7 +457,8 @@ class bSuite_Social_Analytics
 			return FALSE;
 
 		$url['host'] = preg_replace( '/www[^\.]*\./i', '', $url['host'] ); // remove www and similar components from the hostname
-		$clean_object_id = $this->insert_term( $url['scheme'] .'://'. $url['host'] . ( isset( $url['port'] ) ? ':'. $url['port'] : '' ) . ( isset( $url['path'] ) ? $url['path'] : '/' ));
+		$clean_url = $url['scheme'] .'://'. $url['host'] . ( isset( $url['port'] ) ? ':'. $url['port'] : '' ) . ( isset( $url['path'] ) ? $url['path'] : '/' );
+		$clean_object_id = $this->insert_term( $clean_url );
 		$domain_object_id = $this->insert_term( $url['host'] );
 
 		// get the ID for the unmolested URL
@@ -327,9 +476,14 @@ class bSuite_Social_Analytics
 
 		// insert the URL relationship
 		if( preg_match( '/gigaom\.com/' , $url['host'] ))
+		{
+			$this->lazy_insert_urlinfo( $clean_url );
 			return $this->_map_insert( $user_id , $action_date , $clean_object_id , $this->get_type( 'url_local' ) );
+		}
 		else
+		{
 			return $this->_map_insert( $user_id , $action_date , $object_id , $this->get_type( 'url' ) );
+		}
 	}
 
 	function _map_insert( $user_id , $action_date , $object_id , $object_type )
@@ -388,9 +542,11 @@ class bSuite_Social_Analytics
 			CREATE TABLE $this->urlinfo (
 				object_id BIGINT NOT NULL ,
 				url_date DATE NULL ,
-				author_name varchar(256) NULL ,
-				author_url varchar(256) NULL ,
-				image_url varchar(256) NULL ,
+				title text NULL ,
+				description text NULL ,
+				author_name text NULL ,
+				author_url text NULL ,
+				image_url text NULL ,
 				PRIMARY KEY (object_id)
 			) ENGINE=MyISAM $charset_collate
 		");
