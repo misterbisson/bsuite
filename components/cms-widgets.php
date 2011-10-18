@@ -453,6 +453,17 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		global $postloops;
 
 		$this->post_templates = &$postloops->templates_post;
+
+		add_filter( 'wijax-actions' , array( $this , 'wjiax_actions' ) );
+	}
+
+	function wjiax_actions( $actions )
+	{
+		global $postloops, $mywijax;
+		foreach( $postloops->instances as $k => $v )
+			$actions[ $mywijax->encoded_name( 'postloop-'. $k ) ] = (object) array( 'key' => 'postloop-'. $k , 'type' => 'widget');
+
+		return $actions;
 	}
 
 	function widget( $args, $instance ) {
