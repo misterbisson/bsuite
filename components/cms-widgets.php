@@ -467,7 +467,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 	}
 
 	function widget( $args, $instance ) {
-		global $bsuite, $postloops, $wpdb, $blog_id;
+		global $bsuite, $postloops, $wpdb, $blog_id, $mywijax;
+
+		$this->wijax_varname = $mywijax->encoded_name( $this->id );
 
 		extract( $args );
 
