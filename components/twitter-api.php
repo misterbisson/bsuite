@@ -63,7 +63,7 @@ class Twitter_Search
 			case 'search':
 			default:
 				$defaults = array(
-					'q' => urlencode( home_url() ),
+					'q' => urlencode( site_url() ),
 					'rpp' => 10,
 					'result_type' => 'recent',
 					'page' => 1,
@@ -73,6 +73,8 @@ class Twitter_Search
 					'until' => FALSE,
 					'geocode' => FALSE,
 					'show_user' => FALSE,
+					'include_entities' => TRUE,
+					'with_twitter_user_id' => TRUE,
 				);
 				$args = wp_parse_args( $args, $defaults );
 
@@ -105,10 +107,7 @@ class Twitter_Search
 			// we can't rely on the user_ids in the result, so we do a name lookup and unset the unreliable data.
 			// http://code.google.com/p/twitter-api/issues/detail?id=214
 			if( $this->get_user_info )
-			{
 				$result->from_user = twitter_user_info( $result->from_user );
-				unset( $result->from_user_id_str , $result->from_user_id , $result->to_user_id_str , $result->to_user_id , $result->from_user->status );
-			}
 
 			$this->api_response->min_id = $result->id;
 			$this->api_response->min_id_str = $result->id_str;
@@ -233,6 +232,7 @@ class Twitter_User_Stream
 			return FALSE;
 		}
 
+		// fetch that stuff
 		$this->api_response = json_decode( wp_remote_retrieve_body( $temp_results ));
 		$this->api_response_headers = wp_remote_retrieve_headers( $temp_results );
 		unset( $temp_results );
@@ -244,6 +244,13 @@ class Twitter_User_Stream
 			return FALSE;
 		}
 
+		// set the max and min ids
+		$this->max_id = $this->api_response[0]->id;
+		$this->max_id_str = $this->api_response[0]->id_str;
+		$this->min_id = $this->api_response[ count( $this->api_response ) -1 ]->id;
+		$this->min_id_str = $this->api_response[ count( $this->api_response ) -1 ]->id_str;
+
+		// return that stuff
 		return $this->api_response;
 	}
 }
