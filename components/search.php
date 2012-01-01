@@ -99,13 +99,13 @@ class bSuite_Search
 	function filter_content_for_index( $content , $post_id )
 	{
 		// simple cleaning
-		$content = html_entity_decode( stripslashes( $content ));
+		$content = stripslashes( html_entity_decode( $content ));
 
 		// replace some html with newlines to prevent irrelevant proximity results
-		$content = preg_replace( '|</?(p|br|li|h[1-9])[^>]*>|i' , "\n" , $content );
+		$content = preg_replace( '/\<\/?(p|br|li|h[1-9])[^\>]*\>/i' , "\n" , $content );
 
 		// strip all html
-		$content = wp_filter_nohtml_kses( $content );
+		$content = stripslashes( wp_filter_nohtml_kses( $content ));
 
 		// strip shortcodes
 		$content = preg_replace( '/\[.*?\]/', '', $content );
@@ -124,9 +124,9 @@ class bSuite_Search
 	{
 
 		// grab a batch of posts to work with
-		$posts = $wpdb->get_results(
+		$posts = $this->wpdb->get_results(
 			"SELECT a.ID, a.post_content, a.post_title
-				FROM $this->wpdb->posts a
+				FROM ". $this->wpdb->posts ." a
 				LEFT JOIN $this->search_table b ON a.ID = b.post_id
 				WHERE a.post_status = 'publish'
 				AND b.post_id IS NULL
@@ -151,7 +151,7 @@ class bSuite_Search
 		// insert into the search table
 		if( count( $insert ))
 		{
-			$wpdb->get_results( 
+			$this->wpdb->get_results( 
 				'REPLACE INTO '. $this->search_table .'
 					(post_id, content, title) 
 					VALUES '. implode( ',', $insert )
@@ -182,17 +182,21 @@ class bSuite_Search
 	function posts_join_request( $sql )
 	{
 
+		// the formula used to rank the posts
+		$this->relevancy_formula = $this->wpdb->prepare( "MATCH ( content, title ) AGAINST ( %s ) + MATCH ( content, title ) AGAINST ( %s IN BOOLEAN MODE ) + MATCH ( title ) AGAINST ( %s IN BOOLEAN MODE )",
+			$this->search_string,
+			$this->search_string,
+			$this->search_string
+		);
+
 		// join a derived table generated from a full text query
 		$this->posts_join = $this->wpdb->prepare( " INNER JOIN (
-			SELECT post_id, ( MATCH ( content, title ) AGAINST ( \"%s\" ) + MATCH ( content, title ) AGAINST ( \"%s\" IN BOOLEAN MODE ) + MATCH ( title ) AGAINST ( \"%s\" IN BOOLEAN MODE )) AS ftscore
+			SELECT post_id, ( $this->relevancy_formula ) AS ftscore
 			FROM $this->search_table
-			WHERE ( MATCH ( content, title ) AGAINST ( \"%s\" $boolean ))
+			WHERE ( MATCH ( content, title ) AGAINST ( %s $boolean ))
 			ORDER BY ftscore DESC
 			LIMIT 0, 1250
 		) bsuite_ftsearch ON ( bsuite_ftsearch.post_id = ". $this->wpdb->posts .".ID )",
-			$this->search_string,
-			$this->search_string,
-			$this->search_string,
 			$this->search_string
 		);
 
