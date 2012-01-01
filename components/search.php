@@ -25,6 +25,37 @@ class bSuite_Search
 			add_action( 'parse_query' , array( $this , 'parse_query' ) , 1 );
 	}
 
+	function create_table()
+	{
+		$charset_collate = '';
+		if ( version_compare( mysql_get_server_info() , '4.1.0', '>=' ))
+		{
+			if ( ! empty( $this->wpdb->charset ))
+				$charset_collate = 'DEFAULT CHARACTER SET '. $this->wpdb->charset;
+			if ( ! empty( $this->wpdb->collate ))
+				$charset_collate .= ' COLLATE '. $this->wpdb->collate;
+		}
+
+		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
+
+		dbDelta("
+			CREATE TABLE $this->search_table (
+				post_id bigint(20) NOT NULL,
+				content text,
+				title text,
+				PRIMARY KEY  (post_id),
+				FULLTEXT KEY search (content, title)
+			) ENGINE=MyISAM $charset_collate
+			");
+	}
+
+	function reset_table()
+	{
+		$this->create_table();
+		$this->wpdb->get_results( 'TRUNCATE TABLE '. $this->search_table );
+	}
+
+
 	function parse_query( $query )
 	{
 		// only opeate on search queries

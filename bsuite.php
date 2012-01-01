@@ -92,11 +92,7 @@ class bSuite {
 		if( get_option( 'bsuite_insert_sharelinks' ))
 			add_filter('the_content', array(&$this, 'sharelinks_the_content'), 6);
 
-		// searchsmart
-		if( get_option( 'bsuite_searchsmart' )){
-			add_filter('posts_request', array(&$this, 'searchsmart_posts_request'), 10);
-			add_filter('content_save_pre', array(&$this, 'searchsmart_edit'));
-		}
+		// redirection
 		add_filter('template_redirect', array(&$this, 'searchsmart_direct'), 8);
 		add_filter('post_link', array(&$this, 'searchsmart_post_link_direct'), 11, 2);
 
@@ -114,8 +110,6 @@ class bSuite {
 		add_filter('cron_schedules', array(&$this, 'cron_reccurences'));
 		if( $this->loadavg < get_option( 'bsuite_load_max' )){ // only do cron if load is low-ish
 			add_filter('bsuite_interval', array(&$this, 'bstat_migrator'));
-			if( get_option( 'bsuite_searchsmart' ))
-				add_filter('bsuite_interval', array(&$this, 'searchsmart_upindex_passive'));
 		}
 
 		// machine tags
@@ -1554,64 +1548,6 @@ $engine = $this->get_search_engine( $ref );
 	//
 	// Searchsmart
 	//
-	function searchsmart_posts_request( $query ){
-		global $wp_query, $wpdb;
-
-		if($wp_query->is_admin)
-			return($query);
-
-		if (!empty($wp_query->query_vars['s'])) {
-			$limit = explode('LIMIT', $query);
-			if(!$limit[1]){
-				// $paged, $posts_per_page, and $limit are here for cases
-				// where the query doesn't have an explicit LIMIT declaration
-				$paged = $wp_query->query_vars['paged'];
-				if(!$paged)
-					$paged = 1;
-
-				$posts_per_page = $wp_query->query_vars['posts_per_page'];
-				if(!$posts_per_page)
-					$posts_per_page = get_settings('posts_per_page');
-
-				$limit = explode('LIMIT', $query);
-				if(!$limit[1])
-					$limit[1] = ($paged - 1) * $posts_per_page .', '. $posts_per_page;
-			}
-
-//print_r($wp_query);
-//echo '<h2>'. $this->searchsmart_query( $wp_query->query_vars['s'], 'LIMIT '. $limit[1] ) .'</h2>';
-			return( $this->searchsmart_query( $wp_query->query_vars['s'], 'LIMIT '. $limit[1] ));
-		}
-		return( $query );
-	}
-
-	function searchsmart_query( $searchphrase, $limit = 'LIMIT 0,5' ){
-		global $wpdb;
-
-		if( 3 < strlen( trim( $searchphrase ))){
-			return("SELECT SQL_CALC_FOUND_ROWS $wpdb->posts.* 
-				FROM (
-					SELECT post_id, MATCH (content, title) AGAINST (". $wpdb->prepare( '%s', $searchphrase ) .") AS score 
-					FROM $this->search_table
-					WHERE MATCH (content, title) AGAINST (". $wpdb->prepare( '%s', $searchphrase ) .")
-					ORDER BY score DESC
-					LIMIT 1000
-				) s
-				LEFT JOIN $wpdb->posts ON ( s.post_id = $wpdb->posts.ID ) 
-				WHERE 1=1 
-				AND post_status IN ('publish', 'private')
-				ORDER BY score DESC 
-				$limit");
-		}else{
-			return("SELECT SQL_CALC_FOUND_ROWS $wpdb->posts.*
-				FROM $wpdb->posts 
-				WHERE 1=1 
-				AND post_content LIKE ". $wpdb->prepare( '%s', '%'. $searchphrase .'%' ) ."
-				AND post_status IN ('publish', 'private')
-				ORDER BY post_date_gmt DESC $limit");
-		}
-	}
-
 	function searchsmart_direct(){
 		global $wp_query, $wp_rewrite;
 
@@ -1642,104 +1578,6 @@ $engine = $this->get_search_engine( $ref );
 			$final_link = $redirect;
 
 		return apply_filters( 'bsuite_searchsmart_post_link_direct', $final_link, $permalink, $post );
-	}
-
-	function searchsmart_edit( $content ){
-		// called when posts are edited or saved
-		if( (int) $_POST['post_ID'] )
-			$this->searchsmart_delpost( (int) $_POST['post_ID'] );
-		return($content);
-	}
-
-	function searchsmart_delpost( $post_id ){
-		global $wpdb;
-		$wpdb->get_results( "DELETE FROM $this->search_table WHERE post_id = $post_id" );
-	}
-
-	function searchsmart_content( $content , $post_id )
-	{
-
-		// remove bsuite tokens and html formatting
-		$content = preg_replace(
-			'/\[\[([^\]])*\]\]/',
-			'',
-			strip_tags(
-				str_ireplace(array('<br />', '<br/>', '<br>', '</p>', '</li>', '</h1>', '</h2>', '</h3>', '</h4>'), "\n", 
-					stripslashes(
-						html_entity_decode( $content )
-					)
-				)
-			)
-		);
-
-		// shortcodes
-		$content = preg_replace( '/\[(.*?)\]/', '', $content );
-
-		// apply filters
-		$content = apply_filters( 'bsuite_searchsmart_content' , $content , $post_id );
-
-		// find words with accented characters, create transliterated versions of them
-		$unaccented = array_diff( str_word_count( $content, 1 ), str_word_count( remove_accents( $content ), 1 ));
-
-//		// remove punctuation
-//		$content = trim(preg_replace(
-//			'/([[:punct:]])*/',
-//			'',
-//			$content));
-
-		return $content .' '. implode( ' ', $unaccented );
-
-	}
-
-	function searchsmart_upindex(){
-		// put content in the keyword search index
-		global $wpdb;
-
-		update_option('bsuite_doing_ftindex', time() + 300 );
-
-		$posts = $wpdb->get_results("SELECT a.ID, a.post_content, a.post_title
-			FROM $wpdb->posts a
-			LEFT JOIN $this->search_table b ON a.ID = b.post_id
-			WHERE a.post_status = 'publish'
-			AND b.post_id IS NULL
-			LIMIT 25
-			");
-
-		if( count( $posts )) {
-			$insert = array();
-			foreach( $posts as $post ) {
-				$insert[] = '('. (int) $post->ID .', "'. $wpdb->escape( $this->searchsmart_content( $post->post_title ."\n\n". $post->post_content , $post->ID )) .'", "'. $wpdb->escape( $post->post_title ) .'")';
-			}
-		}else{
-			return( FALSE );
-		}
-
-		if( count( $insert )) {
-			$wpdb->get_results( 'REPLACE INTO '. $this->search_table .'
-						(post_id, content, title) 
-						VALUES '. implode( ',', $insert ));
-		}
-
-		// diabled so that the update runs less often.
-		update_option('bsuite_doing_ftindex', 0 );
-
-		return( count( $posts ));
-	}
-
-	function searchsmart_upindex_passive(){
-		// finds unindexed posts and adds them to the fulltext index in groups of 10, runs via cron
-		global $wpdb;
-
-		if( !$this->get_lock( 'ftindexer' ))
-			return( TRUE );
-
-		// also use the options table
-		if ( get_option('bsuite_doing_ftindex') > time() )
-			return( TRUE );
-
-		$this->searchsmart_upindex();
-
-		return(TRUE);
 	}
 	// end Searchsmart
 
@@ -3114,6 +2952,9 @@ die;
 		$this->createtables();
 		$this->cron_register();
 
+		global $bsuite_search;
+		$bsuite_search->create_table;
+
 		// set some defaults for the plugin
 		if(!get_option('bsuite_insert_related'))
 			update_option('bsuite_insert_related', TRUE);
@@ -3170,16 +3011,6 @@ die;
 		}
 
 		require_once(ABSPATH . 'wp-admin/upgrade-functions.php');
-
-		dbDelta("
-			CREATE TABLE $this->search_table (
-				post_id bigint(20) NOT NULL,
-				content text,
-				title text,
-				PRIMARY KEY  (post_id),
-				FULLTEXT KEY search (content, title)
-			) ENGINE=MyISAM $charset_collate
-			");
 
 		dbDelta("
 			CREATE TABLE $this->hits_incoming (
@@ -3357,7 +3188,7 @@ die;
 
 	function command_rebuild_searchsmart() {
 		// update search table with content from all posts
-		global $wpdb; 
+		global $wpdb, $bsuite_search; 
 
 		set_time_limit(0);
 		ignore_user_abort(TRUE);
@@ -3366,12 +3197,11 @@ die;
 
 		if( !isset( $_REQUEST[ 'n' ] ) ) {
 			$n = 0;
-			$this->createtables();
-			$wpdb->get_results( 'TRUNCATE TABLE '. $this->search_table );
+			$bsuite_search->reset_table();
 		} else {
 			$n = (int) $_REQUEST[ 'n' ] ;
 		}
-		if( $count = $this->searchsmart_upindex() ) {
+		if( $count = $bsuite_search->upindex() ) {
 			echo '<div class="updated"><p><strong>' . __('Rebuilding bSuite search index.', 'bsuite') . '</strong> Already did '. ( $n + $count ) .', be patient already!</p></div><div class="narrow">';
 
 			?>
@@ -3477,6 +3307,7 @@ require_once( dirname( __FILE__) .'/components/fb-widgets.php' );
 require_once( dirname( __FILE__) .'/components/innerindex.php' );
 require_once( dirname( __FILE__) .'/components/listchildren.php' );
 require_once( dirname( __FILE__) .'/components/privacy.php' );
+require_once( dirname( __FILE__) .'/components/search.php' );
 //require_once( dirname( __FILE__) .'/components/head-meta.php' );
 
 
