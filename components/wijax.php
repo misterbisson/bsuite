@@ -477,3 +477,9 @@ class Wijax_Encode
 		return $output;
 	}//end out
 }//end class Channel
+
+
+function is_wijax()
+{
+	return defined( 'IS_WIJAX' ) && IS_WIJAX;
+}
