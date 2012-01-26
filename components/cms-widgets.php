@@ -1724,8 +1724,8 @@ class bSuite_Widget_Pages extends WP_Widget {
 
 		<p>
 			<label for="<?php echo $this->get_field_id('startpage'); ?>"><?php _e( 'Start page hierarchy at:' ); ?></label>
-			<?php echo str_replace( 
-				'<select name="page_id" id="page_id">',
+			<?php echo preg_replace( 
+				'#<select.*?>#i',
 
 				'<select name="'. $this->get_field_name('startpage') .'" id="'. $this->get_field_id('startpage') .'" class="widefat">
 				<option value="0"'. selected( $instance['startpage'], '0', FALSE ) .'>'. __( 'Root' ) .'</option>
