@@ -674,12 +674,30 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 
+			$offset_run = $offset_now = 1;
+
 			do_action( $action_name , 'before' , $ourposts , $postloops );
-			while( $ourposts->have_posts() ){
-
+			while( $ourposts->have_posts() )
+			{
 				unset( $GLOBALS['pages'] ); // to address ticket: http://core.trac.wordpress.org/ticket/12651
-
+				
 				$ourposts->the_post();
+
+				// weird feature to separate a single postloop into multiple widgets
+				// set where in the loop we start the output
+				if( ! empty( $instance['offset_start'] ) && ($instance['offset_start'] > $offset_now) )
+				{
+					$offset_now ++;
+					continue;
+				}
+				// set how many we display
+				if( ! empty( $instance['offset_run'] ) && ($instance['offset_run'] < $offset_run) )
+				{
+					continue;
+				}
+				
+				$offset_run ++;
+
 				global $id, $post;
 
 				$instance['blog'] = absint( $instance['blog'] );
@@ -810,6 +828,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['count'] = absint( $new_instance['count'] );
 		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'comment_new', 'pop_recent', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
+		$instance['offset_run'] = empty( $new_instance['offset_run'] ) ? '' : absint( $new_instance['offset_run'] );
+		$instance['offset_start'] = empty( $new_instance['offset_start'] ) ? '' : absint( $new_instance['offset_start'] );
+in_array( $new_instance['thumbnail_size'], (array) get_intermediate_image_sizes() ) ? $new_instance['thumbnail_size']: '';
 		if( function_exists( 'get_intermediate_image_sizes' ))
 			$instance['thumbnail_size'] = in_array( $new_instance['thumbnail_size'], (array) get_intermediate_image_sizes() ) ? $new_instance['thumbnail_size']: '';
 		$instance['columns'] = absint( $new_instance['columns'] );
@@ -1070,6 +1091,33 @@ die;
 				<p>
 					<select name="<?php echo $this->get_field_name('template'); ?>" id="<?php echo $this->get_field_id('template'); ?>" class="widefat">
 						<?php $this->control_template_dropdown( $instance['template'] ); ?>
+					</select>
+				</p>
+			</div>
+		</div>
+
+		<?php
+		// weird feature to separate a single postloop into multiple widgets
+		?>
+		<div id="<?php echo $this->get_field_id('offset'); ?>-container" class="postloop container posttype_normal">
+			<label for="<?php echo $this->get_field_id('offset'); ?>"><?php _e( 'Loop offset' ); ?></label>
+			<div id="<?php echo $this->get_field_id('offset'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<label for="<?php echo $this->get_field_id('offset_run'); ?>"><?php _e( 'From items in the loop, show N items' ); ?></label>
+					<select name="<?php echo $this->get_field_name('offset_run'); ?>" id="<?php echo $this->get_field_id('offset_run'); ?>" class="widefat">
+					<option value="" <?php selected( $instance['offset_run'], $i ); ?>></option>
+					<?php for( $i = 1; $i < 51; $i++ ){ ?>
+						<option value="<?php echo $i; ?>" <?php selected( $instance['offset_run'], $i ); ?>><?php echo $i; ?></option>
+					<?php } ?>
+					</select>
+				</p>
+				<p>
+					<label for="<?php echo $this->get_field_id('offset_start'); ?>"><?php _e( 'Starting with the item' ); ?></label>
+					<select name="<?php echo $this->get_field_name('offset_start'); ?>" id="<?php echo $this->get_field_id('offset_start'); ?>" class="widefat">
+					<option value="" <?php selected( $instance['offset_start'], $i ); ?>></option>
+					<?php for( $i = 1; $i < 51; $i++ ){ ?>
+						<option value="<?php echo $i; ?>" <?php selected( $instance['offset_start'], $i ); ?>><?php echo $i; ?></option>
+					<?php } ?>
 					</select>
 				</p>
 			</div>
