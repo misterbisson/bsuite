@@ -124,7 +124,7 @@ class bSuite_Wijax {
 				$actions[ $this->encoded_name( $k ) ] = (object ) array( 'key' => $k , 'type' => 'widget');
 		}
 
-		// filter the actions to allow other plugins to interact with it
+		// filter to allow lazy-loading of widgets without them being in the wijax area
 		$actions = apply_filters( 'wijax-actions', $actions );
 
 		foreach( $requested_widgets as $key )
