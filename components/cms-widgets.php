@@ -670,7 +670,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) )
 			{
 				$has_wrapper = $this->post_templates[ $instance['template'] ]['wrapper'];
-				if( $has_wrapper && (! @include str_replace( '.php', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] )))
+				if( $has_wrapper && (! @include preg_replace( '/\.php$/', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] )))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 
@@ -716,7 +716,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			if( isset( $has_wrapper ))
 			{
-				if( ! @include str_replace( '.php', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
+				if( ! @include preg_replace( '/\.php$/', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 			do_action( $action_name , 'after' , $ourposts , $postloops );
