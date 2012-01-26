@@ -124,9 +124,9 @@ class bSuite_Wijax {
 				$actions[ $this->encoded_name( $k ) ] = (object ) array( 'key' => $k , 'type' => 'widget');
 		}
 
-		// filter the actions to allow other plugins to interact with it
+		// filter to allow lazy-loading of widgets without them being in the wijax area
 		$actions = apply_filters( 'wijax-actions', $actions );
-
+		
 		foreach( $requested_widgets as $key )
 		{
 			// try the requested key against the md5 list
@@ -156,7 +156,7 @@ class bSuite_Wijax {
 	function do_postloop( $template )
 	{
 		global $postloops, $wp_query;
-
+		
 		if( ( ! is_object( $postloops )) || ( ! is_single() ))
 			return FALSE;
 
@@ -273,10 +273,10 @@ class bSuite_Wijax {
 				$(this).myWijaxLoader();
 			});	
 
-			// if we've already scrolled or there is a hash in the url,
-			// fire the scroll event and get the excerpts and widgets	
-			if( ( document.location.hash ) || ( window.pageYOffset > 25 ) || ( document.body.scrollTop > 25 ) )
-				$( document ).trigger( 'scroll' );
+			//if we've already scrolled or there is a hash in the url,
+			//fire the scroll event and get the excerpts and widgets	
+			if( (document.location.hash) || (window.pageYOffset > 25) || (document.body.scrollTop > 25) )
+				$(document).trigger('scroll');
 		});	
 
 		// do the onscroll actions
@@ -287,6 +287,7 @@ class bSuite_Wijax {
 			});
 		});
 	})(jQuery);
+	
 </script>
 <?php
 	}
@@ -372,7 +373,7 @@ class Wijax_Widget extends WP_Widget
 	{
 
 		$home_path = parse_url( home_url() , PHP_URL_PATH );
-		return esc_url_raw( trailingslashit( home_url() . str_replace( $home_path , '' , parse_url( $_SERVER['REQUEST_URI'] , PHP_URL_PATH ))) .'wijax/' );
+		return esc_url_raw( trailingslashit( home_url() . str_replace( $home_path , '' , parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) )) .'wijax/' );
 	}
 
 	function update( $new_instance, $old_instance )
