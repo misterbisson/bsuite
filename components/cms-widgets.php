@@ -409,7 +409,7 @@ class bSuite_PostLoop_Scroller
 				late_enqueue_script( 'scrollable' );
 				if( $this->settings->css )
 					late_enqueue_style( 'scrollable' );
-				add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
+				add_filter( 'print_footer_scripts', array( $this, 'print_js' ));
 				break;
 		}
 	}
