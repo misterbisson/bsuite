@@ -380,9 +380,14 @@ class bSuite_PostLoop_Scroller
 
 			// scrollable plugins
 			'navigator' => TRUE,  // FALSE or selector (html id or classname)
-			'autoscroll' => FALSE, // TRUE or integer representing interval
+			'autoscroll' => array(
+				'interval' => 2500,
+				'autoplay' => TRUE,
+				'autopause' => TRUE,
+				'steps' => 1,
+			)
 		);
-		$this->settings = (object) wp_parse_args( $args, $defaults );
+		$this->settings = (object) wp_parse_args( (array) $args , (array) $defaults );
 
 		// get the path to our scripts and styles
 		global $bsuite;
@@ -390,8 +395,6 @@ class bSuite_PostLoop_Scroller
 
 		// register scripts and styles
 		wp_register_script( 'scrollable', $this->path_web . '/components/js/scrollable.min.js', array('jquery'), TRUE );
-		wp_register_script( 'scrollable-navigator', $this->path_web . '/components/js/scrollable.navigator.min.js', array('scrollable'), TRUE );
-		wp_register_script( 'scrollable-autoscroll', $this->path_web . '/components/js/scrollable.autoscroll.min.js', array('scrollable'), TRUE );
 		wp_register_style( 'scrollable', $this->path_web .'/components/css/scrollable.css' );
 
 		// register our hook to the named action
@@ -404,10 +407,6 @@ class bSuite_PostLoop_Scroller
 		{
 			case 'before':
 				late_enqueue_script( 'scrollable' );
-				if( $this->settings->navigator )
-					late_enqueue_script( 'scrollable-navigator' );
-				if( $this->settings->autoscroll )
-					late_enqueue_script( 'scrollable-autoscroll' );
 				if( $this->settings->css )
 					late_enqueue_style( 'scrollable' );
 				add_filter( 'print_footer_scripts', array( &$this, 'print_js' ));
@@ -419,7 +418,6 @@ class bSuite_PostLoop_Scroller
 	{
 //$(".scroller").scrollable({circular: true}).navigator("#myNavi").autoscroll({interval: 4000});
 //navigator(".navi");
-
 ?>
 <script type="text/javascript">	
 	;(function($){
@@ -429,7 +427,7 @@ class bSuite_PostLoop_Scroller
 			$('<?php echo $this->settings->selector; ?>').height( $('.items div').height() );
 
 			// initialize scrollable
-			$('<?php echo $this->settings->selector; ?>').scrollable({ circular: true }).navigator()
+			$('<?php echo $this->settings->selector; ?>').scrollable({ circular: true }).navigator().autoscroll(<?php echo json_encode( $this->settings->autoscroll ); ?>)
 		});
 	})(jQuery);
 </script>
@@ -2087,7 +2085,7 @@ function bsuite_print_late_styles()
 <script type="text/javascript">	
 	;(function($){
 		$(window).load(function(){
-			// set the size of some items
+			// print the style includes
 <?php foreach( $tags as $tag )
 {
 	echo "			$tag";
