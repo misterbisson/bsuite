@@ -365,6 +365,10 @@ class bSuite_Social_Analytics
 
 	function get_popular()
 	{
+
+		if ( $urls = wp_cache_get( 'popular', 'bsocial_analytics' ))
+			return $urls;
+
 		$the_date = date( 'Y-m-d' , strtotime( '-2 days' ));
 
 		$query = 
@@ -388,10 +392,12 @@ class bSuite_Social_Analytics
 			";
 
 		$urls = $this->db->get_results( $query );
+		$urls = apply_filters( 'bsocial_link_info' , $urls );
 
-		return apply_filters( 'bsocial_link_info' , $urls );
+		wp_cache_add( 'popular' , $urls , 'bsocial_analytics' , 600 );
+
+		return $urls;
 	}
-
 
 	function get_old_popular()
 	{
@@ -714,3 +720,8 @@ function bsuite_sa_insert_urlinfo()
 
 	die;
 }
+
+
+
+
+
