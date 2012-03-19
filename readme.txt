@@ -4,7 +4,7 @@ Donate link: http://MaisonBisson.com/
 Tags: cms, content management, tags, stats, statistics, formatting, pages, widgets, related posts, keyword searching, post, posts, page, pages, admin, related content
 Requires at least: 3.2
 Tested up to: 3.3.1
-Stable tag: 5a2
+Stable tag: trunk
 
 A suite of tools used to help surface interesting and popular stories as well as improve WordPress' CMS capabilities as an application platform.
 

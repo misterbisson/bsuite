@@ -243,7 +243,7 @@ $results = $wpdb->get_results("SELECT hit_count, hit_avg, name
 
 if( count( $results ) )
 	foreach( $results as $res )
-		echo '<li><a href="'. $res->name .'">'. wordwrap( urldecode( str_replace( get_settings( 'siteurl' ), '', $res->name )), 25, "\n", TRUE ) .'</a><br><small>Avg: '. number_format( $res->hit_avg ) .' Total: '. number_format( $res->hit_count ) ."</small></li>\n";
+		echo '<li><a href="'. sanitize_url( $res->name ).'">'. wordwrap( htmlspecialchars( urldecode( str_replace( get_settings( 'siteurl' ), '', $res->name ))), 25, "\n", TRUE ) .'</a><br><small>Avg: '. number_format( $res->hit_avg ) .' Total: '. number_format( $res->hit_count ) ."</small></li>\n";
 else
 	echo '<li>No Data Yet.</li>';
 
@@ -276,7 +276,7 @@ $results = $wpdb->get_results("SELECT name, object_id, object_type, COUNT(*) AS 
 if( count( $results ) )
 	foreach( $results as $res ){
 		if( 1 == $res->object_type )
-			echo '<li><a href="'. $res->name .'">'. wordwrap( urldecode( str_replace( get_settings( 'siteurl' ), '', $res->name )), 25, "\n", TRUE ) .'</a><br><small>'. number_format( $res->hit_count ) .' hits since '. $res->date_min .'</small></li>';
+			echo '<li><a href="'. sanitize_url( $res->name ) .'">'. wordwrap( htmlspecialchars( urldecode( str_replace( get_settings( 'siteurl' ), '', $res->name ))), 25, "\n", TRUE ) .'</a><br><small>'. number_format( $res->hit_count ) .' hits since '. $res->date_min .'</small></li>';
 		else
 			echo '<li><a href="'. get_permalink( $res->object_id ) .'">'. wordwrap( get_the_title( $res->object_id ), 25, "\n", TRUE ) .'</a><br><small>'. number_format( $res->hit_count ) .' hits since '. $res->date_min .'</small></li>';
 }else{
