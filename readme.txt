@@ -41,10 +41,6 @@ bSuite is a set of tools that help surface interesting and popular stories as we
 1. Embed Slideshare items
 1. Embed Wufoo forms
 
-= Language Translations =
-
-1. RU translation by <a href="http://www.fatcow.com">FatCow.com</a>.
-
 == Installation ==
 
 1. Place the plugin folder in your `wp-content/plugins/` directory and activate it.
