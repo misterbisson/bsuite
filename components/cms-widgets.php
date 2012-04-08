@@ -40,8 +40,8 @@ class bSuite_PostLoops {
 
 		$this->get_instances();
 
-		$this->get_templates( 'post' );
-		$this->get_templates( 'response' );
+//		$this->get_templates( 'post' );
+//		$this->get_templates( 'response' );
 
 		add_action( 'admin_init', array(&$this, 'admin_init' ));
 //		add_filter( 'posts_request' , array( &$this , 'posts_request' ));
@@ -187,13 +187,92 @@ class bSuite_PostLoops {
 		if( isset( $this->$type_var ))
 			return $this->$type_var;
 
-		$this->$type_var = array_merge( 
-				(array) $this->get_templates_readdir( dirname( dirname( __FILE__ )) .'/templates-'. $type .'/' ),
-				(array) $this->get_templates_readdir( TEMPLATEPATH . '/templates-'. $type .'/' ), 
-				(array) $this->get_templates_readdir( STYLESHEETPATH . '/templates-'. $type .'/' ) 
-			);
+		$this->$type_var = array_merge
+		( 
+			(array) $this->get_templates_readdir( dirname( dirname( __FILE__ )) .'/templates-'. $type .'/' ),
+			(array) $this->get_templates_readdir( TEMPLATEPATH . '/templates-'. $type .'/' ), 
+			(array) $this->get_templates_readdir( STYLESHEETPATH . '/templates-'. $type .'/' ) 
+		);
 
 		return $this->$type_var;
+	}
+
+
+	function _missing_template()
+	{
+?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
+<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
+	<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
+	<small><?php the_time('F jS, Y') ?> <!-- by <?php the_author() ?> --></small>
+
+	<div class="entry">
+		<?php the_content('Read the rest of this entry &raquo;'); ?>
+	</div>
+
+	<p class="postmetadata"><?php the_tags('Tags: ', ', ', '<br />'); ?> Posted in <?php the_category(', ') ?> | <?php edit_post_link('Edit', '', ' | '); ?>  <?php comments_popup_link('No Comments &#187;', '1 Comment &#187;', '% Comments &#187;'); ?></p>
+</div>
+<?php
+	}
+
+	function do_template( $name , $event , $query_object = FALSE , $postloop_object = FALSE )
+	{
+
+		// get the post templates
+		$templates = $this->get_templates( 'post' );
+
+		// check that we have a template by this name
+		if( ! isset( $templates[ $name ] ))
+		{
+			$this->_missing_template();
+			return;
+		}
+
+		// do it
+		switch( $event )
+		{
+			case 'before':
+				if( isset( $templates[ $name ]['wrapper'] ) && ( ! @include preg_replace( '/\.php$/', '_before.php', $templates[ $name ]['fullpath'] )))
+					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
+
+				break;
+
+			case 'after':
+				if( isset( $templates[ $name ]['wrapper'] ) && ( ! @include preg_replace( '/\.php$/', '_after.php', $templates[ $name ]['fullpath'] )))
+					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
+
+				break;
+
+			default:
+				if( ! @include $templates[ $name ]['fullpath'] )
+					$this->_missing_template();
+
+		}
+	}
+
+	function get_actions( $type = 'post' )
+	{
+		$templates = $this->get_templates( $type );
+
+		$actions = array();
+
+		foreach( $templates as $template => $info )
+		{
+			$actions[ $template ] = array( 
+				'name' 		=> $info['name'],
+				'callback' 	=> array( $this , 'do_template' ),
+			);
+		}
+
+		return apply_filters( 'bsuite_postloop_actions' , $actions );
+	}
+
+	function do_action( $type , $name , $event , $query_object )
+	{
+
+		$actions = $this->get_actions( $type );
+
+		if( isset( $actions[ $name ] ) && is_callable( $actions[ $name ]['callback'] ))
+			call_user_func( $actions[ $name ]['callback'] , $name , $event , $query_object , $this );
 	}
 
 	function preprocess_comment( $comment )
@@ -452,17 +531,12 @@ new bSuite_PostLoop_Scroller();
  *
  */
 class bSuite_Widget_PostLoop extends WP_Widget {
-	// placeholder callback, suggesting a format. if submitted as the callback name,
-	// will be entered into the database as NULL
-	const DEFAULT_CALLBACK = 'postloop_f_<name>';
 
 	function bSuite_Widget_PostLoop() {
 		$widget_ops = array('classname' => 'widget_postloop', 'description' => __( 'Build your own post loop') );
 		$this->WP_Widget('postloop', __('Post Loop'), $widget_ops);
 
 		global $postloops;
-
-		$this->post_templates = &$postloops->templates_post;
 
 		add_filter( 'wijax-actions' , array( $this , 'wjiax_actions' ) );
 	}
@@ -484,7 +558,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		extract( $args );
 
 		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
-		$skip_templates = $instance['template'] === 'callback';
 
 		if( 'normal' == $instance['what'] ){
 			wp_reset_query();
@@ -661,16 +734,18 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 //print_r( $ourposts );
 		}
 
-		if( $ourposts->have_posts() ){
+		if( $ourposts->have_posts() )
+		{
+
+			$this->post_templates = (array) $postloops->get_templates('post');
+
 			$postloops->current_postloop = $instance;
 
 			$postloops->thumbnail_size = isset( $instance['thumbnail_size'] ) ? $instance['thumbnail_size'] : 'nines-thumbnail-small';
 
 			$extra_classes = array();
 
-			if( ! $skip_templates )
-				$extra_classes[] = str_replace( '9spot', 'nines' , sanitize_title_with_dashes( $this->post_templates[ $instance['template'] ]['name'] ));
-
+			$extra_classes[] = str_replace( '9spot', 'nines' , sanitize_title_with_dashes( $this->post_templates[ $instance['template'] ]['name'] ));
 			$extra_classes[] = 'widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] );
 
 			echo str_replace( 'class="', 'class="'. implode( ' ' , $extra_classes ) .' ' , $before_widget );
@@ -678,26 +753,14 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			if ( $instance['title_show'] && $title )
 				echo $before_title . $title . $after_title .'<div class="widget_subtitle">'. $instance['subtitle'] .'</div>';
 
-			$action_name = 'postloop';
-
-			if( ! $skip_templates ) {
-				$action_name = sanitize_title( basename( $this->post_templates[ $instance['template'] ]['fullpath'] , '.php' ));
-				$action_name = empty( $action_name ) ? 'postloop' : 'postloop_'. $action_name;
-			}
-
-			if( ! $skip_templates && ( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) ) )
-			{
-				$has_wrapper = $this->post_templates[ $instance['template'] ]['wrapper'];
-				if( $has_wrapper && (! @include preg_replace( '/\.php$/', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] )))
-					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
-			}//end if
-
 			$offset_run = $offset_now = 1;
 
+			// old actions
+			$action_name = sanitize_title( basename( $instance['template'] , '.php' ));
 			do_action( $action_name , 'before' , $ourposts , $postloops );
 
-			if( $instance['callback'] )
-				do_action( $instance['callback'] , 'before' , $ourposts , $postloops );
+			// new actions
+			$postloops->do_action( 'post' , $instance['template'], 'before' , $ourposts );
 
 			while( $ourposts->have_posts() )
 			{
@@ -736,35 +799,19 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				foreach( $terms as $term )
 					$postloops->terms[ $this->number ][ $term->taxonomy ][ $term->term_id ]++;
 
+				// old actions
 				do_action( $action_name , 'post' , $ourposts , $postloops );
-				if( $instance['callback'] )
-					do_action( $instance['callback'] , 'post' , $ourposts , $postloops );
 
-				if( ! $skip_templates && (empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath']) )
-				{
-?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
-<div <?php post_class() ?> id="post-<?php the_ID(); ?>">
-	<h2><a href="<?php the_permalink() ?>" rel="bookmark" title="Permanent Link to <?php the_title_attribute(); ?>"><?php the_title(); ?></a></h2>
-	<small><?php the_time('F jS, Y') ?> <!-- by <?php the_author() ?> --></small>
+				// new actions
+				$postloops->do_action( 'post' , $instance['template'] , '' , $ourposts );
 
-	<div class="entry">
-		<?php the_content('Read the rest of this entry &raquo;'); ?>
-	</div>
-
-	<p class="postmetadata"><?php the_tags('Tags: ', ', ', '<br />'); ?> Posted in <?php the_category(', ') ?> | <?php edit_post_link('Edit', '', ' | '); ?>  <?php comments_popup_link('No Comments &#187;', '1 Comment &#187;', '% Comments &#187;'); ?></p>
-</div>
-<?php
-				}
 			}
 
-			if( ! $skip_templates && isset( $has_wrapper ))
-			{
-				if( ! @include preg_replace( '/\.php$/', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
-					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
-			}//end if
+			// old actions
 			do_action( $action_name , 'after' , $ourposts , $postloops );
-			if( $instance['callback'] )
-				do_action( $instance['callback'] , 'after' , $ourposts , $postloops );
+
+			// new actions
+			$postloops->do_action( 'post' , $instance['template'] , 'after' , $ourposts );
 
 			echo $after_widget;
 		}
@@ -789,9 +836,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$valid_types[] = 'normal';
 		$valid_types = apply_filters( 'ploop_types', $valid_types );
 		$instance['what'] = in_array( $new_instance['what'], $valid_types ) ? $new_instance['what'] : '';
-
-		if( empty($new_instance['callback']) || self::DEFAULT_CALLBACK === $new_instance['callback'] )
-			$new_instance['callback'] = null;
 
 		if( $this->control_blogs( $instance , FALSE , FALSE )) // check if the user has permissions to the previously set blog
 		{
@@ -862,7 +906,6 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['count'] = absint( $new_instance['count'] );
 		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'comment_new', 'pop_recent', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
-		$instance['callback'] = $new_instance['callback'];
 		$instance['offset_run'] = empty( $new_instance['offset_run'] ) ? '' : absint( $new_instance['offset_run'] );
 		$instance['offset_start'] = empty( $new_instance['offset_start'] ) ? '' : absint( $new_instance['offset_start'] );
 in_array( $new_instance['thumbnail_size'], (array) get_intermediate_image_sizes() ) ? $new_instance['thumbnail_size']: '';
@@ -895,9 +938,6 @@ die;
 				'blog' => $blog_id,
 				) 
 			);
-
-		if( empty($instance['callback']) )
-			$instance['callback'] = self::DEFAULT_CALLBACK;
 
 		$title = esc_attr( $instance['title'] );
 		$subtitle = esc_attr( $instance['subtitle'] );
@@ -1130,15 +1170,6 @@ die;
 					<select name="<?php echo $this->get_field_name('template'); ?>" id="<?php echo $this->get_field_id('template'); ?>" class="widefat">
 						<?php $this->control_template_dropdown( $instance['template'] ); ?>
 					</select>
-				</p>
-			</div>
-		</div>
-
-		<div id="<?php echo $this->get_field_id('callback'); ?>-container" class="postloop container posttype_normal">
-			<label for="<?php echo $this->get_field_id('callback'); ?>"><?php _e( 'Callback' ); ?></label>
-			<div id="<?php echo $this->get_field_id('callback'); ?>-contents" class="contents hide-if-js">
-				<p>
-					<input type="text" value="<?php echo esc_attr( $instance['callback'] ); ?>" name="<?php echo $this->get_field_name('callback'); ?>" id="<?php echo $this->get_field_id('callback'); ?>" class="widefat" />
 				</p>
 			</div>
 		</div>
@@ -1413,17 +1444,17 @@ die;
 		return implode( "\n", $list );
 	}
 	
-	function control_template_dropdown( $default = '' ) {
-		foreach ( $this->post_templates as $template => $info ) :
+	function control_template_dropdown( $default = '' )
+	{
+		global $postloops;
+
+		foreach ( $postloops->get_actions('post') as $template => $info ) :
 			if ( $default == $template )
 				$selected = " selected='selected'";
 			else
 				$selected = '';
-			echo "\n\t<option value=\"" .$info['file'] .'" '. $selected .'>'. $info['name'] .'</option>';
+			echo "\n\t<option value=\"" .$template .'" '. $selected .'>'. $info['name'] .'</option>';
 		endforeach;
-
-		$selected = $default === 'callback' ? ' selected="selected"' : '';
-		echo "\n\t<option value=\"callback\" ". $selected .'>'. _('Callback only (no template)') . '</option>';
 	}
 
 	function tax_posttype_classes( $taxonomy ) {
