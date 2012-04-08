@@ -51,7 +51,7 @@ class bSuite_FeaturedComments
 
 			$post_types = array_merge( 
 				(array) $query->query_vars['post_type'] , 
-				array( isset( $query->queried_object->post_type ) ? $query->queried_object->post_type : 'post' ), 
+				array( is_singular() && isset( $query->queried_object->post_type ) ? $query->queried_object->post_type : 'post' ), 
 				array( $this->post_type_name )
 			);
 
@@ -99,15 +99,15 @@ class bSuite_FeaturedComments
 
 	function filter_the_author( $author_name )
 	{
-		if( the_ID() && get_post( the_ID() )->post_type == $this->post_type_name )
-			return get_comment_author( get_post_meta( the_ID() , $this->meta_key .'-comment_id' , TRUE ));
+		if( get_the_ID() && get_post( get_the_ID() )->post_type == $this->post_type_name )
+			return get_comment_author( get_post_meta( get_the_ID() , $this->meta_key .'-comment_id' , TRUE ));
 		else
 			return $author_name;
 	}
 
 	function filter_the_author_posts_link( $url )
 	{
-		if( the_ID() && get_post( the_ID() )->post_type == $this->post_type_name )
+		if( get_the_ID() && get_post( get_the_ID() )->post_type == $this->post_type_name )
 			return '';
 		else
 			return $url;
@@ -299,6 +299,7 @@ class bSuite_FeaturedComments
 				),
 				'supports' => array(
 					'title', 
+					'author', 
 				),
 				'register_meta_box_cb' => array( $this , 'register_metaboxes' ),
 				'public' => TRUE,
