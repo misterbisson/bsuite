@@ -79,7 +79,16 @@ class bSuite_PostLoops {
 
 			// get the term taxonomy IDs for the $postloops object
 			foreach( $terms as $term )
-				$this->terms[-1][ $term->taxonomy ][ $term->term_id ]++;
+			{
+				if( ! isset( $this->terms[-1][$term->taxonomy] ) ) // initialize
+					$this->terms[-1][ $term->taxonomy ] = array();
+
+				if( ! isset( $this->terms[-1][$term->taxonomy][ $term->term_id ] )) // initialize
+					$this->terms[-1][ $term->taxonomy ][ $term->term_id ] = 0;
+
+				$this->terms[-1][ $term->taxonomy ][ $term->term_id ]++; // increment
+			}
+
 
 		}
 	}
@@ -443,6 +452,9 @@ new bSuite_PostLoop_Scroller();
  *
  */
 class bSuite_Widget_PostLoop extends WP_Widget {
+	// placeholder callback, suggesting a format. if submitted as the callback name,
+	// will be entered into the database as NULL
+	const DEFAULT_CALLBACK = 'postloop_f_<name>';
 
 	function bSuite_Widget_PostLoop() {
 		$widget_ops = array('classname' => 'widget_postloop', 'description' => __( 'Build your own post loop') );
@@ -472,7 +484,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		extract( $args );
 
 		$title = apply_filters('widget_title', empty( $instance['title'] ) ? '' : $instance['title']);
-	
+		$skip_templates = $instance['template'] === 'callback';
+
 		if( 'normal' == $instance['what'] ){
 			wp_reset_query();
 			global $wp_query;
@@ -481,11 +494,11 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 		}else{
 //			$criteria['suppress_filters'] = TRUE;
-	
-			if( in_array( $instance['what'], array( 'post', 'page', 'attachment' )))
+			
+			if( in_array( $instance['what'], apply_filters( 'bloop_types', get_post_types() ) ) )
 				$criteria['post_type'] = $instance['what'];
 
-			if( $instance['what'] == 'attachment' )
+			if( in_array( $instance['what'], array( 'attachment', 'revision' )))
 				$criteria['post_status'] = 'inherit';
 
 			if( !empty( $instance['categories_in'] ))
@@ -555,7 +568,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					add_filter( 'posts_where', array( &$postloops , 'posts_where_date_since_once' ), 10 );
 			}
 
-			if( $_GET['wijax'] && absint( $_GET['paged'] ))
+			if( isset( $_GET['wijax'] ) && absint( $_GET['paged'] ))
 				$criteria['paged'] = absint( $_GET['paged'] );
 			$criteria['showposts'] = absint( $instance['count'] );
 
@@ -654,7 +667,10 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			$postloops->thumbnail_size = isset( $instance['thumbnail_size'] ) ? $instance['thumbnail_size'] : 'nines-thumbnail-small';
 
 			$extra_classes = array();
-			$extra_classes[] = str_replace( '9spot', 'nines' , sanitize_title_with_dashes( $this->post_templates[ $instance['template'] ]['name'] ));
+
+			if( ! $skip_templates )
+				$extra_classes[] = str_replace( '9spot', 'nines' , sanitize_title_with_dashes( $this->post_templates[ $instance['template'] ]['name'] ));
+
 			$extra_classes[] = 'widget-post_loop-'. sanitize_title_with_dashes( $instance['title'] );
 
 			echo str_replace( 'class="', 'class="'. implode( ' ' , $extra_classes ) .' ' , $before_widget );
@@ -662,10 +678,14 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			if ( $instance['title_show'] && $title )
 				echo $before_title . $title . $after_title .'<div class="widget_subtitle">'. $instance['subtitle'] .'</div>';
 
-			$action_name = sanitize_title( basename( $this->post_templates[ $instance['template'] ]['fullpath'] , '.php' ));
-			$action_name = empty( $action_name ) ? 'postloop' : 'postloop_'. $action_name;
+			$action_name = 'postloop';
 
-			if( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) )
+			if( ! $skip_templates ) {
+				$action_name = sanitize_title( basename( $this->post_templates[ $instance['template'] ]['fullpath'] , '.php' ));
+				$action_name = empty( $action_name ) ? 'postloop' : 'postloop_'. $action_name;
+			}
+
+			if( ! $skip_templates && ( ! empty( $instance['template'] ) && isset( $this->post_templates[ $instance['template'] ] ) ) )
 			{
 				$has_wrapper = $this->post_templates[ $instance['template'] ]['wrapper'];
 				if( $has_wrapper && (! @include preg_replace( '/\.php$/', '_before.php', $this->post_templates[ $instance['template'] ]['fullpath'] )))
@@ -675,6 +695,10 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			$offset_run = $offset_now = 1;
 
 			do_action( $action_name , 'before' , $ourposts , $postloops );
+
+			if( $instance['callback'] )
+				do_action( $instance['callback'] , 'before' , $ourposts , $postloops );
+
 			while( $ourposts->have_posts() )
 			{
 				unset( $GLOBALS['pages'] ); // to address ticket: http://core.trac.wordpress.org/ticket/12651
@@ -713,7 +737,10 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 					$postloops->terms[ $this->number ][ $term->taxonomy ][ $term->term_id ]++;
 
 				do_action( $action_name , 'post' , $ourposts , $postloops );
-				if( empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath'] )
+				if( $instance['callback'] )
+					do_action( $instance['callback'] , 'post' , $ourposts , $postloops );
+
+				if( ! $skip_templates && (empty( $instance['template'] ) || !include $this->post_templates[ $instance['template'] ]['fullpath']) )
 				{
 ?><!-- ERROR: the required template file is missing or unreadable. A default template is being used instead. -->
 <div <?php post_class() ?> id="post-<?php the_ID(); ?>">
@@ -730,12 +757,14 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				}
 			}
 
-			if( isset( $has_wrapper ))
+			if( ! $skip_templates && isset( $has_wrapper ))
 			{
 				if( ! @include preg_replace( '/\.php$/', '_after.php', $this->post_templates[ $instance['template'] ]['fullpath'] ))
 					echo '<!-- ERROR: the required template wrapper file is missing or unreadable. -->';
 			}//end if
 			do_action( $action_name , 'after' , $ourposts , $postloops );
+			if( $instance['callback'] )
+				do_action( $instance['callback'] , 'after' , $ourposts , $postloops );
 
 			echo $after_widget;
 		}
@@ -755,7 +784,14 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['title'] = wp_filter_nohtml_kses( $new_instance['title'] );
 		$instance['subtitle'] = wp_filter_nohtml_kses( $new_instance['subtitle'] );
 		$instance['title_show'] = absint( $new_instance['title_show'] );
-		$instance['what'] = in_array( $new_instance['what'], array( 'normal', 'post', 'page', 'attachment', 'any') ) ? $new_instance['what']: '';
+
+		$valid_types = get_post_types();
+		$valid_types[] = 'normal';
+		$valid_types = apply_filters( 'ploop_types', $valid_types );
+		$instance['what'] = in_array( $new_instance['what'], $valid_types ) ? $new_instance['what'] : '';
+
+		if( empty($new_instance['callback']) || self::DEFAULT_CALLBACK === $new_instance['callback'] )
+			$new_instance['callback'] = null;
 
 		if( $this->control_blogs( $instance , FALSE , FALSE )) // check if the user has permissions to the previously set blog
 		{
@@ -826,6 +862,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['count'] = absint( $new_instance['count'] );
 		$instance['order'] = in_array( $new_instance['order'], array( 'age_new', 'age_old', 'title_az', 'title_za', 'comment_new', 'pop_recent', 'rand' ) ) ? $new_instance['order']: '';
 		$instance['template'] = wp_filter_nohtml_kses( $new_instance['template'] );
+		$instance['callback'] = $new_instance['callback'];
 		$instance['offset_run'] = empty( $new_instance['offset_run'] ) ? '' : absint( $new_instance['offset_run'] );
 		$instance['offset_start'] = empty( $new_instance['offset_start'] ) ? '' : absint( $new_instance['offset_start'] );
 in_array( $new_instance['thumbnail_size'], (array) get_intermediate_image_sizes() ) ? $new_instance['thumbnail_size']: '';
@@ -859,6 +896,9 @@ die;
 				) 
 			);
 
+		if( empty($instance['callback']) )
+			$instance['callback'] = self::DEFAULT_CALLBACK;
+
 		$title = esc_attr( $instance['title'] );
 		$subtitle = esc_attr( $instance['subtitle'] );
 
@@ -872,18 +912,21 @@ die;
 			<label for="<?php echo $this->get_field_id('subtitle'); ?>"><?php _e('Sub-title'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('subtitle'); ?>" name="<?php echo $this->get_field_name('subtitle'); ?>" type="text" value="<?php echo $subtitle; ?>" />
 		</p>
 
+		<?php
+
+		$types = apply_filters( 'ploop_types', get_post_types() );
+
+		?>
+
 		<div id="<?php echo $this->get_field_id('what'); ?>-container" class="postloop container posttype_normal">
 			<label for="<?php echo $this->get_field_id('what'); ?>"><?php _e( 'What to show' ); ?></label>
 			<div id="<?php echo $this->get_field_id('what'); ?>-contents" class="contents hide-if-js">
 				<p>
 					<select name="<?php echo $this->get_field_name('what'); ?>" id="<?php echo $this->get_field_id('what'); ?>" class="widefat postloop posttype_selector">
 						<option value="normal" <?php selected( $instance['what'], 'normal' ); ?>><?php _e('The default content'); ?></option>
-						<option value="post" <?php selected( $instance['what'], 'post' ); ?>><?php _e('Posts'); ?></option>
-						<option value="page" <?php selected( $instance['what'], 'page' ); ?>><?php _e('Pages'); ?></option>
-		<!--
-						<option value="attachment" <?php selected( $instance['what'], 'attachment' ); ?>><?php _e('Attachments'); ?></option>
-						<option value="any" <?php selected( $instance['what'], 'any' ); ?>><?php _e('Any content'); ?></option>
-		-->
+						<?php foreach( $types as $type ) : $type = get_post_type_object($type); ?>
+							<option value="<?php echo esc_attr($type->name); ?>" <?php selected( $instance['what'], $type->name ); ?>><?php _e($type->labels->name); ?></option>
+						<?php endforeach; ?>
 					</select>
 				</p>
 			</div>
@@ -893,7 +936,7 @@ die;
 		if( $this->control_blogs( $instance )):
 ?>
 
-		<div id="<?php echo $this->get_field_id('categories'); ?>-container" class="postloop container hide-if-js posttype_post">
+		<div id="<?php echo $this->get_field_id('categories'); ?>-container" class="postloop container hide-if-js <?php echo $this->tax_posttype_classes('category'); ?>">
 			<label for="<?php echo $this->get_field_id('categoriesbool'); ?>"><?php _e( 'Categories' ); ?></label>
 			<div id="<?php echo $this->get_field_id('categories'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -911,7 +954,7 @@ die;
 			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('tags'); ?>-container" class="postloop container hide-if-js posttype_post">
+		<div id="<?php echo $this->get_field_id('tags'); ?>-container" class="postloop container hide-if-js <?php echo $this->tax_posttype_classes('post_tag'); ?>">
 			<label for="<?php echo $this->get_field_id('tagsbool'); ?>"><?php _e( 'Tags' ); ?></label>
 			<div id="<?php echo $this->get_field_id('tags'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -974,10 +1017,7 @@ die;
 			</div>
 		</div>
 
-<?php 
-//		$this->control_taxonomies( $instance , $instance['what'] );
-?>
-
+		<?php $this->control_taxonomies( $instance , $instance['what'] ); ?>
 
 		<div id="<?php echo $this->get_field_id('post__in'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
 			<label for="<?php echo $this->get_field_id('post__in'); ?>"><?php _e( 'Matching any post ID' ); ?></label>
@@ -1051,7 +1091,7 @@ die;
 			</div>
 		<?php endif; ?>
 
-		<div id="<?php echo $this->get_field_id('count'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
+		<div id="<?php echo $this->get_field_id('count'); ?>-container" class="postloop container hide-if-js posttype_normal">
 			<label for="<?php echo $this->get_field_id('count'); ?>"><?php _e( 'Number of items to show' ); ?></label>
 			<div id="<?php echo $this->get_field_id('count'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1090,6 +1130,15 @@ die;
 					<select name="<?php echo $this->get_field_name('template'); ?>" id="<?php echo $this->get_field_id('template'); ?>" class="widefat">
 						<?php $this->control_template_dropdown( $instance['template'] ); ?>
 					</select>
+				</p>
+			</div>
+		</div>
+
+		<div id="<?php echo $this->get_field_id('callback'); ?>-container" class="postloop container posttype_normal">
+			<label for="<?php echo $this->get_field_id('callback'); ?>"><?php _e( 'Callback' ); ?></label>
+			<div id="<?php echo $this->get_field_id('callback'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<input type="text" value="<?php echo esc_attr( $instance['callback'] ); ?>" name="<?php echo $this->get_field_name('callback'); ?>" id="<?php echo $this->get_field_id('callback'); ?>" class="widefat" />
 				</p>
 			</div>
 		</div>
@@ -1308,7 +1357,7 @@ die;
 			$tax = get_taxonomy( $taxonomy );
 			$tax_name = $tax->label;
 ?>
-			<div id="<?php echo $this->get_field_id( 'tax_'. $taxonomy ); ?>-container" class="postloop container hide-if-js posttype_<?php echo $post_type; ?>">
+			<div id="<?php echo $this->get_field_id( 'tax_'. $taxonomy ); ?>-container" class="postloop container hide-if-js <?php echo $this->tax_posttype_classes($taxonomy); ?>">
 				<label for="<?php echo $this->get_field_id( 'tax_'. $taxonomy .'_bool' ); ?>"><?php echo $tax_name; ?></label>
 				<div id="<?php echo $this->get_field_id( 'tax_'. $taxonomy ); ?>-contents" class="contents hide-if-js">
 					<p>
@@ -1365,22 +1414,26 @@ die;
 	}
 	
 	function control_template_dropdown( $default = '' ) {
-		$templates = $this->post_templates; 
-		
-		// Sort templates by name  
-		$names = array();
-		foreach ($templates as $info) {
-			$names[] = $info['name']; 
-		}		
-		array_multisort($templates, $names); 
-		
-		foreach ( $templates as $template => $info ) :
+		foreach ( $this->post_templates as $template => $info ) :
 			if ( $default == $template )
 				$selected = " selected='selected'";
 			else
 				$selected = '';
 			echo "\n\t<option value=\"" .$info['file'] .'" '. $selected .'>'. $info['name'] .'</option>';
 		endforeach;
+
+		$selected = $default === 'callback' ? ' selected="selected"' : '';
+		echo "\n\t<option value=\"callback\" ". $selected .'>'. _('Callback only (no template)') . '</option>';
+	}
+
+	function tax_posttype_classes( $taxonomy ) {
+		$tax = get_taxonomy($taxonomy);
+
+		if( ! $tax || count( $tax->object_type ) == 0 ) {
+			return '';
+		}
+
+		return 'posttype_' . implode( ' posttype_', $tax->object_type );
 	}
 }// end bSuite_Widget_Postloop
 
