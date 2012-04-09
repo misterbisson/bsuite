@@ -640,7 +640,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				if( $instance['tax_'. $taxonomy .'_in_related'] )
 					$instance['tax_'. $taxonomy .'_in'] = array_merge( 
 						(array) $instance['tax_'. $taxonomy .'_in'] ,
-						(array) array_keys( (array) $postloops->terms[ $instance['tax_'. $taxonomy .'_in'] ][ $taxonomy ] )
+						(array) array_keys( (array) $postloops->terms[ $instance['tax_'. $taxonomy .'_in_related'] ][ $taxonomy ] )
 					);
 
 				if( count( $instance['tax_'. $taxonomy .'_in'] ))
@@ -656,7 +656,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				if( $instance['tax_'. $taxonomy .'_not_in_related'] )
 					$instance['tax_'. $taxonomy .'_not_in'] = array_merge( 
 						(array) $instance['tax_'. $taxonomy .'_not_in'] , 
-						(array) array_keys( (array) $postloops->terms[ $instance['tax_'. $taxonomy .'_not_in'] ][ $taxonomy ] )
+						(array) array_keys( (array) $postloops->terms[ $instance['tax_'. $taxonomy .'_not_in_related'] ][ $taxonomy ] )
 					);
 
 				if( count( $instance['tax_'. $taxonomy .'_not_in'] ))
@@ -944,6 +944,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 						if( $temp = is_term( $tag_name, $taxonomy ))
 							$instance['tax_'. $taxonomy .'_in'][] = $temp['term_id'];
 					}
+
+					$instance['tax_'. $taxonomy .'_in_related'] = (int) $new_instance['tax_'. $taxonomy .'_in_related'];
+
 					$tag_name = '';
 					$instance['tax_'. $taxonomy .'_not_in'] = array();
 					foreach( array_filter( array_map( 'trim', array_map( 'wp_filter_nohtml_kses', explode( ',', $new_instance['tax_'. $taxonomy .'_not_in'] )))) as $tag_name )
@@ -951,6 +954,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 						if( $temp = is_term( $tag_name, $taxonomy ))
 							$instance['tax_'. $taxonomy .'_not_in'][] = $temp['term_id'];
 					}
+
+					$instance['tax_'. $taxonomy .'_not_in_related'] = (int) $new_instance['tax_'. $taxonomy .'_not_in_related'];
 				}
 			}
 
