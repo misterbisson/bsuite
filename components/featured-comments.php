@@ -303,6 +303,7 @@ class bSuite_FeaturedComments
 				),
 				'register_meta_box_cb' => array( $this , 'register_metaboxes' ),
 				'public' => TRUE,
+				'show_in_menu' => 'edit-comments.php',
 				'has_archive' => 'talkbox',
 				'rewrite' => array(
 					'slug' => 'talkbox',
