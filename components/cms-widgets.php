@@ -599,6 +599,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			$tax_query = array();
 
+/*
 			if( $instance['tags_in_related'] )
 				$instance['tags_in'] = array_merge( 
 					(array) $instance['tags_in'] ,
@@ -609,9 +610,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			{
 				$tax_query[] = array(
 					'taxonomy' => 'post_tag',
-					'field' => 'id',
+					'field' => 'term_id',
 					'terms' => $instance['tags_in'],
-					'operator' => $instance['tagsbool'],
+					'operator' => strtoupper( $instance['tagsbool'] ),
 				);
 			}
 
@@ -625,12 +626,12 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			{
 				$tax_query[] = array(
 					'taxonomy' => 'post_tag',
-					'field' => 'id',
+					'field' => 'term_id',
 					'terms' => $instance['tags_not_in'],
 					'operator' => 'NOT IN',
 				);
 			}
-
+*/
 			foreach( get_object_taxonomies( $criteria['post_type'] ) as $taxonomy )
 			{
 				if( $taxonomy == 'category' || $taxonomy == 'post_tag' )
@@ -646,9 +647,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				{
 					$tax_query[] = array(
 						'taxonomy' => $taxonomy,
-						'field' => 'id',
+						'field' => 'term_id',
 						'terms' => $instance['tax_'. $taxonomy .'_in'],
-						'operator' => $instance['tax_'. $taxonomy .'_bool'],
+						'operator' => strtoupper( $instance['tax_'. $taxonomy .'_bool'] ),
 					);
 				}
 
@@ -662,7 +663,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 				{
 					$tax_query[] = array(
 						'taxonomy' => $taxonomy,
-						'field' => 'id',
+						'field' => 'term_id',
 						'terms' => $instance['tax_'. $taxonomy .'_not_in'],
 						'operator' => 'NOT IN',
 					);
