@@ -39,14 +39,26 @@ function postloops_widgeteditor( parent_id ) {
 
 //alert( parent_id );
 
+	// open up the sections appropriate to the query type on load
+	jQuery( parent_id + 'select.postloop.querytype_selector').each(function() {
+		var $myThis = jQuery(this);
+	    var querytype = $myThis.val();
+		$myThis.parents('div.widget-content').addClass( 'querytype_' + querytype );
+		$myThis.parents('div.widget-content').children('div .container').slideUp('fast');
+		$myThis.parents('div.widget-content').children('div .querytype_normal' ).slideDown('fast');
+		$myThis.parents('div.widget-content').children('div .querytype_' + querytype ).slideDown('fast');
+	});
+
+/*
 	// open up the sections appropriate to the post type on load
-	jQuery( parent_id + 'select.postloop.posttype_selector').each(function() {
+	jQuery( parent_id + '.querytype_custom select.postloop.posttype_selector').each(function() {
 		var $myThis = jQuery(this);
 	    var posttype = $myThis.val();
 		$myThis.parents('div.widget-content').children('div .container').slideUp('fast');
 		$myThis.parents('div.widget-content').children('div .posttype_normal' ).slideDown('fast');
 		$myThis.parents('div.widget-content').children('div .posttype_' + posttype ).slideDown('fast');
 	});
+*/
 
 	// open the sections with set values
 	jQuery( parent_id + '.postloop .open-on-value').parents('div.contents').slideDown('fast');
@@ -57,6 +69,16 @@ function postloops_widgeteditor( parent_id ) {
 		jQuery(this).parent().children('div').slideToggle('fast');
 	});
 	
+	// make the sections open based on query type
+	jQuery(parent_id + 'select.postloop.querytype_selector').change(function() {
+		var $myThis = jQuery(this);
+	    var querytype = $myThis.val();
+		$myThis.parents('div.widget-content').children('div .container').slideUp('fast');
+		$myThis.parents('div.widget-content').children('div .querytype_normal' ).slideDown('fast');
+		$myThis.parents('div.widget-content').children('div .querytype_' + querytype ).slideDown('fast');
+	});
+
+/*
 	// make the sections open based on post type
 	jQuery(parent_id + 'select.postloop.posttype_selector').change(function() {
 		var $myThis = jQuery(this);
@@ -65,4 +87,6 @@ function postloops_widgeteditor( parent_id ) {
 		$myThis.parents('div.widget-content').children('div .posttype_normal' ).slideDown('fast');
 		$myThis.parents('div.widget-content').children('div .posttype_' + posttype ).slideDown('fast');
 	});
+*/
+
 }

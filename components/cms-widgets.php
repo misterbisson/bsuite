@@ -49,7 +49,7 @@ class bSuite_PostLoops {
 
 	function admin_init()
 	{
-		wp_register_script( 'postloop-editwidgets', $this->path_web . '/components/js/edit_widgets.js', array('jquery'), '1' );
+		wp_register_script( 'postloop-editwidgets', $this->path_web . '/components/js/edit_widgets.js', array('jquery'), '2' );
 		wp_enqueue_script( 'postloop-editwidgets' );
 
 		add_action( 'admin_footer', array( &$this, 'footer_activatejs' ));
@@ -567,9 +567,8 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 		}else{
 //			$criteria['suppress_filters'] = TRUE;
-			
-			if( in_array( $instance['what'], apply_filters( 'bloop_types', get_post_types() ) ) )
-				$criteria['post_type'] = $instance['what'];
+
+			$criteria['post_type'] = array_values( (array) array_intersect( (array) $this->get_post_types() , $instance['what'] ));
 
 			if( in_array( $instance['what'], array( 'attachment', 'revision' )))
 				$criteria['post_status'] = 'inherit';
@@ -832,10 +831,9 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		$instance['subtitle'] = wp_filter_nohtml_kses( $new_instance['subtitle'] );
 		$instance['title_show'] = absint( $new_instance['title_show'] );
 
-		$valid_types = get_post_types();
-		$valid_types[] = 'normal';
-		$valid_types = apply_filters( 'ploop_types', $valid_types );
-		$instance['what'] = in_array( $new_instance['what'], $valid_types ) ? $new_instance['what'] : '';
+		$instance['query'] = in_array( $new_instance['query'] , array( 'normal' , 'custom' )) ? $new_instance['query'] : 'normal';
+
+		$instance['what'] = (array) array_intersect( (array) $this->get_post_types() , array_keys( $new_instance['what'] ));
 
 		if( $this->control_blogs( $instance , FALSE , FALSE )) // check if the user has permissions to the previously set blog
 		{
@@ -952,22 +950,30 @@ die;
 			<label for="<?php echo $this->get_field_id('subtitle'); ?>"><?php _e('Sub-title'); ?></label> <input class="widefat" id="<?php echo $this->get_field_id('subtitle'); ?>" name="<?php echo $this->get_field_name('subtitle'); ?>" type="text" value="<?php echo $subtitle; ?>" />
 		</p>
 
-		<?php
+		<!-- Query type -->
+		<div id="<?php echo $this->get_field_id('query'); ?>-container" class="postloop container querytype_normal posttype_normal">
+			<label for="<?php echo $this->get_field_id('query'); ?>"><?php _e( 'What to show' ); ?></label>
+			<div id="<?php echo $this->get_field_id('query'); ?>-contents" class="contents hide-if-js">
+				<p>
+					<select name="<?php echo $this->get_field_name('query'); ?>" id="<?php echo $this->get_field_id('query'); ?>" class="widefat postloop querytype_selector">
+						<option value="normal" <?php selected( $instance['query'], 'normal' ); ?>><?php _e('The default content'); ?></option>
+						<option value="custom" <?php selected( $instance['query'], 'custom' ); ?>><?php _e('Custom content'); ?></option>
+					</select>
+				</p>
+			</div>
+		</div>
 
-		$types = apply_filters( 'ploop_types', get_post_types() );
-
-		?>
-
-		<div id="<?php echo $this->get_field_id('what'); ?>-container" class="postloop container posttype_normal">
-			<label for="<?php echo $this->get_field_id('what'); ?>"><?php _e( 'What to show' ); ?></label>
+		<!-- Post type -->
+		<div id="<?php echo $this->get_field_id('what'); ?>-container" class="postloop container querytype_custom posttype_normal">
+			<label for="<?php echo $this->get_field_id('what'); ?>"><?php _e( 'Selecting what kind of content' ); ?></label>
 			<div id="<?php echo $this->get_field_id('what'); ?>-contents" class="contents hide-if-js">
 				<p>
-					<select name="<?php echo $this->get_field_name('what'); ?>" id="<?php echo $this->get_field_id('what'); ?>" class="widefat postloop posttype_selector">
-						<option value="normal" <?php selected( $instance['what'], 'normal' ); ?>><?php _e('The default content'); ?></option>
-						<?php foreach( $types as $type ) : $type = get_post_type_object($type); ?>
-							<option value="<?php echo esc_attr($type->name); ?>" <?php selected( $instance['what'], $type->name ); ?>><?php _e($type->labels->name); ?></option>
+					<ul>
+						<?php foreach( (array) $this->get_post_types() as $type ) : $type = get_post_type_object( $type ); ?>
+							<li><label for="<?php echo $this->get_field_id( 'what-'. esc_attr( $type->name )); ?>"><input id="<?php echo $this->get_field_id( 'what-'. esc_attr( $type->name )); ?>" name="<?php echo $this->get_field_name( 'what' ) .'['. esc_attr( $type->name ) .']'; ?>" type="checkbox" value="1" <?php echo ( isset( $instance[ 'what' ][ $type->name ] ) ? 'checked="checked" class="open-on-value" ' : 'class="checkbox"' ); ?>/> <?php echo $type->labels->name; ?></label></li>
 						<?php endforeach; ?>
-					</select>
+
+					</ul>
 				</p>
 			</div>
 		</div>
@@ -1059,7 +1065,7 @@ die;
 
 		<?php $this->control_taxonomies( $instance , $instance['what'] ); ?>
 
-		<div id="<?php echo $this->get_field_id('post__in'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
+		<div id="<?php echo $this->get_field_id('post__in'); ?>-container" class="postloop container hide-if-js posttype_normal">
 			<label for="<?php echo $this->get_field_id('post__in'); ?>"><?php _e( 'Matching any post ID' ); ?></label>
 			<div id="<?php echo $this->get_field_id('post__in'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1076,7 +1082,7 @@ die;
 			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('comments'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
+		<div id="<?php echo $this->get_field_id('comments'); ?>-container" class="postloop container hide-if-js posttype_normal">
 			<label for="<?php echo $this->get_field_id('comments'); ?>"><?php _e( 'Comments' ); ?></label>
 			<div id="<?php echo $this->get_field_id('comments'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1095,7 +1101,7 @@ die;
 		$postloops->restore_current_blog(); 
 ?>
 
-		<div id="<?php echo $this->get_field_id('age'); ?>-container" class="postloop container hide-if-js posttype_post">
+		<div id="<?php echo $this->get_field_id('age'); ?>-container" class="postloop container hide-if-js posttype_normal">
 			<label for="<?php echo $this->get_field_id('age_num'); ?>"><?php _e('Date published'); ?></label>
 			<div id="<?php echo $this->get_field_id('age'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1114,7 +1120,7 @@ die;
 		</div>
 
 		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
-			<div id="<?php echo $this->get_field_id('relationship'); ?>-container" class="postloop container hide-if-js posttype_post">
+			<div id="<?php echo $this->get_field_id('relationship'); ?>-container" class="postloop container hide-if-js posttype_normal">
 				<label for="<?php echo $this->get_field_id('relationship'); ?>"><?php _e('Related to other posts'); ?></label>
 				<div id="<?php echo $this->get_field_id('relationship'); ?>-contents" class="contents hide-if-js">
 					<p>
@@ -1131,7 +1137,7 @@ die;
 			</div>
 		<?php endif; ?>
 
-		<div id="<?php echo $this->get_field_id('count'); ?>-container" class="postloop container hide-if-js posttype_normal">
+		<div id="<?php echo $this->get_field_id('count'); ?>-container" class="postloop container hide-if-js querytype_custom posttype_normal">
 			<label for="<?php echo $this->get_field_id('count'); ?>"><?php _e( 'Number of items to show' ); ?></label>
 			<div id="<?php echo $this->get_field_id('count'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1144,7 +1150,7 @@ die;
 			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('order'); ?>-container" class="postloop container hide-if-js posttype_post posttype_page">
+		<div id="<?php echo $this->get_field_id('order'); ?>-container" class="postloop container hide-if-js posttype_normal">
 			<label for="<?php echo $this->get_field_id('order'); ?>"><?php _e( 'Ordered by' ); ?></label>
 			<div id="<?php echo $this->get_field_id('order'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1163,7 +1169,7 @@ die;
 			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('template'); ?>-container" class="postloop container posttype_normal">
+		<div id="<?php echo $this->get_field_id('template'); ?>-container" class="postloop container querytype_normal posttype_normal">
 			<label for="<?php echo $this->get_field_id('template'); ?>"><?php _e( 'Template' ); ?></label>
 			<div id="<?php echo $this->get_field_id('template'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1177,7 +1183,7 @@ die;
 		<?php
 		// weird feature to separate a single postloop into multiple widgets
 		?>
-		<div id="<?php echo $this->get_field_id('offset'); ?>-container" class="postloop container posttype_normal">
+		<div id="<?php echo $this->get_field_id('offset'); ?>-container" class="postloop container querytype_normal posttype_normal">
 			<label for="<?php echo $this->get_field_id('offset'); ?>"><?php _e( 'Loop offset' ); ?></label>
 			<div id="<?php echo $this->get_field_id('offset'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1204,7 +1210,7 @@ die;
 		if( function_exists( 'get_intermediate_image_sizes' ))
 		{
 ?>
-			<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-container" class="postloop container posttype_normal">
+			<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-container" class="postloop container querytype_normal posttype_normal">
 				<label for="<?php echo $this->get_field_id('thumbnail_size'); ?>"><?php _e( 'Thumbnail Size' ); ?></label>
 				<div id="<?php echo $this->get_field_id('thumbnail_size'); ?>-contents" class="contents hide-if-js">
 					<p>
@@ -1273,7 +1279,7 @@ die;
 
 				if( $do_output )
 				{
-					echo '<div id="'. $this->get_field_id('blog') .'-container" class="postloop container hide-if-js posttype_normal"><label for="'. $this->get_field_id('blog') .'">'. __( 'From' ) .'</label><div id="'. $this->get_field_id('blog') .'-contents" class="contents hide-if-js"><p><select name="'. $this->get_field_name('blog') .'" id="'. $this->get_field_id('blog') .'" class="widefat">';
+					echo '<div id="'. $this->get_field_id('blog') .'-container" class="postloop container hide-if-js querytype_custom posttype_normal"><label for="'. $this->get_field_id('blog') .'">'. __( 'From' ) .'</label><div id="'. $this->get_field_id('blog') .'-contents" class="contents hide-if-js"><p><select name="'. $this->get_field_name('blog') .'" id="'. $this->get_field_id('blog') .'" class="widefat">';
 					foreach( $this->get_blog_list( $current_user->ID ) as $blog )
 					{
 							?><option value="<?php echo $blog['blog_id']; ?>" <?php selected( $instance['blog'], $blog['blog_id'] ); ?>><?php echo $blog['blog_id'] == $blog_id ? __('This blog') : $blog['blogname']; ?></option><?php
@@ -1298,6 +1304,11 @@ die;
 <?php
 
 		return FALSE; // the user doesn't have permission to the selected blog
+	}
+
+	function get_post_types()
+	{
+		return get_post_types( array( 'public' => TRUE , 'publicly_queryable' => TRUE , ) , 'names' , 'or' ); // trivia: 'pages' are public, but not publicly queryable
 	}
 
 	function get_blog_list( $current_user_id ){
@@ -1407,6 +1418,19 @@ die;
 						<input type="text" value="<?php echo implode( ', ', (array) $tags_in ); ?>" name="<?php echo $this->get_field_name('tax_'. $taxonomy .'_in'); ?>" id="<?php echo $this->get_field_id('tax_'. $taxonomy .'_in'); ?>" class="widefat <?php if( count( (array) $tags_in )) echo 'open-on-value'; ?>" />
 						<br />
 						<small><?php _e( 'Terms, separated by commas.' ); ?></small>
+
+						<br />And terms from<br /><select name="<?php echo $this->get_field_name( 'tax_'. $taxonomy .'_in_related' ); ?>" id="<?php echo $this->get_field_id( 'tax_'. $taxonomy .'_in_related' ); ?>" class="widefat <?php if( $instance[ 'tax_'. $taxonomy .'_in_related' ] ) echo 'open-on-value'; ?>">
+							<option value="0" '. <?php selected( (int) $instance[ 'tax_'. $taxonomy .'_in_related' ] , 0 ) ?> .'></option>
+<?php
+							foreach( $postloops->instances as $number => $loop ){
+								if( $number == $this->number )
+									continue;
+					
+								echo '<option value="'. $number .'" '. selected( (int) $instance[ 'tax_'. $taxonomy .'_in_related' ] , (int) $number , FALSE ) .'>'. $loop['title'] .'<small> (id:'. $number .')</small></option>';
+							}
+?>
+	
+						</select></li>
 					</p>
 		
 					<p>
@@ -1421,6 +1445,19 @@ die;
 						<input type="text" value="<?php echo implode( ', ', (array) $tags_not_in ); ?>" name="<?php echo $this->get_field_name('tax_'. $taxonomy .'_not_in'); ?>" id="<?php echo $this->get_field_id('tax_'. $taxonomy .'_not_in'); ?>" class="widefat <?php if( count( (array) $tags_not_in )) echo 'open-on-value'; ?>" />
 						<br />
 						<small><?php _e( 'Terms, separated by commas.' ); ?></small>
+
+						<br />And terms from<br /><select name="<?php echo $this->get_field_name( 'tax_'. $taxonomy .'_not_in_related' ); ?>" id="<?php echo $this->get_field_id( 'tax_'. $taxonomy .'_not_in_related' ); ?>" class="widefat <?php if( $instance[ 'tax_'. $taxonomy .'_not_in_related' ] ) echo 'open-on-value'; ?>">
+							<option value="0" '. <?php selected( (int) $instance[ 'tax_'. $taxonomy .'_not_in_related' ] , 0 ) ?> .'></option>
+<?php
+							foreach( $postloops->instances as $number => $loop ){
+								if( $number == $this->number )
+									continue;
+					
+								echo '<option value="'. $number .'" '. selected( (int) $instance[ 'tax_'. $taxonomy .'_not_in_related' ] , (int) $number , FALSE ) .'>'. $loop['title'] .'<small> (id:'. $number .')</small></option>';
+							}
+?>
+
+						</select></li>
 					</p>
 				</div>
 			</div>
@@ -1464,7 +1501,7 @@ die;
 			return '';
 		}
 
-		return 'posttype_' . implode( ' posttype_', $tax->object_type );
+		return 'querytype_custom ' . implode( ' posttype_', $tax->object_type );
 	}
 }// end bSuite_Widget_Postloop
 
