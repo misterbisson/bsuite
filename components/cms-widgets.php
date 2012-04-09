@@ -568,7 +568,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 		}else{
 //			$criteria['suppress_filters'] = TRUE;
 
-			$criteria['post_type'] = array_values( (array) array_intersect( (array) $this->get_post_types() , $instance['what'] ));
+			$criteria['post_type'] = array_values( array_intersect( (array) $this->get_post_types() , (array) $instance['what'] ));
 
 			if( in_array( $instance['what'], array( 'attachment', 'revision' )))
 				$criteria['post_status'] = 'inherit';
@@ -1128,7 +1128,7 @@ die;
 
 		<?php $this->control_taxonomies( $instance , $instance['what'] ); ?>
 
-		<div id="<?php echo $this->get_field_id('post__in'); ?>-container" class="postloop container hide-if-js posttype_normal">
+		<div id="<?php echo $this->get_field_id('post__in'); ?>-container" class="postloop container hide-if-js querytype_custom posttype_normal">
 			<label for="<?php echo $this->get_field_id('post__in'); ?>"><?php _e( 'Matching any post ID' ); ?></label>
 			<div id="<?php echo $this->get_field_id('post__in'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1145,7 +1145,7 @@ die;
 			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('comments'); ?>-container" class="postloop container hide-if-js posttype_normal">
+		<div id="<?php echo $this->get_field_id('comments'); ?>-container" class="postloop container hide-if-js querytype_custom posttype_normal">
 			<label for="<?php echo $this->get_field_id('comments'); ?>"><?php _e( 'Comments' ); ?></label>
 			<div id="<?php echo $this->get_field_id('comments'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1164,7 +1164,7 @@ die;
 		$postloops->restore_current_blog(); 
 ?>
 
-		<div id="<?php echo $this->get_field_id('age'); ?>-container" class="postloop container hide-if-js posttype_normal">
+		<div id="<?php echo $this->get_field_id('age'); ?>-container" class="postloop container hide-if-js querytype_custom posttype_normal">
 			<label for="<?php echo $this->get_field_id('age_num'); ?>"><?php _e('Date published'); ?></label>
 			<div id="<?php echo $this->get_field_id('age'); ?>-contents" class="contents hide-if-js">
 				<p>
@@ -1183,7 +1183,7 @@ die;
 		</div>
 
 		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
-			<div id="<?php echo $this->get_field_id('relationship'); ?>-container" class="postloop container hide-if-js querytype_normal posttype_normal">
+			<div id="<?php echo $this->get_field_id('relationship'); ?>-container" class="postloop container hide-if-js querytype_custom posttype_normal">
 				<label for="<?php echo $this->get_field_id('relationship'); ?>"><?php _e('Related to other posts'); ?></label>
 				<div id="<?php echo $this->get_field_id('relationship'); ?>-contents" class="contents hide-if-js">
 					<p>
@@ -1213,7 +1213,7 @@ die;
 			</div>
 		</div>
 
-		<div id="<?php echo $this->get_field_id('order'); ?>-container" class="postloop container hide-if-js posttype_normal">
+		<div id="<?php echo $this->get_field_id('order'); ?>-container" class="postloop container hide-if-js querytype_custom posttype_normal">
 			<label for="<?php echo $this->get_field_id('order'); ?>"><?php _e( 'Ordered by' ); ?></label>
 			<div id="<?php echo $this->get_field_id('order'); ?>-contents" class="contents hide-if-js">
 				<p>
