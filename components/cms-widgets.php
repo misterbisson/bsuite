@@ -584,7 +584,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			if( $instance['categories_not_in_related'] )
 				$criteria['category__not_in'] = array_merge( (array) $criteria['category__not_in'] , (array) array_keys( (array) $postloops->terms[ $instance['categories_not_in_related'] ]['category'] ));
-	
+
 			if( !empty( $instance['tags_in'] ))
 				$criteria['tag__'. ( in_array( $instance['tagsbool'], array( 'in', 'and', 'not_in' )) ? $instance['tagsbool'] : 'in' ) ] = $instance['tags_in'];
 
@@ -597,17 +597,79 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 			if( $instance['tags_not_in_related'] )
 				$criteria['tag__not_in'] = array_merge( (array) $criteria['tag__not_in'] , (array) array_keys( (array) $postloops->terms[ $instance['tags_not_in_related'] ]['post_tag'] ));
 
-			foreach( get_object_taxonomies( $instance['what'] ) as $taxonomy )
+			$tax_query = array();
+
+			if( $instance['tags_in_related'] )
+				$instance['tags_in'] = array_merge( 
+					(array) $instance['tags_in'] ,
+					(array) array_keys( (array) $postloops->terms['post_tag'][ $taxonomy ] )
+				);
+
+			if( count( $instance['tags_in'] ))
+			{
+				$tax_query[] = array(
+					'taxonomy' => 'post_tag',
+					'field' => 'id',
+					'terms' => $instance['tags_in'],
+					'operator' => $instance['tagsbool'],
+				);
+			}
+
+			if( $instance['tags_not_in_related'] )
+				$instance['tags_not_in'] = array_merge( 
+					(array) $instance['tags_not_in'] , 
+					(array) array_keys( (array) $postloops->terms['post_tag'][ $taxonomy ] )
+				);
+
+			if( count( $instance['tags_not_in'] ))
+			{
+				$tax_query[] = array(
+					'taxonomy' => 'post_tag',
+					'field' => 'id',
+					'terms' => $instance['tags_not_in'],
+					'operator' => 'NOT IN',
+				);
+			}
+
+			foreach( get_object_taxonomies( $criteria['post_type'] ) as $taxonomy )
 			{
 				if( $taxonomy == 'category' || $taxonomy == 'post_tag' )
 					continue;
 
-				if( !empty( $instance['tax_'. $taxonomy .'_in'] ))
-					$criteria['tax_'. $taxonomy .'_in'] = $instance['tax_'. $taxonomy .'_in'];
+				if( $instance['tax_'. $taxonomy .'_in_related'] )
+					$instance['tax_'. $taxonomy .'_in'] = array_merge( 
+						(array) $instance['tax_'. $taxonomy .'_in'] ,
+						(array) array_keys( (array) $postloops->terms[ $instance['tax_'. $taxonomy .'_in'] ][ $taxonomy ] )
+					);
 
-				if( !empty( $instance['tax_'. $taxonomy .'_not_in'] ))
-					$criteria['tax_'. $taxonomy .'_not_in'] = $instance['tax_'. $taxonomy .'_not_in'];
+				if( count( $instance['tax_'. $taxonomy .'_in'] ))
+				{
+					$tax_query[] = array(
+						'taxonomy' => $taxonomy,
+						'field' => 'id',
+						'terms' => $instance['tax_'. $taxonomy .'_in'],
+						'operator' => $instance['tax_'. $taxonomy .'_bool'],
+					);
+				}
+
+				if( $instance['tax_'. $taxonomy .'_not_in_related'] )
+					$instance['tax_'. $taxonomy .'_not_in'] = array_merge( 
+						(array) $instance['tax_'. $taxonomy .'_not_in'] , 
+						(array) array_keys( (array) $postloops->terms[ $instance['tax_'. $taxonomy .'_not_in'] ][ $taxonomy ] )
+					);
+
+				if( count( $instance['tax_'. $taxonomy .'_not_in'] ))
+				{
+					$tax_query[] = array(
+						'taxonomy' => $taxonomy,
+						'field' => 'id',
+						'terms' => $instance['tax_'. $taxonomy .'_not_in'],
+						'operator' => 'NOT IN',
+					);
+				}
 			}
+			if( count( $tax_query ))
+				$criteria['tax_query'] = $tax_query;
 
 			if( !empty( $instance['post__in'] ))
 				$criteria['post__in'] = $instance['post__in'];
@@ -731,6 +793,7 @@ class bSuite_Widget_PostLoop extends WP_Widget {
 
 			$ourposts = new WP_Query( $criteria );
 //print_r( $ourposts );
+//echo '<pre>'. print_r( $ourposts , TRUE ) .'</pre>';
 		}
 
 		if( $ourposts->have_posts() )
@@ -1120,7 +1183,7 @@ die;
 		</div>
 
 		<?php if( $other_instances = $this->control_instances( $instance['relatedto'] )): ?>
-			<div id="<?php echo $this->get_field_id('relationship'); ?>-container" class="postloop container hide-if-js posttype_normal">
+			<div id="<?php echo $this->get_field_id('relationship'); ?>-container" class="postloop container hide-if-js querytype_normal posttype_normal">
 				<label for="<?php echo $this->get_field_id('relationship'); ?>"><?php _e('Related to other posts'); ?></label>
 				<div id="<?php echo $this->get_field_id('relationship'); ?>-contents" class="contents hide-if-js">
 					<p>
@@ -1465,11 +1528,13 @@ die;
 		}
 	}
 	
-	function control_instances( $selected = array() ){
+	function control_instances( $selected = array() )
+	{
 		global $postloops;
 
 		$list = array();
-		foreach( $postloops->instances as $number => $instance ){
+		foreach( $postloops->instances as $number => $instance )
+		{
 			if( $number == $this->number )
 				continue;
 
