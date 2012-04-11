@@ -22,6 +22,7 @@ class bSuite_FeaturedComments
 		add_filter( 'comment_row_actions' , array( $this , 'comment_row_actions' ) , 10 , 2 );
 
 		add_filter( 'pre_get_posts', array( $this, 'pre_get_posts' ));
+		add_filter( 'post_class' , array( $this, 'filter_post_class' ));
 		add_filter( 'get_comment_text' , array( $this, 'filter_get_comment_text' ));
 		add_filter( 'the_author' , array( $this, 'filter_the_author' ));
 		add_filter( 'the_author_posts_link' , array( $this, 'filter_the_author_posts_link' ));
@@ -95,6 +96,14 @@ class bSuite_FeaturedComments
 			return $content;
 		else
 			return preg_replace( $this->tag_regex , '' , $content );
+	}
+
+	function filter_post_class( $classes )
+	{
+		if( get_post( get_the_ID() )->post_type == $this->post_type_name )
+			$classes[] = 'post';
+
+		return $classes;
 	}
 
 	function filter_the_author( $author_name )
